@@ -8,7 +8,8 @@ import picocli.CommandLine;
         subcommands = {
                 DiscoverCommand.class,
                 ListCommand.class,
-                ProvisionCommand.class
+                ProvisionCommand.class,
+                FederateCommand.class
                 // DestroyCommand.class // Future implementation
         })
 public class MainCLI implements Runnable {

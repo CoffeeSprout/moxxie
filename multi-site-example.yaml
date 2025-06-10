@@ -1,0 +1,239 @@
+# Multi-Site Proxmox Federation Configuration Example
+# This demonstrates a real-world setup with Worldstream, Databarn, and Hetzner
+
+clusters:
+  # Primary production cluster at Worldstream
+  - id: worldstream-prod
+    name: "Worldstream Production"
+    provider: "Worldstream"
+    location: "Amsterdam, NL"
+    tier: "primary"
+    connection:
+      api_url: "https://10.0.0.10:8006/api2/json"
+      username: "root@pam"
+      password_env: "PROXMOX_WORLDSTREAM_PASSWORD"
+      verify_ssl: true
+      connection_timeout: 30
+    capabilities:
+      max_vms: 200
+      supports_ceph: true
+      supports_ha: true
+      backup_enabled: true
+      live_migration: true
+      nested_virtualization: true
+    network:
+      public_subnet: "185.10.68.0/24"
+      private_subnet: "10.0.0.0/16"
+      vlan_range: [100, 199]
+      bridges: ["vmbr0", "vmbr1"]
+      uplink_speed: "10Gbps"
+      cross_connects:
+        - target_cluster: "databarn-dr"
+          type: "vpn"
+          latency: "25ms"
+          bandwidth: "1Gbps"
+    storage:
+      primary_storage: "ceph-pool"
+      backends:
+        - name: "ceph-pool"
+          type: "ceph"
+          capacity: "50TB"
+          available: "32TB"
+          performance_tier: "ssd"
+          features: ["snapshots", "thin-provision", "encryption"]
+        - name: "local-lvm"
+          type: "lvm"
+          capacity: "4TB"
+          available: "2.5TB"
+          performance_tier: "nvme"
+          features: ["snapshots"]
+      replication_targets:
+        - target_cluster: "databarn-dr"
+          target_storage: "backup-storage"
+          schedule: "0 2 * * *"  # Daily at 2 AM
+          type: "async"
+    tags: ["production", "primary", "eu-west"]
+    metadata:
+      sla: "99.9%"
+      support_tier: "24x7"
+      cost_center: "prod-infrastructure"
+
+  # Disaster Recovery cluster at Databarn
+  - id: databarn-dr
+    name: "Databarn DR"
+    provider: "Databarn"
+    location: "Rotterdam, NL"
+    tier: "secondary"
+    connection:
+      api_url: "https://192.168.100.10:8006/api2/json"
+      username: "root@pam"
+      password_env: "PROXMOX_DATABARN_PASSWORD"
+      verify_ssl: false  # Self-signed cert
+      connection_timeout: 30
+    capabilities:
+      max_vms: 100
+      supports_ceph: false
+      supports_ha: true
+      backup_enabled: true
+      live_migration: true
+      nested_virtualization: false
+    network:
+      public_subnet: "89.188.30.0/24"
+      private_subnet: "192.168.100.0/24"
+      vlan_range: [200, 299]
+      bridges: ["vmbr0"]
+      uplink_speed: "1Gbps"
+      cross_connects:
+        - target_cluster: "worldstream-prod"
+          type: "vpn"
+          latency: "25ms"
+          bandwidth: "1Gbps"
+    storage:
+      primary_storage: "zfs-pool"
+      backends:
+        - name: "zfs-pool"
+          type: "zfs"
+          capacity: "20TB"
+          available: "15TB"
+          performance_tier: "hdd"
+          features: ["snapshots", "compression", "deduplication"]
+        - name: "backup-storage"
+          type: "nfs"
+          capacity: "100TB"
+          available: "80TB"
+          performance_tier: "hdd"
+          features: ["snapshots"]
+    tags: ["disaster-recovery", "secondary", "eu-west"]
+    metadata:
+      sla: "99.5%"
+      support_tier: "business-hours"
+      cost_center: "dr-infrastructure"
+
+  # Future expansion at Hetzner
+  - id: hetzner-edge
+    name: "Hetzner Edge"
+    provider: "Hetzner"
+    location: "Frankfurt, DE"
+    tier: "edge"
+    connection:
+      api_url: "https://proxmox.hetzner.example.com:8006/api2/json"
+      username: "root@pam"
+      password_env: "PROXMOX_HETZNER_PASSWORD"
+      verify_ssl: true
+      connection_timeout: 45  # Higher timeout for internet connection
+    capabilities:
+      max_vms: 50
+      supports_ceph: false
+      supports_ha: false  # Single node
+      backup_enabled: true
+      live_migration: false
+      nested_virtualization: true
+    network:
+      public_subnet: "95.216.0.0/24"
+      private_subnet: "172.16.0.0/24"
+      vlan_range: [300, 399]
+      bridges: ["vmbr0"]
+      uplink_speed: "1Gbps"
+      cross_connects:
+        - target_cluster: "worldstream-prod"
+          type: "vpn"
+          latency: "15ms"
+          bandwidth: "100Mbps"
+    storage:
+      primary_storage: "local-lvm"
+      backends:
+        - name: "local-lvm"
+          type: "lvm"
+          capacity: "8TB"
+          available: "7TB"
+          performance_tier: "nvme"
+          features: ["snapshots"]
+    tags: ["edge", "development", "eu-central"]
+    metadata:
+      sla: "99.0%"
+      support_tier: "best-effort"
+      cost_center: "dev-infrastructure"
+
+# Federation configuration
+federation:
+  primary_cluster: "worldstream-prod"
+  failover_priority: ["worldstream-prod", "databarn-dr", "hetzner-edge"]
+  sync_interval: 300  # 5 minutes
+  health_check_interval: 60  # 1 minute
+
+# Resource pools that span clusters
+resource_pools:
+  - name: "production-pool"
+    description: "Production workloads with HA requirements"
+    clusters: ["worldstream-prod", "databarn-dr"]
+    limits:
+      max_vms: 150
+      max_memory: "2TB"
+      max_cpu_cores: 1200
+      max_storage: "40TB"
+    placement_policy:
+      strategy: "balanced"
+      cluster_weights:
+        worldstream-prod: 80  # Prefer primary
+        databarn-dr: 20
+      rules:
+        - type: "affinity"
+          target: "cluster"
+          operator: "should"
+          value: "worldstream-prod"
+        - type: "anti-affinity"
+          target: "tag"
+          operator: "must"
+          value: "database"  # Spread database VMs
+
+  - name: "development-pool"
+    description: "Development and testing workloads"
+    clusters: ["hetzner-edge", "databarn-dr"]
+    limits:
+      max_vms: 50
+      max_memory: "512GB"
+      max_cpu_cores: 400
+      max_storage: "10TB"
+    placement_policy:
+      strategy: "cost"  # Optimize for cost
+      cluster_weights:
+        hetzner-edge: 70  # Cheaper option
+        databarn-dr: 30
+      rules:
+        - type: "location"
+          target: "cluster"
+          operator: "must_not"
+          value: "worldstream-prod"  # Keep dev away from prod
+
+# Migration policies
+migration_policies:
+  default_method: "backup-restore"  # Safe default for cross-provider
+  pre_migration_checks:
+    - "verify_network_connectivity"
+    - "check_storage_compatibility"
+    - "validate_vm_configuration"
+    - "ensure_backup_exists"
+  paths:
+    # Production to DR (fast path)
+    - source_cluster: "worldstream-prod"
+      target_cluster: "databarn-dr"
+      method: "backup-restore"
+      max_bandwidth: "500Mbps"
+      compression_enabled: true
+      encryption_required: true
+    
+    # DR to Production (restoration)
+    - source_cluster: "databarn-dr"
+      target_cluster: "worldstream-prod"
+      method: "backup-restore"
+      max_bandwidth: "500Mbps"
+      compression_enabled: true
+      encryption_required: true
+    
+    # Dev migrations (low priority)
+    - source_cluster: "hetzner-edge"
+      target_cluster: "databarn-dr"
+      method: "offline"
+      max_bandwidth: "50Mbps"
+      compression_enabled: true
+      encryption_required: false
