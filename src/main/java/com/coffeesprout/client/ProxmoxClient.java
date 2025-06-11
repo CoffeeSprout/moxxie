@@ -291,5 +291,57 @@ public interface ProxmoxClient {
     @Produces(MediaType.APPLICATION_JSON)
     ApplySDNResponse applySDNConfig(@CookieParam("PVEAuthCookie") String ticket,
                                     @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // Snapshot Management
+    
+    // List all snapshots for a VM
+    @GET
+    @Path("/nodes/{node}/qemu/{vmid}/snapshot")
+    @Produces(MediaType.APPLICATION_JSON)
+    SnapshotsResponse listSnapshots(@PathParam("node") String node,
+                                    @PathParam("vmid") int vmid,
+                                    @CookieParam("PVEAuthCookie") String ticket);
+    
+    // Create a new snapshot
+    @POST
+    @Path("/nodes/{node}/qemu/{vmid}/snapshot")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.APPLICATION_JSON)
+    TaskStatusResponse createSnapshot(@PathParam("node") String node,
+                                      @PathParam("vmid") int vmid,
+                                      @FormParam("snapname") String snapname,
+                                      @FormParam("description") String description,
+                                      @FormParam("vmstate") Integer vmstate,
+                                      @CookieParam("PVEAuthCookie") String ticket,
+                                      @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // Get snapshot configuration
+    @GET
+    @Path("/nodes/{node}/qemu/{vmid}/snapshot/{snapname}/config")
+    @Produces(MediaType.APPLICATION_JSON)
+    VMConfigResponse getSnapshotConfig(@PathParam("node") String node,
+                                       @PathParam("vmid") int vmid,
+                                       @PathParam("snapname") String snapname,
+                                       @CookieParam("PVEAuthCookie") String ticket);
+    
+    // Delete a snapshot
+    @DELETE
+    @Path("/nodes/{node}/qemu/{vmid}/snapshot/{snapname}")
+    @Produces(MediaType.APPLICATION_JSON)
+    TaskStatusResponse deleteSnapshot(@PathParam("node") String node,
+                                      @PathParam("vmid") int vmid,
+                                      @PathParam("snapname") String snapname,
+                                      @CookieParam("PVEAuthCookie") String ticket,
+                                      @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // Rollback to a snapshot
+    @POST
+    @Path("/nodes/{node}/qemu/{vmid}/snapshot/{snapname}/rollback")
+    @Produces(MediaType.APPLICATION_JSON)
+    TaskStatusResponse rollbackSnapshot(@PathParam("node") String node,
+                                        @PathParam("vmid") int vmid,
+                                        @PathParam("snapname") String snapname,
+                                        @CookieParam("PVEAuthCookie") String ticket,
+                                        @HeaderParam("CSRFPreventionToken") String csrfToken);
 }
 

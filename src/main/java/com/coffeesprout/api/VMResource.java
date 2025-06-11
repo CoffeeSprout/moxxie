@@ -1,8 +1,11 @@
 package com.coffeesprout.api;
 
+import com.coffeesprout.api.dto.CreateSnapshotRequest;
 import com.coffeesprout.api.dto.CreateVMRequestDTO;
 import com.coffeesprout.api.dto.DiskInfo;
 import com.coffeesprout.api.dto.ErrorResponse;
+import com.coffeesprout.api.dto.SnapshotResponse;
+import com.coffeesprout.api.dto.TaskResponse;
 import com.coffeesprout.api.dto.VMDetailResponse;
 import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.api.dto.VMStatusDetailResponse;
@@ -12,6 +15,7 @@ import com.coffeesprout.client.VM;
 import com.coffeesprout.client.VMStatusResponse;
 import com.coffeesprout.service.SafeMode;
 import com.coffeesprout.service.SDNService;
+import com.coffeesprout.service.SnapshotService;
 import com.coffeesprout.service.TagService;
 import com.coffeesprout.service.VMService;
 import com.coffeesprout.service.TicketManager;
@@ -67,6 +71,9 @@ public class VMResource {
     @Inject
     @RestClient
     ProxmoxClient proxmoxClient;
+    
+    @Inject
+    SnapshotService snapshotService;
     
     @Inject
     TicketManager ticketManager;
@@ -1099,4 +1106,155 @@ public class VMResource {
     // DTOs for tag operations
     public record TagsResponse(Set<String> tags) {}
     public record TagRequest(String tag) {}
+    
+    // Snapshot Management Endpoints
+    
+    @GET
+    @Path("/{vmId}/snapshots")
+    @SafeMode(value = false)  // Read operation
+    @Operation(summary = "List VM snapshots", 
+               description = "Get all snapshots for a specific VM")
+    @APIResponses({
+        @APIResponse(responseCode = "200", description = "Snapshots retrieved successfully",
+            content = @Content(schema = @Schema(implementation = SnapshotResponse[].class))),
+        @APIResponse(responseCode = "404", description = "VM not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "500", description = "Failed to retrieve snapshots",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public Response listSnapshots(
+            @Parameter(description = "VM ID", required = true, example = "100")
+            @PathParam("vmId") int vmId) {
+        try {
+            List<SnapshotResponse> snapshots = snapshotService.listSnapshots(vmId, null);
+            return Response.ok(snapshots).build();
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("VM not found")) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(new ErrorResponse("VM not found: " + vmId))
+                        .build();
+            }
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to list snapshots for VM {}", vmId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErrorResponse("Failed to list snapshots: " + e.getMessage()))
+                    .build();
+        }
+    }
+    
+    @POST
+    @Path("/{vmId}/snapshots")
+    @SafeMode(value = true)  // Write operation
+    @Operation(summary = "Create VM snapshot", 
+               description = "Create a new snapshot of the VM's current state")
+    @APIResponses({
+        @APIResponse(responseCode = "202", description = "Snapshot creation started",
+            content = @Content(schema = @Schema(implementation = TaskResponse.class))),
+        @APIResponse(responseCode = "400", description = "Invalid snapshot parameters",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "404", description = "VM not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "409", description = "Snapshot name already exists",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "500", description = "Failed to create snapshot",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public Response createSnapshot(
+            @Parameter(description = "VM ID", required = true, example = "100")
+            @PathParam("vmId") int vmId,
+            @Valid CreateSnapshotRequest request) {
+        try {
+            TaskResponse task = snapshotService.createSnapshot(vmId, request, null);
+            return Response.accepted(task).build();
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("VM not found")) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(new ErrorResponse("VM not found: " + vmId))
+                        .build();
+            } else if (e.getMessage().contains("already exists")) {
+                return Response.status(Response.Status.CONFLICT)
+                        .entity(new ErrorResponse(e.getMessage()))
+                        .build();
+            }
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to create snapshot for VM {}", vmId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErrorResponse("Failed to create snapshot: " + e.getMessage()))
+                    .build();
+        }
+    }
+    
+    @DELETE
+    @Path("/{vmId}/snapshots/{snapshotName}")
+    @SafeMode(value = true)  // Write operation
+    @Operation(summary = "Delete VM snapshot", 
+               description = "Delete a specific snapshot of the VM")
+    @APIResponses({
+        @APIResponse(responseCode = "202", description = "Snapshot deletion started",
+            content = @Content(schema = @Schema(implementation = TaskResponse.class))),
+        @APIResponse(responseCode = "404", description = "VM or snapshot not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "500", description = "Failed to delete snapshot",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public Response deleteSnapshot(
+            @Parameter(description = "VM ID", required = true, example = "100")
+            @PathParam("vmId") int vmId,
+            @Parameter(description = "Snapshot name", required = true, example = "backup-2024-01-15")
+            @PathParam("snapshotName") String snapshotName) {
+        try {
+            TaskResponse task = snapshotService.deleteSnapshot(vmId, snapshotName, null);
+            return Response.accepted(task).build();
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("not found")) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(new ErrorResponse(e.getMessage()))
+                        .build();
+            }
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to delete snapshot {} for VM {}", snapshotName, vmId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErrorResponse("Failed to delete snapshot: " + e.getMessage()))
+                    .build();
+        }
+    }
+    
+    @POST
+    @Path("/{vmId}/snapshots/{snapshotName}/rollback")
+    @SafeMode(value = true)  // Write operation - potentially dangerous
+    @Operation(summary = "Rollback VM to snapshot", 
+               description = "Rollback the VM to a previous snapshot state. WARNING: This will discard all changes made after the snapshot.")
+    @APIResponses({
+        @APIResponse(responseCode = "202", description = "Rollback started",
+            content = @Content(schema = @Schema(implementation = TaskResponse.class))),
+        @APIResponse(responseCode = "404", description = "VM or snapshot not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "500", description = "Failed to rollback snapshot",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public Response rollbackSnapshot(
+            @Parameter(description = "VM ID", required = true, example = "100")
+            @PathParam("vmId") int vmId,
+            @Parameter(description = "Snapshot name", required = true, example = "backup-2024-01-15")
+            @PathParam("snapshotName") String snapshotName) {
+        try {
+            TaskResponse task = snapshotService.rollbackSnapshot(vmId, snapshotName, null);
+            return Response.accepted(task).build();
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("not found")) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(new ErrorResponse(e.getMessage()))
+                        .build();
+            }
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to rollback to snapshot {} for VM {}", snapshotName, vmId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErrorResponse("Failed to rollback snapshot: " + e.getMessage()))
+                    .build();
+        }
+    }
 }
