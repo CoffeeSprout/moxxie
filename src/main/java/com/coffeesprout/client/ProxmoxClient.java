@@ -11,9 +11,14 @@ public interface ProxmoxClient {
 
     @POST
     @Path("/access/ticket")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.APPLICATION_JSON)
-    LoginResponse login(LoginRequest request);
+    LoginResponse login(@FormParam("username") String username, @FormParam("password") String password);
+
+    @GET
+    @Path("/version")
+    @Produces(MediaType.APPLICATION_JSON)
+    StatusResponse getStatus();
 
     @GET
     @Path("/nodes")
@@ -23,7 +28,7 @@ public interface ProxmoxClient {
     @GET
     @Path("/storage")
     @Produces(MediaType.APPLICATION_JSON)
-    StorageResponse getStoragePools(@CookieParam("PVEAuthCookie") String ticket);
+    StorageResponse getStorage(@CookieParam("PVEAuthCookie") String ticket);
 
     @GET
     @Path("/nodes/{node}/status")
@@ -36,9 +41,14 @@ public interface ProxmoxClient {
     StorageResponse getNodeStorage(@PathParam("node") String node, @CookieParam("PVEAuthCookie") String ticket);
 
     @GET
+    @Path("/cluster/resources")
+    @Produces(MediaType.APPLICATION_JSON)
+    VMsResponse getVMs(@CookieParam("PVEAuthCookie") String ticket);
+
+    @GET
     @Path("/nodes/{node}/qemu")
     @Produces(MediaType.APPLICATION_JSON)
-    VMsResponse getVMs(@PathParam("node") String node, @CookieParam("PVEAuthCookie") String ticket);
+    VMsResponse getNodeVMs(@PathParam("node") String node, @CookieParam("PVEAuthCookie") String ticket);
 
     /**
      * Create a new QEMU VM on a given node.
@@ -50,6 +60,7 @@ public interface ProxmoxClient {
     @Produces(MediaType.APPLICATION_JSON)
     CreateVMResponse createVM(@PathParam("node") String node,
                               @CookieParam("PVEAuthCookie") String ticket,
+                              @HeaderParam("CSRFPreventionToken") String csrfToken,
                               CreateVMRequest request);
 
     /**
@@ -111,6 +122,162 @@ public interface ProxmoxClient {
     @Path("/nodes/{node}/qemu/{vmid}/status/start")
     @Produces(MediaType.APPLICATION_JSON)
     StatusResponse startVM(@PathParam("node") String node,
-                           @PathParam("vmid") int vmid);
+                           @PathParam("vmid") int vmid,
+                           @CookieParam("PVEAuthCookie") String ticket,
+                           @HeaderParam("CSRFPreventionToken") String csrfToken);
+
+    // Stop the VM
+    @POST
+    @Path("/nodes/{node}/qemu/{vmid}/status/stop")
+    @Produces(MediaType.APPLICATION_JSON)
+    StatusResponse stopVM(@PathParam("node") String node,
+                          @PathParam("vmid") int vmid,
+                          @CookieParam("PVEAuthCookie") String ticket,
+                          @HeaderParam("CSRFPreventionToken") String csrfToken);
+
+    // Delete the VM
+    @DELETE
+    @Path("/nodes/{node}/qemu/{vmid}")
+    @Produces(MediaType.APPLICATION_JSON)
+    StatusResponse deleteVM(@PathParam("node") String node,
+                            @PathParam("vmid") int vmid,
+                            @CookieParam("PVEAuthCookie") String ticket,
+                            @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // Get specific VM configuration/status
+    @GET
+    @Path("/nodes/{node}/qemu/{vmid}/config")
+    @Produces(MediaType.APPLICATION_JSON)
+    VMConfigResponse getVMConfig(@PathParam("node") String node,
+                                 @PathParam("vmid") int vmid,
+                                 @CookieParam("PVEAuthCookie") String ticket);
+    
+    // Get network interfaces for a node
+    @GET
+    @Path("/nodes/{node}/network")
+    @Produces(MediaType.APPLICATION_JSON)
+    NetworkResponse getNodeNetworks(@PathParam("node") String node,
+                                    @CookieParam("PVEAuthCookie") String ticket);
+    
+    // Reboot the VM
+    @POST
+    @Path("/nodes/{node}/qemu/{vmid}/status/reboot")
+    @Produces(MediaType.APPLICATION_JSON)
+    StatusResponse rebootVM(@PathParam("node") String node,
+                            @PathParam("vmid") int vmid,
+                            @CookieParam("PVEAuthCookie") String ticket,
+                            @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // Suspend the VM
+    @POST
+    @Path("/nodes/{node}/qemu/{vmid}/status/suspend")
+    @Produces(MediaType.APPLICATION_JSON)
+    StatusResponse suspendVM(@PathParam("node") String node,
+                             @PathParam("vmid") int vmid,
+                             @CookieParam("PVEAuthCookie") String ticket,
+                             @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // Resume the VM
+    @POST
+    @Path("/nodes/{node}/qemu/{vmid}/status/resume")
+    @Produces(MediaType.APPLICATION_JSON)
+    StatusResponse resumeVM(@PathParam("node") String node,
+                            @PathParam("vmid") int vmid,
+                            @CookieParam("PVEAuthCookie") String ticket,
+                            @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // Shutdown the VM (graceful shutdown via ACPI)
+    @POST
+    @Path("/nodes/{node}/qemu/{vmid}/status/shutdown")
+    @Produces(MediaType.APPLICATION_JSON)
+    StatusResponse shutdownVM(@PathParam("node") String node,
+                              @PathParam("vmid") int vmid,
+                              @CookieParam("PVEAuthCookie") String ticket,
+                              @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // Get detailed VM status
+    @GET
+    @Path("/nodes/{node}/qemu/{vmid}/status/current")
+    @Produces(MediaType.APPLICATION_JSON)
+    VMStatusResponse getVMStatus(@PathParam("node") String node,
+                                 @PathParam("vmid") int vmid,
+                                 @CookieParam("PVEAuthCookie") String ticket);
+    
+    // Get VM configuration with CSRF token
+    @GET
+    @Path("/nodes/{node}/qemu/{vmid}/config")
+    @Produces(MediaType.APPLICATION_JSON)
+    com.fasterxml.jackson.databind.JsonNode getVMConfig(@PathParam("node") String node,
+                                                        @PathParam("vmid") int vmid,
+                                                        @CookieParam("PVEAuthCookie") String ticket,
+                                                        @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // Update VM configuration (generic method for any config update)
+    @PUT
+    @Path("/nodes/{node}/qemu/{vmid}/config")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.APPLICATION_JSON)
+    com.fasterxml.jackson.databind.JsonNode updateVMConfig(@PathParam("node") String node,
+                                                           @PathParam("vmid") int vmid,
+                                                           @CookieParam("PVEAuthCookie") String ticket,
+                                                           @HeaderParam("CSRFPreventionToken") String csrfToken,
+                                                           String formData);
+    
+    // Get cluster resources with type filter
+    @GET
+    @Path("/cluster/resources")
+    @Produces(MediaType.APPLICATION_JSON)
+    com.fasterxml.jackson.databind.JsonNode getClusterResources(@CookieParam("PVEAuthCookie") String ticket,
+                                                                @HeaderParam("CSRFPreventionToken") String csrfToken,
+                                                                @QueryParam("type") String type);
+    
+    // SDN API Methods
+    
+    // List SDN zones
+    @GET
+    @Path("/cluster/sdn/zones")
+    @Produces(MediaType.APPLICATION_JSON)
+    NetworkZonesResponse listSDNZones(@CookieParam("PVEAuthCookie") String ticket);
+    
+    // Get specific zone details
+    @GET
+    @Path("/cluster/sdn/zones/{zone}")
+    @Produces(MediaType.APPLICATION_JSON)
+    NetworkZoneResponse getSDNZone(@PathParam("zone") String zone,
+                                   @CookieParam("PVEAuthCookie") String ticket);
+    
+    // List VNets in a zone
+    @GET
+    @Path("/cluster/sdn/vnets")
+    @Produces(MediaType.APPLICATION_JSON)
+    VNetsResponse listVNets(@QueryParam("zone") String zone,
+                            @CookieParam("PVEAuthCookie") String ticket);
+    
+    // Create a new VNet
+    @POST
+    @Path("/cluster/sdn/vnets")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.APPLICATION_JSON)
+    CreateVNetResponse createVNet(@FormParam("vnet") String vnetId,
+                                  @FormParam("zone") String zone,
+                                  @FormParam("tag") Integer vlanTag,
+                                  @FormParam("alias") String alias,
+                                  @CookieParam("PVEAuthCookie") String ticket,
+                                  @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // Delete a VNet
+    @DELETE
+    @Path("/cluster/sdn/vnets/{vnet}")
+    @Produces(MediaType.APPLICATION_JSON)
+    DeleteResponse deleteVNet(@PathParam("vnet") String vnetId,
+                              @CookieParam("PVEAuthCookie") String ticket,
+                              @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // Apply SDN configuration
+    @PUT
+    @Path("/cluster/sdn")
+    @Produces(MediaType.APPLICATION_JSON)
+    ApplySDNResponse applySDNConfig(@CookieParam("PVEAuthCookie") String ticket,
+                                    @HeaderParam("CSRFPreventionToken") String csrfToken);
 }
 

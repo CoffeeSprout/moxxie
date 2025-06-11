@@ -62,6 +62,18 @@ java -jar target/moxxie-1.0.0-SNAPSHOT-runner.jar
 - Cookie-based authentication with PVEAuthCookie
 - YAML output formatting for configuration files
 
+### Authentication Pattern
+The application uses an `@AutoAuthenticate` interceptor that automatically injects authentication tickets:
+- Service classes annotated with `@AutoAuthenticate` have their methods intercepted
+- The interceptor looks for the **last String parameter** in a method and assumes it's the ticket parameter
+- When calling these methods from Resources, pass `null` for the ticket parameter
+- The interceptor will automatically inject a valid ticket from `TicketManager`
+
+**Important**: When adding new methods to services:
+- Follow the pattern of existing methods - ticket should be the last parameter
+- If your method has String parameters (like node names), ensure the ticket is the final String parameter
+- Example: `getVMConfig(String node, int vmId, String ticket)` - NOT `getVMConfig(String node, int vmId)`
+
 ## Configuration
 
 The application is configured to trust all SSL certificates for development (`quarkus.tls.trust-all=true`). This should be changed for production deployments.
@@ -70,3 +82,23 @@ Default Proxmox API endpoint is configured in `application.properties`:
 ```
 quarkus.rest-client.proxmox-api.url=https://10.0.0.10:8006/api2/json
 ```
+
+## Common Issues and Solutions
+
+### REST Client Parameter Ordering
+If you encounter errors where authentication tickets appear in place of other parameters (e.g., node names), this is likely due to the `AuthenticationInterceptor` pattern:
+
+**Symptom**: Error messages like:
+```
+Method 'GET /nodes/PVE:user@pve:TOKEN.../qemu/123/config' not implemented
+```
+
+**Cause**: The interceptor replaces the last String parameter with the authentication ticket. If your method doesn't follow the expected pattern, it may replace the wrong parameter.
+
+**Solution**: Ensure all service methods that need authentication follow this pattern:
+```java
+// Correct - ticket is the last String parameter
+public SomeResponse doSomething(String node, int id, String ticket) 
+
+// Incorrect - will replace 'node' with ticket
+public SomeResponse doSomething(String node, int id)
