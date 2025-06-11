@@ -123,7 +123,7 @@ class SDNResourceTest {
         when(sdnService.createClientVNet(anyString(), anyString())).thenReturn(createdVNet);
         
         // Test endpoint
-        CreateVNetRequestDTO request = new CreateVNetRequestDTO("client3", "webapp", null);
+        CreateVNetRequestDTO request = new CreateVNetRequestDTO("client3", "webapp", "localzone", 102);
         
         given()
             .contentType(ContentType.JSON)
@@ -143,7 +143,7 @@ class SDNResourceTest {
     @Test
     void testCreateVNet_MissingClientId() {
         // Test validation
-        CreateVNetRequestDTO request = new CreateVNetRequestDTO(null, "webapp", null);
+        CreateVNetRequestDTO request = new CreateVNetRequestDTO(null, "webapp", "localzone", 102);
         
         given()
             .contentType(ContentType.JSON)

@@ -1,6 +1,7 @@
 package com.coffeesprout.api;
 
 import com.coffeesprout.api.dto.CreateVMRequestDTO;
+import com.coffeesprout.api.dto.DiskInfo;
 import com.coffeesprout.api.dto.ErrorResponse;
 import com.coffeesprout.api.dto.VMDetailResponse;
 import com.coffeesprout.api.dto.VMResponse;
@@ -13,6 +14,9 @@ import com.coffeesprout.service.SafeMode;
 import com.coffeesprout.service.SDNService;
 import com.coffeesprout.service.TagService;
 import com.coffeesprout.service.VMService;
+import com.coffeesprout.service.TicketManager;
+import com.coffeesprout.client.ProxmoxClient;
+import com.fasterxml.jackson.databind.JsonNode;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -29,6 +33,7 @@ import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +63,13 @@ public class VMResource {
     
     @Inject
     SDNService sdnService;
+    
+    @Inject
+    @RestClient
+    ProxmoxClient proxmoxClient;
+    
+    @Inject
+    TicketManager ticketManager;
 
     @GET
     @SafeMode(value = false)  // Read operation
@@ -168,6 +180,51 @@ public class VMResource {
             log.error("Failed to get VM: " + vmId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get VM: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/{vmId}/debug")
+    @SafeMode(value = false)  // Read operation
+    @Operation(summary = "Debug VM info", description = "Get raw JSON from Proxmox cluster resources for a specific VM")
+    @APIResponses({
+        @APIResponse(responseCode = "200", description = "Debug info retrieved successfully"),
+        @APIResponse(responseCode = "404", description = "VM not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "401", description = "Unauthorized - check Proxmox credentials",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "500", description = "Failed to retrieve debug info",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public Response debugVM(
+            @Parameter(description = "VM ID", required = true)
+            @PathParam("vmId") int vmId) {
+        try {
+            // Get ticket and CSRF token
+            String ticket = ticketManager.getTicket();
+            String csrfToken = ticketManager.getCsrfToken();
+            
+            // Call Proxmox cluster resources directly
+            JsonNode clusterResources = proxmoxClient.getClusterResources(ticket, csrfToken, "vm");
+            
+            // Find the specific VM in the results
+            if (clusterResources != null && clusterResources.has("data") && clusterResources.get("data").isArray()) {
+                for (JsonNode resource : clusterResources.get("data")) {
+                    if (resource.has("vmid") && resource.get("vmid").asInt() == vmId) {
+                        // Return the raw JSON for this VM
+                        return Response.ok(resource).build();
+                    }
+                }
+            }
+            
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(new ErrorResponse("VM not found in cluster resources: " + vmId))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to get debug info for VM: " + vmId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErrorResponse("Failed to get debug info: " + e.getMessage()))
                     .build();
         }
     }
@@ -344,6 +401,10 @@ public class VMResource {
             // Parse network interfaces from config
             List<VMDetailResponse.NetworkInterfaceInfo> networkInterfaces = parseNetworkInterfaces(config);
             
+            // Parse disk information from config
+            List<DiskInfo> disks = parseDiskInfo(config);
+            long totalDiskSize = calculateTotalDiskSize(disks);
+            
             // Get VM tags
             List<String> tags = new ArrayList<>(tagService.getVMTags(vmId));
             
@@ -355,6 +416,8 @@ public class VMResource {
                 vm.getCpus(),
                 vm.getMaxmem(),
                 vm.getMaxdisk(),
+                totalDiskSize,
+                disks,
                 vm.getUptime(),
                 vm.getType(),
                 networkInterfaces,
@@ -930,6 +993,107 @@ public class VMResource {
                     .entity(new ErrorResponse("Failed to remove tag: " + e.getMessage()))
                     .build();
         }
+    }
+    
+    private List<DiskInfo> parseDiskInfo(Map<String, Object> config) {
+        List<DiskInfo> disks = new ArrayList<>();
+        
+        // Look for disk interfaces: scsi, virtio, ide, sata
+        String[] diskPrefixes = {"scsi", "virtio", "ide", "sata"};
+        
+        for (String prefix : diskPrefixes) {
+            for (int i = 0; i < 30; i++) { // Support up to 30 disks per type
+                String key = prefix + i;
+                if (config.containsKey(key)) {
+                    String diskSpec = config.get(key).toString();
+                    // Skip CD-ROM/media entries
+                    if (diskSpec.contains("media=cdrom") || diskSpec.contains("cloudinit")) {
+                        continue;
+                    }
+                    
+                    DiskInfo diskInfo = parseSingleDisk(key, diskSpec);
+                    if (diskInfo != null) {
+                        disks.add(diskInfo);
+                    }
+                }
+            }
+        }
+        
+        return disks;
+    }
+    
+    private DiskInfo parseSingleDisk(String diskInterface, String diskSpec) {
+        try {
+            // Parse storage backend and disk path
+            String[] parts = diskSpec.split(",");
+            if (parts.length == 0) return null;
+            
+            String[] storageParts = parts[0].split(":");
+            if (storageParts.length < 2) return null;
+            
+            String storage = storageParts[0];
+            String format = null;
+            String sizeStr = null;
+            Long sizeBytes = null;
+            
+            // Parse additional parameters
+            for (String part : parts) {
+                if (part.startsWith("format=")) {
+                    format = part.substring(7);
+                } else if (part.startsWith("size=")) {
+                    sizeStr = part.substring(5);
+                    sizeBytes = parseDiskSize(sizeStr);
+                }
+            }
+            
+            // If size wasn't in the spec, default to a reasonable size
+            if (sizeStr == null) {
+                sizeStr = "unknown";
+            }
+            
+            return new DiskInfo(
+                diskInterface,
+                storage,
+                sizeBytes,
+                sizeStr,
+                format != null ? format : "raw",
+                diskSpec
+            );
+        } catch (Exception e) {
+            log.warn("Failed to parse disk info for {}: {}", diskInterface, diskSpec, e);
+            return null;
+        }
+    }
+    
+    private Long parseDiskSize(String sizeStr) {
+        if (sizeStr == null || sizeStr.isEmpty()) return null;
+        
+        try {
+            // Handle sizes like "20G", "100M", "1T"
+            char unit = sizeStr.charAt(sizeStr.length() - 1);
+            if (Character.isLetter(unit)) {
+                long value = Long.parseLong(sizeStr.substring(0, sizeStr.length() - 1));
+                switch (Character.toUpperCase(unit)) {
+                    case 'K': return value * 1024L;
+                    case 'M': return value * 1024L * 1024L;
+                    case 'G': return value * 1024L * 1024L * 1024L;
+                    case 'T': return value * 1024L * 1024L * 1024L * 1024L;
+                    default: return value;
+                }
+            } else {
+                // Assume bytes if no unit
+                return Long.parseLong(sizeStr);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to parse disk size: {}", sizeStr, e);
+            return null;
+        }
+    }
+    
+    private long calculateTotalDiskSize(List<DiskInfo> disks) {
+        return disks.stream()
+            .mapToLong(disk -> disk.sizeBytes() != null ? disk.sizeBytes() : 0L)
+            .sum();
     }
     
     // DTOs for tag operations

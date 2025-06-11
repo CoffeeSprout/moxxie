@@ -6,6 +6,7 @@ public class VM {
     private int vmid;
     private String name;
     private String status;
+    @JsonProperty("maxcpu")
     private int cpus;
     @JsonProperty("maxmem")
     private long maxmem;

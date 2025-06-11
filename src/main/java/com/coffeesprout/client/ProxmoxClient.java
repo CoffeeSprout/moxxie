@@ -231,6 +231,18 @@ public interface ProxmoxClient {
                                                                 @HeaderParam("CSRFPreventionToken") String csrfToken,
                                                                 @QueryParam("type") String type);
     
+    // Pool API Methods
+    @GET
+    @Path("/pools")
+    @Produces(MediaType.APPLICATION_JSON)
+    PoolsResponse listPools(@CookieParam("PVEAuthCookie") String ticket);
+    
+    @GET
+    @Path("/pools/{poolid}")
+    @Produces(MediaType.APPLICATION_JSON)
+    PoolDetailResponse getPool(@PathParam("poolid") String poolId,
+                               @CookieParam("PVEAuthCookie") String ticket);
+    
     // SDN API Methods
     
     // List SDN zones

@@ -27,6 +27,12 @@ public record VMDetailResponse(
     @Schema(description = "Maximum disk size in bytes", example = "107374182400")
     long maxdisk,
     
+    @Schema(description = "Total disk size across all disks in bytes", example = "214748364800")
+    long totalDiskSize,
+    
+    @Schema(description = "List of all disks attached to the VM")
+    List<DiskInfo> disks,
+    
     @Schema(description = "Uptime in seconds", example = "3600")
     long uptime,
     
