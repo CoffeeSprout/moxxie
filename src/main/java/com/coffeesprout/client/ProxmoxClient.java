@@ -343,5 +343,62 @@ public interface ProxmoxClient {
                                         @PathParam("snapname") String snapname,
                                         @CookieParam("PVEAuthCookie") String ticket,
                                         @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // Backup Management
+    
+    // Create a backup using vzdump
+    @POST
+    @Path("/nodes/{node}/vzdump")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.APPLICATION_JSON)
+    TaskStatusResponse createBackup(@PathParam("node") String node,
+                                    @FormParam("vmid") String vmid,
+                                    @FormParam("storage") String storage,
+                                    @FormParam("mode") String mode,
+                                    @FormParam("compress") String compress,
+                                    @FormParam("notes") String notes,
+                                    @FormParam("protected") Integer protectedFlag,
+                                    @FormParam("remove") Integer removeOlder,
+                                    @FormParam("mailnotification") String mailNotification,
+                                    @CookieParam("PVEAuthCookie") String ticket,
+                                    @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // List storage content (including backups)
+    @GET
+    @Path("/nodes/{node}/storage/{storage}/content")
+    @Produces(MediaType.APPLICATION_JSON)
+    StorageContentResponse listStorageContent(@PathParam("node") String node,
+                                              @PathParam("storage") String storage,
+                                              @QueryParam("content") String content,
+                                              @QueryParam("vmid") Integer vmid,
+                                              @CookieParam("PVEAuthCookie") String ticket);
+    
+    // Delete a backup
+    @DELETE
+    @Path("/nodes/{node}/storage/{storage}/content/{volume}")
+    @Produces(MediaType.APPLICATION_JSON)
+    TaskStatusResponse deleteBackup(@PathParam("node") String node,
+                                    @PathParam("storage") String storage,
+                                    @PathParam("volume") String volume,
+                                    @CookieParam("PVEAuthCookie") String ticket,
+                                    @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // Restore VM from backup (uses regular VM creation with archive parameter)
+    @POST
+    @Path("/nodes/{node}/qemu")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.APPLICATION_JSON)
+    TaskStatusResponse restoreVM(@PathParam("node") String node,
+                                 @FormParam("vmid") Integer vmid,
+                                 @FormParam("archive") String archive,
+                                 @FormParam("storage") String storage,
+                                 @FormParam("name") String name,
+                                 @FormParam("description") String description,
+                                 @FormParam("start") Integer start,
+                                 @FormParam("unique") Integer unique,
+                                 @FormParam("bwlimit") Integer bandwidth,
+                                 @FormParam("force") Integer force,
+                                 @CookieParam("PVEAuthCookie") String ticket,
+                                 @HeaderParam("CSRFPreventionToken") String csrfToken);
 }
 

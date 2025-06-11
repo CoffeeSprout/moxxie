@@ -1,9 +1,12 @@
 package com.coffeesprout.api;
 
+import com.coffeesprout.api.dto.BackupRequest;
+import com.coffeesprout.api.dto.BackupResponse;
 import com.coffeesprout.api.dto.CreateSnapshotRequest;
 import com.coffeesprout.api.dto.CreateVMRequestDTO;
 import com.coffeesprout.api.dto.DiskInfo;
 import com.coffeesprout.api.dto.ErrorResponse;
+import com.coffeesprout.api.dto.RestoreRequest;
 import com.coffeesprout.api.dto.SnapshotResponse;
 import com.coffeesprout.api.dto.TaskResponse;
 import com.coffeesprout.api.dto.VMDetailResponse;
@@ -13,6 +16,7 @@ import com.coffeesprout.client.CreateVMRequest;
 import com.coffeesprout.client.CreateVMResponse;
 import com.coffeesprout.client.VM;
 import com.coffeesprout.client.VMStatusResponse;
+import com.coffeesprout.service.BackupService;
 import com.coffeesprout.service.SafeMode;
 import com.coffeesprout.service.SDNService;
 import com.coffeesprout.service.SnapshotService;
@@ -74,6 +78,9 @@ public class VMResource {
     
     @Inject
     SnapshotService snapshotService;
+    
+    @Inject
+    BackupService backupService;
     
     @Inject
     TicketManager ticketManager;
@@ -1254,6 +1261,79 @@ public class VMResource {
             log.error("Failed to rollback to snapshot {} for VM {}", snapshotName, vmId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to rollback snapshot: " + e.getMessage()))
+                    .build();
+        }
+    }
+    
+    // Backup Management Endpoints
+    
+    @GET
+    @Path("/{vmId}/backups")
+    @SafeMode(value = false)  // Read operation
+    @Operation(summary = "List VM backups", 
+               description = "Get all backups for a specific VM across all storage locations")
+    @APIResponses({
+        @APIResponse(responseCode = "200", description = "Backups retrieved successfully",
+            content = @Content(schema = @Schema(implementation = BackupResponse[].class))),
+        @APIResponse(responseCode = "404", description = "VM not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "500", description = "Failed to retrieve backups",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public Response listBackups(
+            @Parameter(description = "VM ID", required = true, example = "100")
+            @PathParam("vmId") int vmId) {
+        try {
+            List<BackupResponse> backups = backupService.listBackups(vmId, null);
+            return Response.ok(backups).build();
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("VM not found")) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(new ErrorResponse("VM not found: " + vmId))
+                        .build();
+            }
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to list backups for VM {}", vmId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErrorResponse("Failed to list backups: " + e.getMessage()))
+                    .build();
+        }
+    }
+    
+    @POST
+    @Path("/{vmId}/backup")
+    @SafeMode(value = true)  // Write operation
+    @Operation(summary = "Create VM backup", 
+               description = "Create a new backup of the VM using vzdump")
+    @APIResponses({
+        @APIResponse(responseCode = "202", description = "Backup creation started",
+            content = @Content(schema = @Schema(implementation = TaskResponse.class))),
+        @APIResponse(responseCode = "400", description = "Invalid backup parameters",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "404", description = "VM not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "500", description = "Failed to create backup",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public Response createBackup(
+            @Parameter(description = "VM ID", required = true, example = "100")
+            @PathParam("vmId") int vmId,
+            @Valid BackupRequest request) {
+        try {
+            TaskResponse task = backupService.createBackup(vmId, request, null);
+            return Response.accepted(task).build();
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("VM not found")) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(new ErrorResponse("VM not found: " + vmId))
+                        .build();
+            }
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to create backup for VM {}", vmId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErrorResponse("Failed to create backup: " + e.getMessage()))
                     .build();
         }
     }
