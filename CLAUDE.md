@@ -34,6 +34,35 @@ Moxxie is a Quarkus-based CLI application for managing Proxmox virtual environme
 ./mvnw package -Dnative -Dquarkus.native.container-build=true
 ```
 
+### Running Quarkus in Background for API Testing
+
+When testing REST API endpoints, use these commands to run Quarkus in the background:
+
+```bash
+# Start Quarkus in background
+nohup ./mvnw quarkus:dev > quarkus-dev.log 2>&1 &
+
+# Wait for startup (authentication takes a few seconds)
+sleep 15
+
+# Test endpoints with curl
+curl -X GET http://localhost:8080/api/v1/vms | jq .
+
+# Check logs if needed
+tail -f quarkus-dev.log
+
+# Stop Quarkus when done
+pkill -f "java.*quarkus"
+# or more specifically:
+pkill -f "mvnw quarkus:dev"
+```
+
+**Important Notes:**
+- Always wait 10-15 seconds after starting Quarkus for the TicketManager to authenticate with Proxmox
+- The application runs on port 8080 by default
+- Hot reload works automatically when you modify Java files
+- Clean up log files after testing: `rm -f quarkus-dev.log nohup.out`
+
 ### Application Execution
 
 ```bash
