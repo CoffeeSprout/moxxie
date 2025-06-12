@@ -43,3 +43,29 @@ nb-configuration.xml
 /.quarkus/cli/plugins/
 # TLS Certificates
 .certs/
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Test shell scripts (keep existing ones, exclude new temporary scripts)
+# To add new scripts permanently: git add -f script-name.sh
+test-*.sh
+!test-auto-auth.sh
+!test-env-config.sh
+!test-node-endpoints.sh
+!test-safe-mode-manual.sh
+!test-safe-mode.sh
+!test-safe-production.sh
+!test-vm-detail.sh
+
+# Temporary files
+*.tmp
+*.temp
+temp.properties
+nohup.out
+
+# Quarkus specific
+quarkus-dev.log
+quarkus-test.log
