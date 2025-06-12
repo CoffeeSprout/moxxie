@@ -400,5 +400,41 @@ public interface ProxmoxClient {
                                  @FormParam("force") Integer force,
                                  @CookieParam("PVEAuthCookie") String ticket,
                                  @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // Upload file to storage (ISO, etc)
+    @POST
+    @Path("/nodes/{node}/storage/{storage}/upload")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Produces(MediaType.APPLICATION_JSON)
+    TaskStatusResponse uploadToStorage(@PathParam("node") String node,
+                                       @PathParam("storage") String storage,
+                                       @FormParam("content") String content,
+                                       @FormParam("filename") java.io.InputStream file,
+                                       @CookieParam("PVEAuthCookie") String ticket,
+                                       @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // Download file from URL to storage
+    @POST
+    @Path("/nodes/{node}/storage/{storage}/download-url")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.APPLICATION_JSON)
+    TaskStatusResponse downloadUrlToStorage(@PathParam("node") String node,
+                                            @PathParam("storage") String storage,
+                                            @FormParam("url") String url,
+                                            @FormParam("content") String content,
+                                            @FormParam("filename") String filename,
+                                            @FormParam("checksum") String checksum,
+                                            @FormParam("checksum-algorithm") String checksumAlgorithm,
+                                            @FormParam("verify-certificates") Integer verifyCertificates,
+                                            @CookieParam("PVEAuthCookie") String ticket,
+                                            @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // Get storage status
+    @GET
+    @Path("/nodes/{node}/storage/{storage}/status")
+    @Produces(MediaType.APPLICATION_JSON)
+    StorageStatusResponse getStorageStatus(@PathParam("node") String node,
+                                           @PathParam("storage") String storage,
+                                           @CookieParam("PVEAuthCookie") String ticket);
 }
 
