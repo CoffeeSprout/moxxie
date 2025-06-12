@@ -436,5 +436,47 @@ public interface ProxmoxClient {
     StorageStatusResponse getStorageStatus(@PathParam("node") String node,
                                            @PathParam("storage") String storage,
                                            @CookieParam("PVEAuthCookie") String ticket);
+    
+    // Task Management
+    
+    // Get task status
+    @GET
+    @Path("/nodes/{node}/tasks/{upid}/status")
+    @Produces(MediaType.APPLICATION_JSON)
+    com.fasterxml.jackson.databind.JsonNode getTaskStatus(@PathParam("node") String node,
+                                                          @PathParam("upid") String upid,
+                                                          @CookieParam("PVEAuthCookie") String ticket);
+    
+    // Get task log
+    @GET
+    @Path("/nodes/{node}/tasks/{upid}/log")
+    @Produces(MediaType.APPLICATION_JSON)
+    com.fasterxml.jackson.databind.JsonNode getTaskLog(@PathParam("node") String node,
+                                                       @PathParam("upid") String upid,
+                                                       @QueryParam("start") Integer start,
+                                                       @QueryParam("limit") Integer limit,
+                                                       @CookieParam("PVEAuthCookie") String ticket);
+    
+    // List tasks on a node
+    @GET
+    @Path("/nodes/{node}/tasks")
+    @Produces(MediaType.APPLICATION_JSON)
+    TaskListData getNodeTasks(@PathParam("node") String node,
+                              @QueryParam("start") Integer start,
+                              @QueryParam("limit") Integer limit,
+                              @QueryParam("statusfilter") String statusFilter,
+                              @QueryParam("typefilter") String typeFilter,
+                              @QueryParam("userfilter") String userFilter,
+                              @QueryParam("vmid") Integer vmid,
+                              @CookieParam("PVEAuthCookie") String ticket);
+    
+    // Stop a task
+    @DELETE
+    @Path("/nodes/{node}/tasks/{upid}")
+    @Produces(MediaType.APPLICATION_JSON)
+    com.fasterxml.jackson.databind.JsonNode stopTask(@PathParam("node") String node,
+                                                     @PathParam("upid") String upid,
+                                                     @CookieParam("PVEAuthCookie") String ticket,
+                                                     @HeaderParam("CSRFPreventionToken") String csrfToken);
 }
 
