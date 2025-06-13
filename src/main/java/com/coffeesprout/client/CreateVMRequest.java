@@ -35,6 +35,9 @@ public class CreateVMRequest {
     
     @FormParam("pool")
     private String pool; // Resource pool name (optional)
+    
+    @FormParam("tags")
+    private String tags; // Comma-separated tags
 
     public int getVmid() {
         return vmid;
@@ -101,5 +104,11 @@ public class CreateVMRequest {
     }
     public void setPool(String pool) {
         this.pool = pool;
+    }
+    public String getTags() {
+        return tags;
+    }
+    public void setTags(String tags) {
+        this.tags = tags;
     }
 }

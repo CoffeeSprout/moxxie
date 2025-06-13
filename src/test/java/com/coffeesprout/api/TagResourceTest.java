@@ -56,9 +56,9 @@ class TagResourceTest {
         // Mock VM service returning full VM info
         List<VMResponse> mockVMs = List.of(
             new VMResponse(101, "nixz-web-01", "pve1", "running", 4, 8192L, 100L, 3600L, "qemu", 
-                List.of("moxxie", "client:nixz")),
+                List.of("moxxie", "client:nixz"), null),
             new VMResponse(102, "nixz-db-01", "pve1", "running", 8, 16384L, 200L, 7200L, "qemu", 
-                List.of("moxxie", "client:nixz", "env:prod"))
+                List.of("moxxie", "client:nixz", "env:prod"), null)
         );
         when(vmService.listVMs(null)).thenReturn(mockVMs);
         

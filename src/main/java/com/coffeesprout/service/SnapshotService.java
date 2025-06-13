@@ -42,12 +42,12 @@ public class SnapshotService {
             // Get VM info to find its node
             var vms = vmService.listVMs(ticket);
             var vm = vms.stream()
-                    .filter(v -> v.getVmid() == vmId)
+                    .filter(v -> v.vmid() == vmId)
                     .findFirst()
                     .orElseThrow(() -> new RuntimeException("VM not found: " + vmId));
             
             // Get snapshots from Proxmox
-            SnapshotsResponse response = proxmoxClient.listSnapshots(vm.getNode(), vmId, ticket);
+            SnapshotsResponse response = proxmoxClient.listSnapshots(vm.node(), vmId, ticket);
             
             if (response.getData() == null) {
                 return new ArrayList<>();
@@ -75,7 +75,7 @@ public class SnapshotService {
             // Get VM info to find its node
             var vms = vmService.listVMs(ticket);
             var vm = vms.stream()
-                    .filter(v -> v.getVmid() == vmId)
+                    .filter(v -> v.vmid() == vmId)
                     .findFirst()
                     .orElseThrow(() -> new RuntimeException("VM not found: " + vmId));
             
@@ -90,7 +90,7 @@ public class SnapshotService {
             
             // Create snapshot
             TaskStatusResponse response = proxmoxClient.createSnapshot(
-                    vm.getNode(),
+                    vm.node(),
                     vmId,
                     request.name(),
                     request.description(),
@@ -123,7 +123,7 @@ public class SnapshotService {
             // Get VM info to find its node
             var vms = vmService.listVMs(ticket);
             var vm = vms.stream()
-                    .filter(v -> v.getVmid() == vmId)
+                    .filter(v -> v.vmid() == vmId)
                     .findFirst()
                     .orElseThrow(() -> new RuntimeException("VM not found: " + vmId));
             
@@ -138,7 +138,7 @@ public class SnapshotService {
             
             // Delete snapshot
             TaskStatusResponse response = proxmoxClient.deleteSnapshot(
-                    vm.getNode(),
+                    vm.node(),
                     vmId,
                     snapshotName,
                     ticket,
@@ -169,7 +169,7 @@ public class SnapshotService {
             // Get VM info to find its node
             var vms = vmService.listVMs(ticket);
             var vm = vms.stream()
-                    .filter(v -> v.getVmid() == vmId)
+                    .filter(v -> v.vmid() == vmId)
                     .findFirst()
                     .orElseThrow(() -> new RuntimeException("VM not found: " + vmId));
             
@@ -180,7 +180,7 @@ public class SnapshotService {
             }
             
             // VM should be stopped for rollback (best practice)
-            if ("running".equals(vm.getStatus())) {
+            if ("running".equals(vm.status())) {
                 log.warn("VM {} is running. Rollback works best with stopped VMs", vmId);
             }
             
@@ -189,7 +189,7 @@ public class SnapshotService {
             
             // Rollback to snapshot
             TaskStatusResponse response = proxmoxClient.rollbackSnapshot(
-                    vm.getNode(),
+                    vm.node(),
                     vmId,
                     snapshotName,
                     ticket,

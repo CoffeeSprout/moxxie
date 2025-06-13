@@ -20,6 +20,7 @@ public class VM {
     private long disk;
     private long netin;
     private long netout;
+    private String pool;
 
     public int getVmid() {
         return vmid;
@@ -104,5 +105,11 @@ public class VM {
     }
     public void setNetout(long netout) {
         this.netout = netout;
+    }
+    public String getPool() {
+        return pool;
+    }
+    public void setPool(String pool) {
+        this.pool = pool;
     }
 }

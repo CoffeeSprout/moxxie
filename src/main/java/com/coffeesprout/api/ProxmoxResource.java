@@ -2,6 +2,7 @@ package com.coffeesprout.api;
 
 import com.coffeesprout.api.dto.ClusterDiscoveryResponse;
 import com.coffeesprout.api.dto.ErrorResponse;
+import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.client.Node;
 import com.coffeesprout.client.VM;
 import com.coffeesprout.service.AuthService;
@@ -100,7 +101,7 @@ public class ProxmoxResource {
     @Operation(summary = "List virtual machines", description = "Get a list of all virtual machines in the Proxmox cluster")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "VMs retrieved successfully",
-            content = @Content(schema = @Schema(implementation = VM[].class))),
+            content = @Content(schema = @Schema(implementation = VMResponse[].class))),
         @APIResponse(responseCode = "401", description = "Unauthorized - check Proxmox credentials in configuration",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
         @APIResponse(responseCode = "500", description = "Failed to retrieve VMs",
@@ -108,7 +109,7 @@ public class ProxmoxResource {
     })
     public Response listVMs() {
         try {
-            List<VM> vms = vmService.listVMs(null);
+            List<VMResponse> vms = vmService.listVMs(null);
             return Response.ok(vms).build();
         } catch (Exception e) {
             log.error("Failed to list VMs", e);

@@ -55,7 +55,7 @@ public class BackupService {
             // Get VM info to find its node
             var vms = vmService.listVMs(ticket);
             var vm = vms.stream()
-                    .filter(v -> v.getVmid() == vmId)
+                    .filter(v -> v.vmid() == vmId)
                     .findFirst()
                     .orElseThrow(() -> new RuntimeException("VM not found: " + vmId));
             
@@ -64,7 +64,7 @@ public class BackupService {
             
             // Create backup with minimal required parameters
             TaskStatusResponse response = proxmoxClient.createBackup(
-                    vm.getNode(),
+                    vm.node(),
                     String.valueOf(vmId),
                     request.storage(),
                     request.mode() != null ? request.mode() : "snapshot",
@@ -161,16 +161,19 @@ public class BackupService {
      * List all backups across all VMs
      */
     public List<BackupResponse> listAllBackups(String ticket) {
-        log.debug("Listing all backups");
+        log.info("Listing all backups across all nodes and storages");
         
         try {
             List<BackupResponse> allBackups = new ArrayList<>();
+            Set<String> processedSharedStorages = new HashSet<>();
             
             // Get all nodes
             var nodes = nodeService.listNodes(ticket);
+            log.info("Found {} nodes to check for backups", nodes.size());
             
             // Process each node
             for (var node : nodes) {
+                log.info("Checking node {} for backup storages", node.getName());
                 try {
                     // Get storage pools for this node
                     StorageResponse storageResponse = proxmoxClient.getNodeStorage(node.getName(), ticket);
@@ -179,8 +182,20 @@ public class BackupService {
                     }
                     
                     // Check each storage for backups
+                    log.info("Node {} has {} storage pools", node.getName(), storageResponse.getData().size());
                     for (var storage : storageResponse.getData()) {
                         if (storage.getContent() != null && storage.getContent().contains("backup")) {
+                            // Check if this is a shared storage that we've already processed
+                            boolean isShared = storage.getShared() == 1;
+                            if (isShared && processedSharedStorages.contains(storage.getStorage())) {
+                                log.info("Skipping shared storage {} on node {} (already processed)", 
+                                        storage.getStorage(), node.getName());
+                                continue;
+                            }
+                            
+                            log.info("Storage {} on node {} supports backups (shared: {})", 
+                                    storage.getStorage(), node.getName(), isShared);
+                            
                             try {
                                 // List all backup content in this storage
                                 StorageContentResponse contentResponse = proxmoxClient.listStorageContent(
@@ -198,7 +213,17 @@ public class BackupService {
                                             .map(content -> convertToBackupResponse(content, node.getName()))
                                             .collect(Collectors.toList());
                                     
+                                    log.info("Found {} backups in storage {} on node {}", 
+                                             backups.size(), storage.getStorage(), node.getName());
                                     allBackups.addAll(backups);
+                                    
+                                    // Mark shared storage as processed
+                                    if (isShared) {
+                                        processedSharedStorages.add(storage.getStorage());
+                                    }
+                                } else {
+                                    log.info("No backup data returned for storage {} on node {}", 
+                                             storage.getStorage(), node.getName());
                                 }
                             } catch (Exception e) {
                                 log.debug("Failed to list content for storage {} on node {}: {}", 
@@ -301,7 +326,7 @@ public class BackupService {
             if (!request.overwriteExisting()) {
                 var vms = vmService.listVMs(ticket);
                 boolean vmExists = vms.stream()
-                        .anyMatch(vm -> vm.getVmid() == request.vmId());
+                        .anyMatch(vm -> vm.vmid() == request.vmId());
                 
                 if (vmExists) {
                     throw new RuntimeException("VM with ID " + request.vmId() + 

@@ -3,6 +3,7 @@ package com.coffeesprout.service;
 import com.coffeesprout.api.dto.DiskInfo;
 import com.coffeesprout.api.dto.PoolResourceSummary;
 import com.coffeesprout.client.*;
+import com.coffeesprout.api.dto.VMResponse;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
@@ -33,9 +34,9 @@ public class PoolService {
             List<Pool> pools = poolsResponse.getData();
             
             // Get all VMs for quick lookup
-            List<VM> allVMs = vmService.listVMs(ticket);
-            Map<Integer, VM> vmMap = allVMs.stream()
-                .collect(Collectors.toMap(VM::getVmid, vm -> vm, (v1, v2) -> v1));
+            List<VMResponse> allVMs = vmService.listVMs(ticket);
+            Map<Integer, VMResponse> vmMap = allVMs.stream()
+                .collect(Collectors.toMap(VMResponse::vmid, vm -> vm, (v1, v2) -> v1));
             
             // Create summaries for each pool
             List<PoolResourceSummary> summaries = new ArrayList<>();
@@ -48,7 +49,7 @@ public class PoolService {
                     }
                     
                     // Filter VMs from pool members
-                    List<VM> poolVMs = poolDetail.getData().getMembers().stream()
+                    List<VMResponse> poolVMs = poolDetail.getData().getMembers().stream()
                         .filter(member -> "qemu".equals(member.getType()))
                         .map(member -> vmMap.get(member.getVmid()))
                         .filter(Objects::nonNull)
@@ -83,12 +84,12 @@ public class PoolService {
             }
             
             // Get all VMs for quick lookup
-            List<VM> allVMs = vmService.listVMs(ticket);
-            Map<Integer, VM> vmMap = allVMs.stream()
-                .collect(Collectors.toMap(VM::getVmid, vm -> vm, (v1, v2) -> v1));
+            List<VMResponse> allVMs = vmService.listVMs(ticket);
+            Map<Integer, VMResponse> vmMap = allVMs.stream()
+                .collect(Collectors.toMap(VMResponse::vmid, vm -> vm, (v1, v2) -> v1));
             
             // Filter VMs from pool members
-            List<VM> poolVMs = poolDetail.getData().getMembers().stream()
+            List<VMResponse> poolVMs = poolDetail.getData().getMembers().stream()
                 .filter(member -> "qemu".equals(member.getType()))
                 .map(member -> vmMap.get(member.getVmid()))
                 .filter(Objects::nonNull)
@@ -105,10 +106,10 @@ public class PoolService {
         }
     }
     
-    private Map<String, List<VM>> groupVMsByPool(List<VM> vms) {
-        Map<String, List<VM>> vmsByPool = new HashMap<>();
+    private Map<String, List<VMResponse>> groupVMsByPool(List<VMResponse> vms) {
+        Map<String, List<VMResponse>> vmsByPool = new HashMap<>();
         
-        for (VM vm : vms) {
+        for (VMResponse vm : vms) {
             String poolName = getPoolName(vm);
             vmsByPool.computeIfAbsent(poolName, k -> new ArrayList<>()).add(vm);
         }
@@ -116,13 +117,13 @@ public class PoolService {
         return vmsByPool;
     }
     
-    private String getPoolName(VM vm) {
-        if (vm.getName() == null || vm.getName().isEmpty()) {
+    private String getPoolName(VMResponse vm) {
+        if (vm.name() == null || vm.name().isEmpty()) {
             return "unnamed";
         }
         
         // Extract pool name from VM name (e.g., "nixz-web-01" -> "nixz")
-        String vmName = vm.getName();
+        String vmName = vm.name();
         int dashIndex = vmName.indexOf('-');
         if (dashIndex > 0) {
             return vmName.substring(0, dashIndex);
@@ -132,7 +133,7 @@ public class PoolService {
         return vmName;
     }
     
-    private PoolResourceSummary createPoolSummary(String poolName, List<VM> vms, String ticket) {
+    private PoolResourceSummary createPoolSummary(String poolName, List<VMResponse> vms, String ticket) {
         long totalMemory = 0;
         int totalVcpus = 0;
         long totalStorage = 0;
@@ -144,31 +145,31 @@ public class PoolService {
         
         List<PoolResourceSummary.VMSummary> vmSummaries = new ArrayList<>();
         
-        for (VM vm : vms) {
+        for (VMResponse vm : vms) {
             // Get VM storage from configuration
             long vmStorage = calculateVMTotalStorage(vm, ticket);
             
-            totalMemory += vm.getMaxmem();
-            totalVcpus += vm.getCpus();
+            totalMemory += vm.maxmem();
+            totalVcpus += vm.cpus();
             totalStorage += vmStorage;
             
             // Count running vs stopped VMs
-            if ("running".equals(vm.getStatus())) {
+            if ("running".equals(vm.status())) {
                 runningVMs++;
-                runningMemory += vm.getMaxmem();
-                runningVcpus += vm.getCpus();
+                runningMemory += vm.maxmem();
+                runningVcpus += vm.cpus();
             } else {
                 stoppedVMs++;
             }
             
             PoolResourceSummary.VMSummary vmSummary = new PoolResourceSummary.VMSummary(
-                vm.getVmid(),
-                vm.getName() != null ? vm.getName() : "VM-" + vm.getVmid(),
-                vm.getCpus(),
-                vm.getMaxmem(),
+                vm.vmid(),
+                vm.name() != null ? vm.name() : "VM-" + vm.vmid(),
+                vm.cpus(),
+                vm.maxmem(),
                 vmStorage,
-                vm.getStatus(),
-                vm.getNode()
+                vm.status(),
+                vm.node()
             );
             vmSummaries.add(vmSummary);
         }
@@ -193,15 +194,15 @@ public class PoolService {
         );
     }
     
-    private long calculateVMTotalStorage(VM vm, String ticket) {
+    private long calculateVMTotalStorage(VMResponse vm, String ticket) {
         try {
             // Skip invalid VMs
-            if (vm.getVmid() <= 0 || vm.getNode() == null || vm.getNode().isEmpty()) {
+            if (vm.vmid() <= 0 || vm.node() == null || vm.node().isEmpty()) {
                 return 0;
             }
             
             // Get VM configuration
-            VMConfigResponse response = proxmoxClient.getVMConfig(vm.getNode(), vm.getVmid(), ticket);
+            VMConfigResponse response = proxmoxClient.getVMConfig(vm.node(), vm.vmid(), ticket);
             Map<String, Object> config = response.getData();
             if (config == null) {
                 return 0;
@@ -213,8 +214,8 @@ public class PoolService {
                 .mapToLong(disk -> disk.sizeBytes() != null ? disk.sizeBytes() : 0L)
                 .sum();
         } catch (Exception e) {
-            log.warn("Failed to get storage info for VM {}: {}", vm.getVmid(), e.getMessage());
-            return vm.getMaxdisk(); // Fallback to maxdisk if config fetch fails
+            log.warn("Failed to get storage info for VM {}: {}", vm.vmid(), e.getMessage());
+            return vm.maxdisk(); // Fallback to maxdisk if config fetch fails
         }
     }
     

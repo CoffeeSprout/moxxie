@@ -1,9 +1,8 @@
 package com.coffeesprout.api;
 
-import com.coffeesprout.api.dto.BackupResponse;
-import com.coffeesprout.api.dto.ErrorResponse;
-import com.coffeesprout.api.dto.RestoreRequest;
-import com.coffeesprout.api.dto.TaskResponse;
+import com.coffeesprout.api.dto.*;
+import com.coffeesprout.service.BackupJobService;
+import com.coffeesprout.service.BackupLifecycleService;
 import com.coffeesprout.service.BackupService;
 import com.coffeesprout.service.SafeMode;
 import io.smallrye.common.annotation.RunOnVirtualThread;
@@ -24,7 +23,9 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Path("/api/v1/backups")
 @Produces(MediaType.APPLICATION_JSON)
@@ -37,6 +38,12 @@ public class BackupResource {
     
     @Inject
     BackupService backupService;
+    
+    @Inject
+    BackupJobService backupJobService;
+    
+    @Inject
+    BackupLifecycleService lifecycleService;
     
     @GET
     @SafeMode(value = false)  // Read operation
@@ -136,6 +143,175 @@ public class BackupResource {
             log.error("Failed to restore VM from backup", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to restore VM: " + e.getMessage()))
+                    .build();
+        }
+    }
+    
+    // Backup Job Management
+    
+    @GET
+    @Path("/jobs")
+    @SafeMode(value = false)  // Read operation
+    @Operation(summary = "List backup jobs", 
+               description = "Get all configured backup jobs from Proxmox cluster")
+    @APIResponses({
+        @APIResponse(responseCode = "200", description = "Backup jobs retrieved successfully",
+            content = @Content(schema = @Schema(implementation = BackupJobResponse[].class))),
+        @APIResponse(responseCode = "500", description = "Failed to retrieve backup jobs",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public Response listBackupJobs() {
+        try {
+            List<BackupJobResponse> jobs = backupJobService.listBackupJobs(null);
+            return Response.ok(jobs).build();
+        } catch (Exception e) {
+            log.error("Failed to list backup jobs", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErrorResponse("Failed to list backup jobs: " + e.getMessage()))
+                    .build();
+        }
+    }
+    
+    @GET
+    @Path("/jobs/{jobId}")
+    @SafeMode(value = false)  // Read operation
+    @Operation(summary = "Get backup job details", 
+               description = "Get details of a specific backup job")
+    @APIResponses({
+        @APIResponse(responseCode = "200", description = "Backup job retrieved successfully",
+            content = @Content(schema = @Schema(implementation = BackupJobResponse.class))),
+        @APIResponse(responseCode = "404", description = "Backup job not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "500", description = "Failed to retrieve backup job",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public Response getBackupJob(
+            @Parameter(description = "Backup job ID", required = true)
+            @PathParam("jobId") String jobId) {
+        try {
+            BackupJobResponse job = backupJobService.getBackupJob(jobId, null);
+            return Response.ok(job).build();
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("not found")) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(new ErrorResponse(e.getMessage()))
+                        .build();
+            }
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to get backup job: {}", jobId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErrorResponse("Failed to get backup job: " + e.getMessage()))
+                    .build();
+        }
+    }
+    
+    // Backup Lifecycle Management
+    
+    @GET
+    @Path("/retention-candidates")
+    @SafeMode(value = false)  // Read operation
+    @Operation(summary = "Get retention candidates", 
+               description = "List backups eligible for deletion based on retention policy")
+    @APIResponses({
+        @APIResponse(responseCode = "200", description = "Retention candidates retrieved successfully",
+            content = @Content(schema = @Schema(implementation = BackupDeletionCandidate[].class))),
+        @APIResponse(responseCode = "400", description = "Invalid retention policy",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "500", description = "Failed to get retention candidates",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public Response getRetentionCandidates(
+            @Parameter(description = "Retention policy (e.g., days:30, count:5, monthly:3)", required = true)
+            @QueryParam("retentionPolicy") String retentionPolicy,
+            @Parameter(description = "Filter by VM tags (comma-separated)")
+            @QueryParam("tags") String tags,
+            @Parameter(description = "Filter by VM IDs (comma-separated)")
+            @QueryParam("vmIds") String vmIds,
+            @Parameter(description = "Include protected backups")
+            @QueryParam("includeProtected") @DefaultValue("false") boolean includeProtected) {
+        try {
+            // Validate retention policy
+            if (retentionPolicy == null || !retentionPolicy.matches("(days|count|monthly):[0-9]+")) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(new ErrorResponse("Invalid retention policy format. Use: days:30, count:5, or monthly:3"))
+                        .build();
+            }
+            
+            // Parse tags and VM IDs
+            List<String> tagList = tags != null ? Arrays.asList(tags.split(",")) : null;
+            List<Integer> vmIdList = null;
+            if (vmIds != null) {
+                vmIdList = Arrays.stream(vmIds.split(","))
+                        .map(String::trim)
+                        .map(Integer::parseInt)
+                        .collect(Collectors.toList());
+            }
+            
+            List<BackupDeletionCandidate> candidates = lifecycleService.getRetentionCandidates(
+                    retentionPolicy, tagList, vmIdList, includeProtected, null);
+            
+            return Response.ok(candidates).build();
+        } catch (Exception e) {
+            log.error("Failed to get retention candidates", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErrorResponse("Failed to get retention candidates: " + e.getMessage()))
+                    .build();
+        }
+    }
+    
+    @POST
+    @Path("/cleanup")
+    @SafeMode(value = true)  // Write operation - deleting backups
+    @Operation(summary = "Clean up old backups", 
+               description = "Delete backups based on retention policy. Use dryRun=true to preview.")
+    @APIResponses({
+        @APIResponse(responseCode = "200", description = "Cleanup completed or preview generated",
+            content = @Content(schema = @Schema(implementation = BackupCleanupResponse.class))),
+        @APIResponse(responseCode = "400", description = "Invalid cleanup request",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "500", description = "Failed to cleanup backups",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public Response cleanupBackups(
+            @RequestBody(description = "Cleanup request details", required = true)
+            @Valid BackupCleanupRequest request) {
+        try {
+            BackupCleanupResponse response = lifecycleService.cleanupBackups(request, null);
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            log.error("Failed to cleanup backups", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErrorResponse("Failed to cleanup backups: " + e.getMessage()))
+                    .build();
+        }
+    }
+    
+    @POST
+    @Path("/{volid}/protect")
+    @SafeMode(value = true)  // Write operation
+    @Operation(summary = "Update backup protection", 
+               description = "Protect or unprotect a backup from deletion")
+    @APIResponses({
+        @APIResponse(responseCode = "204", description = "Protection status updated successfully"),
+        @APIResponse(responseCode = "404", description = "Backup not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "500", description = "Failed to update protection",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public Response updateBackupProtection(
+            @Parameter(description = "Backup volume ID", required = true)
+            @PathParam("volid") String volid,
+            @Parameter(description = "Protection status", required = true)
+            @QueryParam("protect") boolean protect) {
+        try {
+            String decodedVolid = volid.replace("%3A", ":").replace("%2F", "/");
+            lifecycleService.updateBackupProtection(decodedVolid, protect, null);
+            return Response.noContent().build();
+        } catch (Exception e) {
+            log.error("Failed to update backup protection", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErrorResponse("Failed to update protection: " + e.getMessage()))
                     .build();
         }
     }

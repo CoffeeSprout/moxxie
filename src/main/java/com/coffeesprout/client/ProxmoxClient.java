@@ -517,5 +517,20 @@ public interface ProxmoxClient {
                                            @PathParam("vmid") int vmid,
                                            @CookieParam("PVEAuthCookie") String ticket,
                                            @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // Backup Job Management
+    
+    // List all backup jobs
+    @GET
+    @Path("/cluster/backup")
+    @Produces(MediaType.APPLICATION_JSON)
+    BackupJobsResponse listBackupJobs(@CookieParam("PVEAuthCookie") String ticket);
+    
+    // Get specific backup job
+    @GET
+    @Path("/cluster/backup/{id}")
+    @Produces(MediaType.APPLICATION_JSON)
+    BackupJobDetailResponse getBackupJob(@PathParam("id") String id,
+                                         @CookieParam("PVEAuthCookie") String ticket);
 }
 

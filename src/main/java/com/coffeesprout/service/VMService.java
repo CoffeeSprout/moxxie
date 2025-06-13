@@ -107,6 +107,9 @@ public class VMService {
                         }
                     }
                     
+                    // Get pool information (if available in the response)
+                    String pool = resource.path("pool").asText(null);
+                    
                     // Create enhanced VM response
                     VMResponse vmResponse = new VMResponse(
                         resource.path("vmid").asInt(),
@@ -118,7 +121,8 @@ public class VMService {
                         resource.path("maxdisk").asLong(0),
                         resource.path("uptime").asLong(0),
                         resource.path("type").asText(""),
-                        vmTagsList
+                        vmTagsList,
+                        pool
                     );
                     vms.add(vmResponse);
                 }

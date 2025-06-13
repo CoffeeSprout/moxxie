@@ -67,7 +67,8 @@ class ConsoleServiceTest {
             0L,                 // maxdisk
             0L,                 // uptime
             "qemu",             // type
-            List.of()           // tags
+            List.of(),          // tags
+            null                // pool
         );
         
         List<VMResponse> vmList = Arrays.asList(testVM);
@@ -116,7 +117,8 @@ class ConsoleServiceTest {
             0L,                 // maxdisk
             0L,                 // uptime
             "qemu",             // type
-            List.of()           // tags
+            List.of(),          // tags
+            null                // pool
         );
         
         List<VMResponse> vmList = Arrays.asList(testVM);
@@ -173,7 +175,8 @@ class ConsoleServiceTest {
             0L,                 // maxdisk
             0L,                 // uptime
             "qemu",             // type
-            List.of()           // tags
+            List.of(),          // tags
+            null                // pool
         );
         
         List<VMResponse> vmList = Arrays.asList(testVM);
@@ -205,7 +208,8 @@ class ConsoleServiceTest {
             0L,                 // maxdisk
             0L,                 // uptime
             "qemu",             // type
-            List.of()           // tags
+            List.of(),          // tags
+            null                // pool
         );
         
         List<VMResponse> vmList = Arrays.asList(testVM);
@@ -248,7 +252,8 @@ class ConsoleServiceTest {
             0L,                 // maxdisk
             0L,                 // uptime
             "qemu",             // type
-            List.of()           // tags
+            List.of(),          // tags
+            null                // pool
         );
         
         List<VMResponse> vmList = Arrays.asList(testVM);

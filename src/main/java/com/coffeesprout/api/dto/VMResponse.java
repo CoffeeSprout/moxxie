@@ -32,5 +32,8 @@ public record VMResponse(
     String type,
     
     @Schema(description = "VM tags", example = "[\"moxxie\", \"client:nixz\", \"env:prod\"]")
-    java.util.List<String> tags
+    java.util.List<String> tags,
+    
+    @Schema(description = "Resource pool the VM belongs to", example = "moxxie-pool")
+    String pool
 ) {}
