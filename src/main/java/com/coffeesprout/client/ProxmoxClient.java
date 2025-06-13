@@ -478,5 +478,44 @@ public interface ProxmoxClient {
                                                      @PathParam("upid") String upid,
                                                      @CookieParam("PVEAuthCookie") String ticket,
                                                      @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // Console Access APIs
+    
+    // VNC proxy
+    @POST
+    @Path("/nodes/{node}/qemu/{vmid}/vncproxy")
+    @Produces(MediaType.APPLICATION_JSON)
+    ProxmoxConsoleResponse createVNCProxy(@PathParam("node") String node,
+                                          @PathParam("vmid") int vmid,
+                                          @CookieParam("PVEAuthCookie") String ticket,
+                                          @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // VNC websocket
+    @GET
+    @Path("/nodes/{node}/qemu/{vmid}/vncwebsocket")
+    @Produces(MediaType.APPLICATION_JSON)
+    ProxmoxConsoleResponse getVNCWebSocket(@PathParam("node") String node,
+                                           @PathParam("vmid") int vmid,
+                                           @QueryParam("vncticket") String vncticket,
+                                           @QueryParam("port") String port,
+                                           @CookieParam("PVEAuthCookie") String ticket);
+    
+    // SPICE proxy
+    @POST
+    @Path("/nodes/{node}/qemu/{vmid}/spiceproxy")
+    @Produces(MediaType.APPLICATION_JSON)
+    ProxmoxConsoleResponse createSPICEProxy(@PathParam("node") String node,
+                                            @PathParam("vmid") int vmid,
+                                            @CookieParam("PVEAuthCookie") String ticket,
+                                            @HeaderParam("CSRFPreventionToken") String csrfToken);
+    
+    // Terminal proxy (for serial console)
+    @POST
+    @Path("/nodes/{node}/qemu/{vmid}/termproxy")
+    @Produces(MediaType.APPLICATION_JSON)
+    ProxmoxConsoleResponse createTermProxy(@PathParam("node") String node,
+                                           @PathParam("vmid") int vmid,
+                                           @CookieParam("PVEAuthCookie") String ticket,
+                                           @HeaderParam("CSRFPreventionToken") String csrfToken);
 }
 
