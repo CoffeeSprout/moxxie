@@ -10,8 +10,8 @@ import com.coffeesprout.api.dto.RestoreRequest;
 import com.coffeesprout.api.dto.SnapshotResponse;
 import com.coffeesprout.api.dto.TaskResponse;
 import com.coffeesprout.api.dto.VMDetailResponse;
-import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.api.dto.VMStatusDetailResponse;
+import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.client.CreateVMRequest;
 import com.coffeesprout.client.CreateVMResponse;
 import com.coffeesprout.client.VM;
@@ -48,10 +48,12 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Path("/api/v1/vms")
@@ -87,7 +89,7 @@ public class VMResource {
 
     @GET
     @SafeMode(value = false)  // Read operation
-    @Operation(summary = "List all VMs", description = "Get a list of all VMs in the Proxmox cluster with optional filtering")
+    @Operation(summary = "List all VMs", description = "Get a list of all VMs in the Proxmox cluster with optional filtering by tags, client, node, and status")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "VMs retrieved successfully",
             content = @Content(schema = @Schema(implementation = VMResponse[].class))),
@@ -97,46 +99,62 @@ public class VMResource {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public Response listVMs(
+            @Parameter(description = "Filter by tags (comma-separated, AND logic)")
+            @QueryParam("tags") String tags,
+            @Parameter(description = "Filter by client (convenience filter for client:<name> tag)")
+            @QueryParam("client") String client,
             @Parameter(description = "Filter by node name")
             @QueryParam("node") String node,
             @Parameter(description = "Filter by status (running, stopped)")
             @QueryParam("status") String status,
+            @Parameter(description = "Filter by specific VM IDs (comma-separated)")
+            @QueryParam("vmIds") String vmIds,
+            @Parameter(description = "Filter by VM name pattern (e.g., workshop-*, *-prod)")
+            @QueryParam("namePattern") String namePattern,
             @Parameter(description = "Number of results (default: 100)")
             @DefaultValue("100") @QueryParam("limit") int limit,
             @Parameter(description = "Pagination offset")
             @DefaultValue("0") @QueryParam("offset") int offset) {
         try {
-            List<VM> vms = vmService.listVMs(null);
-            
-            // Apply filters
-            var filteredVMs = vms.stream();
-            
-            if (node != null && !node.isEmpty()) {
-                filteredVMs = filteredVMs.filter(vm -> node.equals(vm.getNode()));
+            // Parse tag filter
+            List<String> tagFilter = null;
+            if (tags != null && !tags.isEmpty()) {
+                tagFilter = List.of(tags.split(","));
             }
             
-            if (status != null && !status.isEmpty()) {
-                filteredVMs = filteredVMs.filter(vm -> status.equals(vm.getStatus()));
+            // Get filtered VMs from service
+            List<VMResponse> vms = vmService.listVMsWithFilters(tagFilter, client, node, status, null);
+            
+            // Apply additional filters for vmIds
+            if (vmIds != null && !vmIds.isEmpty()) {
+                Set<Integer> vmIdSet = new HashSet<>();
+                for (String id : vmIds.split(",")) {
+                    try {
+                        vmIdSet.add(Integer.parseInt(id.trim()));
+                    } catch (NumberFormatException e) {
+                        // Skip invalid IDs
+                    }
+                }
+                vms = vms.stream()
+                    .filter(vm -> vmIdSet.contains(vm.vmid()))
+                    .collect(Collectors.toList());
+            }
+            
+            // Apply name pattern filter
+            if (namePattern != null && !namePattern.isEmpty()) {
+                Pattern pattern = Pattern.compile(namePattern.replace("*", ".*"));
+                vms = vms.stream()
+                    .filter(vm -> pattern.matcher(vm.name()).matches())
+                    .collect(Collectors.toList());
             }
             
             // Apply pagination
-            List<VMResponse> vmResponses = filteredVMs
+            List<VMResponse> paginatedVMs = vms.stream()
                 .skip(offset)
                 .limit(limit)
-                .map(vm -> new VMResponse(
-                    vm.getVmid(),
-                    vm.getName() != null ? vm.getName() : "VM-" + vm.getVmid(),
-                    vm.getNode(),
-                    vm.getStatus(),
-                    vm.getCpus(),
-                    vm.getMaxmem(),
-                    vm.getMaxdisk(),
-                    vm.getUptime(),
-                    vm.getType()
-                ))
                 .collect(Collectors.toList());
             
-            return Response.ok(vmResponses).build();
+            return Response.ok(paginatedVMs).build();
         } catch (Exception e) {
             log.error("Failed to list VMs", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -164,30 +182,18 @@ public class VMResource {
             @PathParam("vmId") int vmId) {
         try {
             // First, get all VMs to find the one we're looking for
-            List<VM> vms = vmService.listVMs(null);
+            List<VMResponse> vms = vmService.listVMs(null);
             
-            VM vm = vms.stream()
-                .filter(v -> v.getVmid() == vmId)
+            VMResponse response = vms.stream()
+                .filter(v -> v.vmid() == vmId)
                 .findFirst()
                 .orElse(null);
             
-            if (vm == null) {
+            if (response == null) {
                 return Response.status(Response.Status.NOT_FOUND)
                         .entity(new ErrorResponse("VM not found: " + vmId))
                         .build();
             }
-            
-            VMResponse response = new VMResponse(
-                vm.getVmid(),
-                vm.getName() != null ? vm.getName() : "VM-" + vm.getVmid(),
-                vm.getNode(),
-                vm.getStatus(),
-                vm.getCpus(),
-                vm.getMaxmem(),
-                vm.getMaxdisk(),
-                vm.getUptime(),
-                vm.getType()
-            );
             
             return Response.ok(response).build();
         } catch (Exception e) {
@@ -306,12 +312,9 @@ public class VMResource {
             // Create the VM
             CreateVMResponse response = vmService.createVM(request.node(), clientRequest, null);
             
-            // Tag the VM as managed by Moxxie
-            try {
-                tagService.addTag(vmId, "moxxie");
-                log.info("Tagged new VM {} as moxxie-managed", vmId);
-            } catch (Exception e) {
-                log.warn("Failed to tag new VM {} as moxxie-managed: {}", vmId, e.getMessage());
+            // Add tags from the request
+            if (request.tags() != null && !request.tags().isEmpty()) {
+                clientRequest.setTags(String.join(",", request.tags()));
             }
             
             // Build location URI
@@ -354,10 +357,10 @@ public class VMResource {
             @QueryParam("force") boolean force) {
         try {
             // First, find the VM to get its node
-            List<VM> vms = vmService.listVMs(null);
+            List<VMResponse> vms = vmService.listVMs(null);
             
-            VM vm = vms.stream()
-                .filter(v -> v.getVmid() == vmId)
+            VMResponse vm = vms.stream()
+                .filter(v -> v.vmid() == vmId)
                 .findFirst()
                 .orElse(null);
             
@@ -368,7 +371,7 @@ public class VMResource {
             }
             
             // Delete the VM
-            vmService.deleteVM(vm.getNode(), vmId, null);
+            vmService.deleteVM(vm.node(), vmId, null);
             
             return Response.noContent().build();
         } catch (Exception e) {
@@ -396,9 +399,9 @@ public class VMResource {
             @PathParam("vmId") int vmId) {
         try {
             // Get basic VM info
-            List<VM> vms = vmService.listVMs(null);
-            VM vm = vms.stream()
-                .filter(v -> v.getVmid() == vmId)
+            List<VMResponse> vms = vmService.listVMs(null);
+            VMResponse vm = vms.stream()
+                .filter(v -> v.vmid() == vmId)
                 .findFirst()
                 .orElse(null);
             
@@ -409,8 +412,8 @@ public class VMResource {
             }
             
             // Get detailed VM configuration
-            log.debug("Getting config for VM {} on node '{}'", vmId, vm.getNode());
-            Map<String, Object> config = vmService.getVMConfig(vm.getNode(), vmId, null);
+            log.debug("Getting config for VM {} on node '{}'", vmId, vm.node());
+            Map<String, Object> config = vmService.getVMConfig(vm.node(), vmId, null);
             
             // Parse network interfaces from config
             List<VMDetailResponse.NetworkInterfaceInfo> networkInterfaces = parseNetworkInterfaces(config);
@@ -423,17 +426,17 @@ public class VMResource {
             List<String> tags = new ArrayList<>(tagService.getVMTags(vmId));
             
             VMDetailResponse response = new VMDetailResponse(
-                vm.getVmid(),
-                vm.getName() != null ? vm.getName() : "VM-" + vm.getVmid(),
-                vm.getNode(),
-                vm.getStatus(),
-                vm.getCpus(),
-                vm.getMaxmem(),
-                vm.getMaxdisk(),
+                vm.vmid(),
+                vm.name() != null ? vm.name() : "VM-" + vm.vmid(),
+                vm.node(),
+                vm.status(),
+                vm.cpus(),
+                vm.maxmem(),
+                vm.maxdisk(),
                 totalDiskSize,
                 disks,
-                vm.getUptime(),
-                vm.getType(),
+                vm.uptime(),
+                vm.type(),
                 networkInterfaces,
                 tags,
                 config
@@ -538,10 +541,10 @@ public class VMResource {
             @PathParam("vmId") int vmId) {
         try {
             // First, find the VM to get its node
-            List<VM> vms = vmService.listVMs(null);
+            List<VMResponse> vms = vmService.listVMs(null);
             
-            VM vm = vms.stream()
-                .filter(v -> v.getVmid() == vmId)
+            VMResponse vm = vms.stream()
+                .filter(v -> v.vmid() == vmId)
                 .findFirst()
                 .orElse(null);
             
@@ -552,7 +555,7 @@ public class VMResource {
             }
             
             // Get detailed status
-            VMStatusResponse status = vmService.getVMStatus(vm.getNode(), vmId, null);
+            VMStatusResponse status = vmService.getVMStatus(vm.node(), vmId, null);
             VMStatusResponse.VMStatusData data = status.getData();
             
             // Calculate memory percentage
@@ -615,9 +618,9 @@ public class VMResource {
             @Parameter(description = "Force start even if not managed by Moxxie")
             @QueryParam("force") boolean force) {
         try {
-            List<VM> vms = vmService.listVMs(null);
-            VM vm = vms.stream()
-                .filter(v -> v.getVmid() == vmId)
+            List<VMResponse> vms = vmService.listVMs(null);
+            VMResponse vm = vms.stream()
+                .filter(v -> v.vmid() == vmId)
                 .findFirst()
                 .orElse(null);
             
@@ -627,13 +630,13 @@ public class VMResource {
                         .build();
             }
             
-            if ("running".equals(vm.getStatus())) {
+            if ("running".equals(vm.status())) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(new ErrorResponse("VM is already running"))
                         .build();
             }
             
-            vmService.startVM(vm.getNode(), vmId, null);
+            vmService.startVM(vm.node(), vmId, null);
             return Response.accepted()
                     .entity(new ErrorResponse("VM start initiated"))
                     .build();
@@ -669,9 +672,9 @@ public class VMResource {
             @Parameter(description = "Force stop even if not managed by Moxxie")
             @QueryParam("force") boolean force) {
         try {
-            List<VM> vms = vmService.listVMs(null);
-            VM vm = vms.stream()
-                .filter(v -> v.getVmid() == vmId)
+            List<VMResponse> vms = vmService.listVMs(null);
+            VMResponse vm = vms.stream()
+                .filter(v -> v.vmid() == vmId)
                 .findFirst()
                 .orElse(null);
             
@@ -681,13 +684,13 @@ public class VMResource {
                         .build();
             }
             
-            if ("stopped".equals(vm.getStatus())) {
+            if ("stopped".equals(vm.status())) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(new ErrorResponse("VM is not running"))
                         .build();
             }
             
-            vmService.stopVM(vm.getNode(), vmId, null);
+            vmService.stopVM(vm.node(), vmId, null);
             return Response.accepted()
                     .entity(new ErrorResponse("VM stop initiated"))
                     .build();
@@ -723,9 +726,9 @@ public class VMResource {
             @Parameter(description = "Force reboot even if not managed by Moxxie")
             @QueryParam("force") boolean force) {
         try {
-            List<VM> vms = vmService.listVMs(null);
-            VM vm = vms.stream()
-                .filter(v -> v.getVmid() == vmId)
+            List<VMResponse> vms = vmService.listVMs(null);
+            VMResponse vm = vms.stream()
+                .filter(v -> v.vmid() == vmId)
                 .findFirst()
                 .orElse(null);
             
@@ -735,13 +738,13 @@ public class VMResource {
                         .build();
             }
             
-            if (!"running".equals(vm.getStatus())) {
+            if (!"running".equals(vm.status())) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(new ErrorResponse("VM is not running"))
                         .build();
             }
             
-            vmService.rebootVM(vm.getNode(), vmId, null);
+            vmService.rebootVM(vm.node(), vmId, null);
             return Response.accepted()
                     .entity(new ErrorResponse("VM reboot initiated"))
                     .build();
@@ -777,9 +780,9 @@ public class VMResource {
             @Parameter(description = "Force shutdown even if not managed by Moxxie")
             @QueryParam("force") boolean force) {
         try {
-            List<VM> vms = vmService.listVMs(null);
-            VM vm = vms.stream()
-                .filter(v -> v.getVmid() == vmId)
+            List<VMResponse> vms = vmService.listVMs(null);
+            VMResponse vm = vms.stream()
+                .filter(v -> v.vmid() == vmId)
                 .findFirst()
                 .orElse(null);
             
@@ -789,13 +792,13 @@ public class VMResource {
                         .build();
             }
             
-            if (!"running".equals(vm.getStatus())) {
+            if (!"running".equals(vm.status())) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(new ErrorResponse("VM is not running"))
                         .build();
             }
             
-            vmService.shutdownVM(vm.getNode(), vmId, null);
+            vmService.shutdownVM(vm.node(), vmId, null);
             return Response.accepted()
                     .entity(new ErrorResponse("VM shutdown initiated"))
                     .build();
@@ -831,9 +834,9 @@ public class VMResource {
             @Parameter(description = "Force suspend even if not managed by Moxxie")
             @QueryParam("force") boolean force) {
         try {
-            List<VM> vms = vmService.listVMs(null);
-            VM vm = vms.stream()
-                .filter(v -> v.getVmid() == vmId)
+            List<VMResponse> vms = vmService.listVMs(null);
+            VMResponse vm = vms.stream()
+                .filter(v -> v.vmid() == vmId)
                 .findFirst()
                 .orElse(null);
             
@@ -843,13 +846,13 @@ public class VMResource {
                         .build();
             }
             
-            if (!"running".equals(vm.getStatus())) {
+            if (!"running".equals(vm.status())) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(new ErrorResponse("VM is not running"))
                         .build();
             }
             
-            vmService.suspendVM(vm.getNode(), vmId, null);
+            vmService.suspendVM(vm.node(), vmId, null);
             return Response.accepted()
                     .entity(new ErrorResponse("VM suspend initiated"))
                     .build();
@@ -885,9 +888,9 @@ public class VMResource {
             @Parameter(description = "Force resume even if not managed by Moxxie")
             @QueryParam("force") boolean force) {
         try {
-            List<VM> vms = vmService.listVMs(null);
-            VM vm = vms.stream()
-                .filter(v -> v.getVmid() == vmId)
+            List<VMResponse> vms = vmService.listVMs(null);
+            VMResponse vm = vms.stream()
+                .filter(v -> v.vmid() == vmId)
                 .findFirst()
                 .orElse(null);
             
@@ -899,7 +902,7 @@ public class VMResource {
             
             // Check if VM is suspended - Proxmox might report this as "stopped" with suspend disk
             // For now, we'll attempt resume regardless
-            vmService.resumeVM(vm.getNode(), vmId, null);
+            vmService.resumeVM(vm.node(), vmId, null);
             return Response.accepted()
                     .entity(new ErrorResponse("VM resume initiated"))
                     .build();

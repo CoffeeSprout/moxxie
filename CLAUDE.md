@@ -131,3 +131,72 @@ public SomeResponse doSomething(String node, int id, String ticket)
 
 // Incorrect - will replace 'node' with ticket
 public SomeResponse doSomething(String node, int id)
+
+## Tagging System
+
+Moxxie uses a structured tagging system for VM organization and automation. When implementing new features, consider if they should:
+
+1. **Add new tags automatically** - e.g., backup features might add `backup:daily` tags
+2. **Query VMs by tags** - e.g., maintenance features should respect `always-on` and `maint-ok` tags
+3. **Create new tag categories** - Coordinate with the team to ensure consistency
+
+### Standard Tag Categories
+
+- **Ownership**: `moxxie` (managed by Moxxie)
+- **Client**: `client-<name>` (e.g., `client-nixz`)
+- **Environment**: `env-<env>` (e.g., `env-prod`, `env-dev`)
+- **Criticality**: `always-on`, `maint-ok`
+- **Kubernetes**: `k8s-controlplane`, `k8s-worker`
+
+### Tag Colors in Proxmox UI
+
+- Red: Critical/Production (`always-on`, `env:prod`)
+- Blue: Clients and environments
+- Purple: Kubernetes nodes
+- Green: Moxxie managed
+- Orange: Maintenance allowed
+
+### Adding New Tags
+
+When adding new tag categories:
+1. Update `TagUtils.java` with the new category
+2. Add color mapping in tag style configuration
+3. Document in this file
+4. Consider auto-tagging rules
+
+### Tag-aware Features
+
+All features that perform operations on VMs should:
+- Respect `always-on` tags (never auto-shutdown)
+- Check `maint-ok` before maintenance operations
+- Filter by client tags for multi-tenancy
+
+### API Endpoints
+
+**Query VMs with tag filtering:**
+```bash
+# Filter by multiple tags (AND logic)
+curl "http://localhost:8080/api/v1/vms?tags=client:nixz,env:prod"
+
+# Filter by client (convenience)
+curl "http://localhost:8080/api/v1/vms?client=nixz"
+
+# Get all unique tags
+curl "http://localhost:8080/api/v1/tags"
+
+# Get VMs with specific tag
+curl "http://localhost:8080/api/v1/tags/client-nixz/vms"
+```
+
+**Bulk tag operations:**
+```bash
+# Add tags to VMs by name pattern
+curl -X POST "http://localhost:8080/api/v1/tags/bulk?namePattern=nixz-*" \
+  -H "Content-Type: application/json" \
+  -d '{"action": "ADD", "tags": ["client-nixz", "env-prod"]}'
+
+# Remove tags from specific VMs
+curl -X POST "http://localhost:8080/api/v1/tags/bulk?vmIds=101,102,103" \
+  -H "Content-Type: application/json" \
+  -d '{"action": "REMOVE", "tags": ["maint-ok"]}'
+```

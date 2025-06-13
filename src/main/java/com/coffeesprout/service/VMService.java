@@ -1,15 +1,22 @@
 package com.coffeesprout.service;
 
 import com.coffeesprout.client.*;
+import com.coffeesprout.api.dto.VMResponse;
+import com.coffeesprout.util.TagUtils;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 @AutoAuthenticate
@@ -23,16 +30,136 @@ public class VMService {
     
     @Inject
     TicketManager ticketManager;
+    
+    @Inject
+    TagService tagService;
+    
+    @Inject
+    ObjectMapper objectMapper;
 
     @SafeMode(value = false)  // Read operation
-    public List<VM> listVMs(String ticket) {
-        VMsResponse response = proxmoxClient.getVMs(ticket);
-        return response.getData();
+    public List<VMResponse> listVMs(String ticket) {
+        return listVMsWithFilters(null, null, null, null, ticket);
+    }
+    
+    @SafeMode(value = false)  // Read operation
+    public List<VMResponse> listVMsWithFilters(List<String> tags, String client, String node, String status, String ticket) {
+        try {
+            // Get all VMs from cluster
+            JsonNode resources = proxmoxClient.getClusterResources(ticket, ticketManager.getCsrfToken(), "vm");
+            List<VMResponse> vms = new ArrayList<>();
+            
+            if (resources != null && resources.has("data")) {
+                JsonNode dataArray = resources.get("data");
+                
+                for (JsonNode resource : dataArray) {
+                    // Skip if not a VM
+                    String type = resource.path("type").asText("");
+                    if (!"qemu".equals(type)) {
+                        continue;
+                    }
+                    
+                    // Parse VM data
+                    Map<String, Object> vmData = objectMapper.convertValue(resource, Map.class);
+                    
+                    // Parse tags
+                    String tagsString = resource.path("tags").asText("");
+                    Set<String> vmTags = TagUtils.parseVMTags(tagsString);
+                    List<String> vmTagsList = new ArrayList<>(vmTags);
+                    
+                    // Debug logging
+                    if (!tagsString.isEmpty() && log.isDebugEnabled()) {
+                        log.debug("VM {} has tags string '{}' parsed to: {}", 
+                            resource.path("vmid").asInt(), tagsString, vmTags);
+                    }
+                    
+                    // Apply filters
+                    
+                    // Tag filter - VM must have ALL specified tags
+                    if (tags != null && !tags.isEmpty()) {
+                        boolean hasAllTags = tags.stream().allMatch(vmTags::contains);
+                        if (!hasAllTags) {
+                            continue;
+                        }
+                    }
+                    
+                    // Client filter - convenience filter for client:<name> tag
+                    if (client != null && !client.isEmpty()) {
+                        String clientTag = TagUtils.client(client);
+                        if (!vmTags.contains(clientTag)) {
+                            continue;
+                        }
+                    }
+                    
+                    // Node filter
+                    if (node != null && !node.isEmpty()) {
+                        String vmNode = resource.path("node").asText("");
+                        if (!node.equals(vmNode)) {
+                            continue;
+                        }
+                    }
+                    
+                    // Status filter
+                    if (status != null && !status.isEmpty()) {
+                        String vmStatus = resource.path("status").asText("");
+                        if (!status.equals(vmStatus)) {
+                            continue;
+                        }
+                    }
+                    
+                    // Create enhanced VM response
+                    VMResponse vmResponse = new VMResponse(
+                        resource.path("vmid").asInt(),
+                        resource.path("name").asText(""),
+                        resource.path("node").asText(""),
+                        resource.path("status").asText(""),
+                        resource.path("cpus").asInt(0),
+                        resource.path("maxmem").asLong(0),
+                        resource.path("maxdisk").asLong(0),
+                        resource.path("uptime").asLong(0),
+                        resource.path("type").asText(""),
+                        vmTagsList
+                    );
+                    vms.add(vmResponse);
+                }
+            }
+            
+            return vms;
+        } catch (Exception e) {
+            log.error("Error listing VMs with filters", e);
+            throw new RuntimeException("Failed to list VMs: " + e.getMessage(), e);
+        }
     }
 
     @SafeMode(operation = SafeMode.Operation.WRITE)
     public CreateVMResponse createVM(String node, CreateVMRequest request, String ticket) {
-        return proxmoxClient.createVM(node, ticket, ticketManager.getCsrfToken(), request);
+        // Create the VM
+        CreateVMResponse response = proxmoxClient.createVM(node, ticket, ticketManager.getCsrfToken(), request);
+        
+        // Auto-tag the VM if it was created successfully
+        if (response != null && request.getVmid() != 0 && request.getName() != null) {
+            try {
+                // Generate auto-tags based on VM name
+                Set<String> autoTags = TagUtils.autoGenerateTags(request.getName());
+                
+                // Add any tags from the request
+                if (request.getTags() != null && !request.getTags().isEmpty()) {
+                    Set<String> requestTags = TagUtils.parseVMTags(request.getTags());
+                    autoTags.addAll(requestTags);
+                }
+                
+                // Apply tags to the VM
+                if (!autoTags.isEmpty()) {
+                    tagService.bulkAddTags(List.of(request.getVmid()), autoTags);
+                    log.info("Auto-tagged VM {} with tags: {}", request.getVmid(), autoTags);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to auto-tag VM {}: {}", request.getVmid(), e.getMessage());
+                // Don't fail the VM creation just because tagging failed
+            }
+        }
+        
+        return response;
     }
 
     public ImportImageResponse importImage(String node, String storage, ImportImageRequest request, String ticket) {

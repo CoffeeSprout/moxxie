@@ -29,5 +29,8 @@ public record VMResponse(
     long uptime,
     
     @Schema(description = "VM type (qemu or lxc)", example = "qemu")
-    String type
+    String type,
+    
+    @Schema(description = "VM tags", example = "[\"moxxie\", \"client:nixz\", \"env:prod\"]")
+    java.util.List<String> tags
 ) {}
