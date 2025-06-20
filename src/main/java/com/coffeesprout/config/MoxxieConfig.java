@@ -26,10 +26,19 @@ public interface MoxxieConfig {
      */
     Api api();
     
+    /**
+     * Location configuration for federation support
+     */
+    Location location();
+    
     interface Instance {
         @WithDefault("moxxie-default")
         String id();
         
+        /**
+         * @deprecated Use location.* properties instead
+         */
+        @Deprecated
         @WithDefault("default-location")
         String location();
         
@@ -111,5 +120,48 @@ public interface MoxxieConfig {
          */
         @WithDefault("60")
         int rateLimit();
+    }
+    
+    interface Location {
+        /**
+         * Infrastructure provider: proxmox, hetzner, scaleway
+         */
+        @WithDefault("proxmox")
+        String provider();
+        
+        /**
+         * Region identifier (e.g., nl-west-1, nl-ams-1, de-fsn-1)
+         */
+        String region();
+        
+        /**
+         * Datacenter identifier (e.g., wsdc1, dbna1)
+         */
+        String datacenter();
+        
+        /**
+         * Human-readable location name
+         */
+        String name();
+        
+        /**
+         * ISO 3166-1 alpha-2 country code (e.g., NL, DE, FR)
+         */
+        String country();
+        
+        /**
+         * Geographic latitude (-90 to 90)
+         */
+        Double latitude();
+        
+        /**
+         * Geographic longitude (-180 to 180)
+         */
+        Double longitude();
+        
+        /**
+         * Unique instance identifier (auto-generated if not provided)
+         */
+        Optional<String> instanceId();
     }
 }

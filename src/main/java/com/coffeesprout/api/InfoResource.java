@@ -2,6 +2,8 @@ package com.coffeesprout.api;
 
 import com.coffeesprout.api.dto.InfoResponse;
 import com.coffeesprout.config.MoxxieConfig;
+import com.coffeesprout.model.LocationInfo;
+import com.coffeesprout.service.LocationService;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -25,6 +27,9 @@ public class InfoResource {
 
     @Inject
     MoxxieConfig config;
+    
+    @Inject
+    LocationService locationService;
 
     @GET
     @Operation(summary = "Get instance information", description = "Returns information about this Moxxie instance")
@@ -33,9 +38,11 @@ public class InfoResource {
             content = @Content(schema = @Schema(implementation = InfoResponse.class)))
     })
     public InfoResponse getInfo() {
+        LocationInfo location = locationService.getLocationInfo();
+        
         return new InfoResponse(
-            config.instance().id(),
-            config.instance().location(),
+            location.instanceId(),
+            location.fullLocation(),
             config.instance().version(),
             config.proxmox().url(),
             "healthy"
