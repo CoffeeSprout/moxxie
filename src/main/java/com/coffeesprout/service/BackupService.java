@@ -48,7 +48,7 @@ public class BackupService {
     /**
      * Create a backup for a VM
      */
-    public TaskResponse createBackup(int vmId, BackupRequest request, String ticket) {
+    public TaskResponse createBackup(int vmId, BackupRequest request, @AuthTicket String ticket) {
         log.info("Creating backup for VM {} to storage '{}'", vmId, request.storage());
         
         try {
@@ -94,7 +94,7 @@ public class BackupService {
     /**
      * List all backups for a specific VM
      */
-    public List<BackupResponse> listBackups(int vmId, String ticket) {
+    public List<BackupResponse> listBackups(int vmId, @AuthTicket String ticket) {
         log.debug("Listing backups for VM {}", vmId);
         
         try {
@@ -160,7 +160,7 @@ public class BackupService {
     /**
      * List all backups across all VMs
      */
-    public List<BackupResponse> listAllBackups(String ticket) {
+    public List<BackupResponse> listAllBackups(@AuthTicket String ticket) {
         log.info("Listing all backups across all nodes and storages");
         
         try {
@@ -250,7 +250,7 @@ public class BackupService {
     /**
      * Delete a backup
      */
-    public TaskResponse deleteBackup(String volid, String ticket) {
+    public TaskResponse deleteBackup(String volid, @AuthTicket String ticket) {
         log.info("Deleting backup: {}", volid);
         
         try {
@@ -318,7 +318,7 @@ public class BackupService {
     /**
      * Restore a VM from backup
      */
-    public TaskResponse restoreBackup(RestoreRequest request, String ticket) {
+    public TaskResponse restoreBackup(RestoreRequest request, @AuthTicket String ticket) {
         log.info("Restoring VM {} from backup: {}", request.vmId(), request.backup());
         
         try {
@@ -371,7 +371,7 @@ public class BackupService {
     /**
      * Find which node has a specific storage
      */
-    private String findNodeWithStorage(String storageId, String ticket) {
+    private String findNodeWithStorage(String storageId, @AuthTicket String ticket) {
         var nodes = nodeService.listNodes(ticket);
         
         for (var node : nodes) {

@@ -35,7 +35,7 @@ public class TaskService {
     /**
      * Get detailed status of a specific task
      */
-    public TaskStatusDetailResponse getTaskStatus(String upid, String ticket) {
+    public TaskStatusDetailResponse getTaskStatus(String upid, @AuthTicket String ticket) {
         log.debug("Getting status for task: {}", upid);
         
         try {
@@ -101,7 +101,7 @@ public class TaskService {
     /**
      * Get task execution logs
      */
-    public TaskLogResponse getTaskLog(String upid, Integer start, Integer limit, String ticket) {
+    public TaskLogResponse getTaskLog(String upid, Integer start, Integer limit, @AuthTicket String ticket) {
         log.debug("Getting logs for task: {} (start: {}, limit: {})", upid, start, limit);
         
         try {
@@ -244,7 +244,7 @@ public class TaskService {
     /**
      * Stop a running task
      */
-    public void stopTask(String upid, String ticket) {
+    public void stopTask(String upid, @AuthTicket String ticket) {
         log.info("Stopping task: {}", upid);
         
         try {

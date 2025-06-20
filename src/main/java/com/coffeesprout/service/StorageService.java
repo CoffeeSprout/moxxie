@@ -31,7 +31,7 @@ public class StorageService {
     /**
      * List all storage pools across the cluster with aggregated statistics
      */
-    public List<StoragePoolResponse> listStoragePools(String ticket) {
+    public List<StoragePoolResponse> listStoragePools(@AuthTicket String ticket) {
         log.debug("Listing all storage pools");
         
         try {
@@ -114,7 +114,7 @@ public class StorageService {
     /**
      * List content of a specific storage pool
      */
-    public List<com.coffeesprout.api.dto.StorageContentResponse> listStorageContent(String storageId, String contentType, String ticket) {
+    public List<com.coffeesprout.api.dto.StorageContentResponse> listStorageContent(String storageId, String contentType, @AuthTicket String ticket) {
         log.debug("Listing content of storage {} with type {}", storageId, contentType);
         
         try {
@@ -202,7 +202,7 @@ public class StorageService {
     /**
      * Get detailed status of a specific storage on a specific node
      */
-    public com.coffeesprout.api.dto.StorageStatusResponse getStorageStatus(String node, String storageId, String ticket) {
+    public com.coffeesprout.api.dto.StorageStatusResponse getStorageStatus(String node, String storageId, @AuthTicket String ticket) {
         log.debug("Getting status of storage {} on node {}", storageId, node);
         
         try {
@@ -263,7 +263,7 @@ public class StorageService {
     /**
      * Delete content from storage
      */
-    public void deleteStorageContent(String volid, String ticket) {
+    public void deleteStorageContent(String volid, @AuthTicket String ticket) {
         log.info("Deleting storage content: {}", volid);
         
         try {
@@ -329,7 +329,7 @@ public class StorageService {
     /**
      * Download content from URL to storage
      */
-    public TaskResponse downloadFromUrl(String node, String storageId, DownloadUrlRequest request, String ticket) {
+    public TaskResponse downloadFromUrl(String node, String storageId, DownloadUrlRequest request, @AuthTicket String ticket) {
         log.info("Downloading from URL {} to storage {} on node {}", 
                 request.url(), storageId, node);
         
@@ -375,7 +375,7 @@ public class StorageService {
      * Upload file to storage
      */
     public UploadResponse uploadToStorage(String node, String storageId, String contentType,
-                                         InputStream fileStream, String filename, String ticket) {
+                                         InputStream fileStream, String filename, @AuthTicket String ticket) {
         log.info("Uploading file to storage {} on node {}", storageId, node);
         
         try {

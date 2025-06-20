@@ -31,7 +31,7 @@ public class BackupAnalyticsService {
     /**
      * Get storage usage per VM
      */
-    public List<VMStorageUsage> getVMStorageUsage(String ticket) {
+    public List<VMStorageUsage> getVMStorageUsage(@AuthTicket String ticket) {
         log.debug("Calculating storage usage per VM");
         
         try {
@@ -111,7 +111,7 @@ public class BackupAnalyticsService {
     /**
      * Get storage usage per client (based on tags)
      */
-    public List<ClientStorageUsage> getClientStorageUsage(String ticket) {
+    public List<ClientStorageUsage> getClientStorageUsage(@AuthTicket String ticket) {
         log.debug("Calculating storage usage per client");
         
         try {
@@ -189,7 +189,7 @@ public class BackupAnalyticsService {
     /**
      * Get storage usage per storage location
      */
-    public List<StorageLocationUsage> getStorageLocationUsage(String ticket) {
+    public List<StorageLocationUsage> getStorageLocationUsage(@AuthTicket String ticket) {
         log.debug("Calculating storage usage per location");
         
         try {
@@ -241,7 +241,7 @@ public class BackupAnalyticsService {
      * For now, this is a simplified implementation that shows current state
      * In a production system, this would track historical data
      */
-    public StorageTrend getStorageTrends(String period, String ticket) {
+    public StorageTrend getStorageTrends(String period, @AuthTicket String ticket) {
         log.debug("Calculating storage trends for period: {}", period);
         
         try {
@@ -325,7 +325,7 @@ public class BackupAnalyticsService {
     /**
      * Get overall backup health status
      */
-    public BackupHealth getBackupHealth(int coverageThresholdDays, int overdueThresholdDays, String ticket) {
+    public BackupHealth getBackupHealth(int coverageThresholdDays, int overdueThresholdDays, @AuthTicket String ticket) {
         log.debug("Calculating backup health with coverage threshold: {} days, overdue threshold: {} days", 
                  coverageThresholdDays, overdueThresholdDays);
         
@@ -447,7 +447,7 @@ public class BackupAnalyticsService {
     /**
      * Get VMs without recent backups
      */
-    public List<BackupCoverage> getVMsWithoutRecentBackups(int thresholdDays, String ticket) {
+    public List<BackupCoverage> getVMsWithoutRecentBackups(int thresholdDays, @AuthTicket String ticket) {
         BackupHealth health = getBackupHealth(thresholdDays, thresholdDays, ticket);
         
         // Filter to only show VMs that are overdue or have no backups

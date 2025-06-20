@@ -35,7 +35,7 @@ public class ConsoleService {
     MoxxieConfig config;
     
     @SafeMode(value = false)  // Read operation
-    public ConsoleResponse createConsoleAccess(int vmId, ConsoleRequest request, String ticket) {
+    public ConsoleResponse createConsoleAccess(int vmId, ConsoleRequest request, @AuthTicket String ticket) {
         log.info("Creating console access for VM {} with type {}", vmId, request.getType());
         
         // First, get VM details to find the node
@@ -72,7 +72,7 @@ public class ConsoleService {
     }
     
     @SafeMode(value = false)  // Read operation
-    public ConsoleWebSocketResponse getWebSocketDetails(int vmId, String consoleTicket, String ticket) {
+    public ConsoleWebSocketResponse getWebSocketDetails(int vmId, String consoleTicket, @AuthTicket String ticket) {
         log.debug("Getting WebSocket details for VM {} with console ticket", vmId);
         
         VMResponse vm = findVM(vmId, ticket);
@@ -98,7 +98,7 @@ public class ConsoleService {
     }
     
     @SafeMode(value = false)  // Read operation
-    public SpiceConnectionFile generateSpiceFile(int vmId, String consoleTicket, String ticket) {
+    public SpiceConnectionFile generateSpiceFile(int vmId, String consoleTicket, @AuthTicket String ticket) {
         log.info("Generating SPICE connection file for VM {}", vmId);
         
         VMResponse vm = findVM(vmId, ticket);

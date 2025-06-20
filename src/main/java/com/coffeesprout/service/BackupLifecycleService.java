@@ -43,7 +43,7 @@ public class BackupLifecycleService {
      */
     public List<BackupDeletionCandidate> getRetentionCandidates(String retentionPolicy, List<String> tags, 
                                                                 List<Integer> vmIds, boolean includeProtected, 
-                                                                String ticket) {
+                                                                @AuthTicket String ticket) {
         log.debug("Finding retention candidates with policy: {}", retentionPolicy);
         
         try {
@@ -112,7 +112,7 @@ public class BackupLifecycleService {
     /**
      * Clean up old backups based on retention policy
      */
-    public BackupCleanupResponse cleanupBackups(BackupCleanupRequest request, String ticket) {
+    public BackupCleanupResponse cleanupBackups(BackupCleanupRequest request, @AuthTicket String ticket) {
         log.info("Starting backup cleanup with policy: {}, dryRun: {}", 
                  request.retentionPolicy(), request.dryRun());
         
@@ -172,7 +172,7 @@ public class BackupLifecycleService {
     /**
      * Update backup protection status
      */
-    public void updateBackupProtection(String volid, boolean protect, String ticket) {
+    public void updateBackupProtection(String volid, boolean protect, @AuthTicket String ticket) {
         log.info("Updating backup {} protection to: {}", volid, protect);
         
         try {
@@ -206,7 +206,7 @@ public class BackupLifecycleService {
     /**
      * Update backup notes
      */
-    public void updateBackupNotes(String volid, String notes, String ticket) {
+    public void updateBackupNotes(String volid, String notes, @AuthTicket String ticket) {
         log.info("Updating backup {} notes", volid);
         
         // Similar to protection update - needs proper Proxmox API endpoint

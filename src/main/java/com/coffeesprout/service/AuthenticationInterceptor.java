@@ -8,10 +8,13 @@ import jakarta.interceptor.Interceptor;
 import jakarta.interceptor.InvocationContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 
 /**
  * Interceptor that automatically injects authentication tickets into service method calls.
- * Looks for the last String parameter and assumes it's the ticket parameter.
+ * Looks for parameters annotated with @AuthTicket and injects a valid authentication ticket.
  */
 @Dependent
 @Interceptor
@@ -27,14 +30,37 @@ public class AuthenticationInterceptor {
     @AroundInvoke
     public Object injectAuthenticationTicket(InvocationContext context) throws Exception {
         Object[] parameters = context.getParameters();
-        Class<?>[] parameterTypes = context.getMethod().getParameterTypes();
+        Method method = context.getMethod();
+        Parameter[] methodParameters = method.getParameters();
         
-        // Find the last String parameter - this is our ticket parameter by convention
+        // Find parameter annotated with @AuthTicket
         int ticketIndex = -1;
-        for (int i = parameters.length - 1; i >= 0; i--) {
-            if (parameterTypes[i] == String.class) {
+        for (int i = 0; i < methodParameters.length; i++) {
+            if (methodParameters[i].isAnnotationPresent(AuthTicket.class)) {
+                // Verify it's a String parameter
+                if (methodParameters[i].getType() != String.class) {
+                    throw new IllegalArgumentException(
+                        String.format("@AuthTicket can only be applied to String parameters. " +
+                                      "Method %s.%s has @AuthTicket on a %s parameter",
+                                      method.getDeclaringClass().getSimpleName(),
+                                      method.getName(),
+                                      methodParameters[i].getType().getSimpleName()));
+                }
                 ticketIndex = i;
                 break;
+            }
+        }
+        
+        // Fall back to position-based convention for backward compatibility
+        if (ticketIndex == -1) {
+            log.debug("No @AuthTicket annotation found on method {}.{}, falling back to position-based convention",
+                     method.getDeclaringClass().getSimpleName(), method.getName());
+            Class<?>[] parameterTypes = method.getParameterTypes();
+            for (int i = parameters.length - 1; i >= 0; i--) {
+                if (parameterTypes[i] == String.class) {
+                    ticketIndex = i;
+                    break;
+                }
             }
         }
         
@@ -43,8 +69,8 @@ public class AuthenticationInterceptor {
             String ticket = ticketManager.getTicket();
             parameters[ticketIndex] = ticket;
             context.setParameters(parameters);
-            log.trace("Injected authentication ticket into parameter at position {} for method {}", 
-                     ticketIndex, context.getMethod().getName());
+            log.trace("Injected authentication ticket into parameter at position {} for method {}.{}", 
+                     ticketIndex, method.getDeclaringClass().getSimpleName(), method.getName());
         }
         
         try {

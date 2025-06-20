@@ -35,7 +35,7 @@ public class SnapshotService {
     /**
      * List all snapshots for a VM
      */
-    public List<SnapshotResponse> listSnapshots(int vmId, String ticket) {
+    public List<SnapshotResponse> listSnapshots(int vmId, @AuthTicket String ticket) {
         log.debug("Listing snapshots for VM {}", vmId);
         
         try {
@@ -68,7 +68,7 @@ public class SnapshotService {
     /**
      * Create a new snapshot
      */
-    public TaskResponse createSnapshot(int vmId, CreateSnapshotRequest request, String ticket) {
+    public TaskResponse createSnapshot(int vmId, CreateSnapshotRequest request, @AuthTicket String ticket) {
         log.info("Creating snapshot '{}' for VM {}", request.name(), vmId);
         
         try {
@@ -116,7 +116,7 @@ public class SnapshotService {
     /**
      * Delete a snapshot
      */
-    public TaskResponse deleteSnapshot(int vmId, String snapshotName, String ticket) {
+    public TaskResponse deleteSnapshot(int vmId, String snapshotName, @AuthTicket String ticket) {
         log.info("Deleting snapshot '{}' for VM {}", snapshotName, vmId);
         
         try {
@@ -162,7 +162,7 @@ public class SnapshotService {
     /**
      * Rollback VM to a snapshot
      */
-    public TaskResponse rollbackSnapshot(int vmId, String snapshotName, String ticket) {
+    public TaskResponse rollbackSnapshot(int vmId, String snapshotName, @AuthTicket String ticket) {
         log.info("Rolling back VM {} to snapshot '{}'", vmId, snapshotName);
         
         try {

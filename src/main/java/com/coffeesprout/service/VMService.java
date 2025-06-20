@@ -38,12 +38,12 @@ public class VMService {
     ObjectMapper objectMapper;
 
     @SafeMode(value = false)  // Read operation
-    public List<VMResponse> listVMs(String ticket) {
+    public List<VMResponse> listVMs(@AuthTicket String ticket) {
         return listVMsWithFilters(null, null, null, null, ticket);
     }
     
     @SafeMode(value = false)  // Read operation
-    public List<VMResponse> listVMsWithFilters(List<String> tags, String client, String node, String status, String ticket) {
+    public List<VMResponse> listVMsWithFilters(List<String> tags, String client, String node, String status, @AuthTicket String ticket) {
         try {
             // Get all VMs from cluster
             JsonNode resources = proxmoxClient.getClusterResources(ticket, ticketManager.getCsrfToken(), "vm");
@@ -136,7 +136,7 @@ public class VMService {
     }
 
     @SafeMode(operation = SafeMode.Operation.WRITE)
-    public CreateVMResponse createVM(String node, CreateVMRequest request, String ticket) {
+    public CreateVMResponse createVM(String node, CreateVMRequest request, @AuthTicket String ticket) {
         // Create the VM
         CreateVMResponse response = proxmoxClient.createVM(node, ticket, ticketManager.getCsrfToken(), request);
         
@@ -166,60 +166,60 @@ public class VMService {
         return response;
     }
 
-    public ImportImageResponse importImage(String node, String storage, ImportImageRequest request, String ticket) {
+    public ImportImageResponse importImage(String node, String storage, ImportImageRequest request, @AuthTicket String ticket) {
         return proxmoxClient.importCloudImage(node, storage, ticket, request);
     }
 
     @SafeMode(value = false)  // Read operation
-    public VMStatusResponse getVMStatus(String node, int vmid, String ticket) {
+    public VMStatusResponse getVMStatus(String node, int vmid, @AuthTicket String ticket) {
         log.debug("Getting detailed status for VM {} on node {}", vmid, node);
         return proxmoxClient.getVMStatus(node, vmid, ticket);
     }
 
     @SafeMode(operation = SafeMode.Operation.WRITE)
-    public void startVM(String node, int vmid, String ticket) {
+    public void startVM(String node, int vmid, @AuthTicket String ticket) {
         log.info("Starting VM {} on node {}", vmid, node);
         proxmoxClient.startVM(node, vmid, ticket, ticketManager.getCsrfToken());
     }
 
     @SafeMode(operation = SafeMode.Operation.WRITE)
-    public void stopVM(String node, int vmid, String ticket) {
+    public void stopVM(String node, int vmid, @AuthTicket String ticket) {
         log.info("Stopping VM {} on node {}", vmid, node);
         proxmoxClient.stopVM(node, vmid, ticket, ticketManager.getCsrfToken());
     }
 
     @SafeMode(operation = SafeMode.Operation.DELETE)
-    public void deleteVM(String node, int vmid, String ticket) {
+    public void deleteVM(String node, int vmid, @AuthTicket String ticket) {
         log.info("Deleting VM {} on node {}", vmid, node);
         proxmoxClient.deleteVM(node, vmid, ticket, ticketManager.getCsrfToken());
     }
     
     @SafeMode(operation = SafeMode.Operation.WRITE)
-    public void rebootVM(String node, int vmid, String ticket) {
+    public void rebootVM(String node, int vmid, @AuthTicket String ticket) {
         log.info("Rebooting VM {} on node {}", vmid, node);
         proxmoxClient.rebootVM(node, vmid, ticket, ticketManager.getCsrfToken());
     }
     
     @SafeMode(operation = SafeMode.Operation.WRITE)
-    public void suspendVM(String node, int vmid, String ticket) {
+    public void suspendVM(String node, int vmid, @AuthTicket String ticket) {
         log.info("Suspending VM {} on node {}", vmid, node);
         proxmoxClient.suspendVM(node, vmid, ticket, ticketManager.getCsrfToken());
     }
     
     @SafeMode(operation = SafeMode.Operation.WRITE)
-    public void resumeVM(String node, int vmid, String ticket) {
+    public void resumeVM(String node, int vmid, @AuthTicket String ticket) {
         log.info("Resuming VM {} on node {}", vmid, node);
         proxmoxClient.resumeVM(node, vmid, ticket, ticketManager.getCsrfToken());
     }
     
     @SafeMode(operation = SafeMode.Operation.WRITE)
-    public void shutdownVM(String node, int vmid, String ticket) {
+    public void shutdownVM(String node, int vmid, @AuthTicket String ticket) {
         log.info("Shutting down VM {} on node {}", vmid, node);
         proxmoxClient.shutdownVM(node, vmid, ticket, ticketManager.getCsrfToken());
     }
     
     @SafeMode(value = false)  // Read operation
-    public Map<String, Object> getVMConfig(String node, int vmId, String ticket) {
+    public Map<String, Object> getVMConfig(String node, int vmId, @AuthTicket String ticket) {
         log.debug("Getting VM config for VM {} on node '{}'", vmId, node);
         VMConfigResponse response = proxmoxClient.getVMConfig(node, vmId, ticket);
         return response.getData() != null ? response.getData() : new HashMap<>();

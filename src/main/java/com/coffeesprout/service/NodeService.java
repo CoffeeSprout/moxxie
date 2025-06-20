@@ -27,22 +27,22 @@ public class NodeService {
     @RestClient
     ProxmoxClient proxmoxClient;
 
-    public List<Node> listNodes(String ticket) {
+    public List<Node> listNodes(@AuthTicket String ticket) {
         NodesResponse response = proxmoxClient.getNodes(ticket);
         return response.getData();
     }
 
-    public NodeStatus getNodeStatus(String nodeName, String ticket) {
+    public NodeStatus getNodeStatus(String nodeName, @AuthTicket String ticket) {
         NodeStatusResponse response = proxmoxClient.getNodeStatus(nodeName, ticket);
         return response.getData();
     }
 
-    public List<StoragePool> getNodeStorage(String nodeName, String ticket) {
+    public List<StoragePool> getNodeStorage(String nodeName, @AuthTicket String ticket) {
         StorageResponse response = proxmoxClient.getNodeStorage(nodeName, ticket);
         return response.getData();
     }
 
-    public List<VM> getNodeVMs(String nodeName, String ticket) {
+    public List<VM> getNodeVMs(String nodeName, @AuthTicket String ticket) {
         VMsResponse response = proxmoxClient.getNodeVMs(nodeName, ticket);
         return response.getData();
     }

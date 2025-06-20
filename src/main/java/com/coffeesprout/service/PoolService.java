@@ -27,7 +27,7 @@ public class PoolService {
     ProxmoxClient proxmoxClient;
     
     @SafeMode(value = false)  // Read operation
-    public List<PoolResourceSummary> getPoolResourceSummaries(String ticket) {
+    public List<PoolResourceSummary> getPoolResourceSummaries(@AuthTicket String ticket) {
         try {
             // Get all pools from Proxmox
             PoolsResponse poolsResponse = proxmoxClient.listPools(ticket);
@@ -75,7 +75,7 @@ public class PoolService {
     }
     
     @SafeMode(value = false)  // Read operation
-    public PoolResourceSummary getPoolResourceSummary(String poolName, String ticket) {
+    public PoolResourceSummary getPoolResourceSummary(String poolName, @AuthTicket String ticket) {
         try {
             // Get pool details from Proxmox
             PoolDetailResponse poolDetail = proxmoxClient.getPool(poolName, ticket);

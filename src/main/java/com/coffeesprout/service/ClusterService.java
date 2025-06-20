@@ -21,7 +21,7 @@ public class ClusterService {
     @RestClient
     ProxmoxClient proxmoxClient;
 
-    public ClusterDiscoveryResponse discoverCluster(String ticket) {
+    public ClusterDiscoveryResponse discoverCluster(@AuthTicket String ticket) {
         // Note: ticket parameter will be automatically injected by AuthenticationInterceptor
         NodesResponse nodesResponse = proxmoxClient.getNodes(ticket);
         List<ClusterDiscoveryResponse.NodeInfo> nodeInfos = new ArrayList<>();

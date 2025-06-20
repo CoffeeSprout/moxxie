@@ -34,7 +34,7 @@ public class BackupJobService {
     /**
      * List all backup jobs
      */
-    public List<BackupJobResponse> listBackupJobs(String ticket) {
+    public List<BackupJobResponse> listBackupJobs(@AuthTicket String ticket) {
         log.debug("Listing all backup jobs");
         
         try {
@@ -57,7 +57,7 @@ public class BackupJobService {
     /**
      * Get specific backup job details
      */
-    public BackupJobResponse getBackupJob(String jobId, String ticket) {
+    public BackupJobResponse getBackupJob(String jobId, @AuthTicket String ticket) {
         log.debug("Getting backup job: {}", jobId);
         
         try {

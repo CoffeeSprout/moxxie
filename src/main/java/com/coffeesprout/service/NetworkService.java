@@ -31,7 +31,7 @@ public class NetworkService {
     /**
      * Get network interfaces for a specific node
      */
-    public List<NetworkInterface> getNodeNetworks(String nodeName, String ticket) {
+    public List<NetworkInterface> getNodeNetworks(String nodeName, @AuthTicket String ticket) {
         log.debug("Getting network interfaces for node: {}", nodeName);
         NetworkResponse response = proxmoxClient.getNodeNetworks(nodeName, ticket);
         return response.getData();
@@ -40,7 +40,7 @@ public class NetworkService {
     /**
      * Get all network interfaces across all nodes
      */
-    public List<NetworkInterface> getAllNetworks(String ticket) {
+    public List<NetworkInterface> getAllNetworks(@AuthTicket String ticket) {
         log.debug("Getting network interfaces for all nodes");
         
         // Get all nodes
