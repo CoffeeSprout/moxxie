@@ -140,6 +140,36 @@ Default Proxmox API endpoint is configured in `application.properties`:
 quarkus.rest-client.proxmox-api.url=https://10.0.0.10:8006/api2/json
 ```
 
+## Scheduler System
+
+Moxxie includes a flexible task scheduling system built on Quartz. For detailed information on implementing new scheduled tasks, see the [Scheduler Task Implementation Guide](./SCHEDULER_TASK_IMPLEMENTATION_GUIDE.md).
+
+### Quick Examples
+
+**Create a scheduled snapshot job:**
+```bash
+curl -X POST http://localhost:8080/api/v1/scheduler/jobs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "daily-snapshots",
+    "taskType": "snapshot_create",
+    "cronExpression": "0 0 2 * * ?",
+    "enabled": true,
+    "parameters": {
+      "snapshotNamePattern": "auto-{vm}-{date}",
+      "maxSnapshots": "7"
+    },
+    "vmSelectors": [
+      {"type": "TAG_EXPRESSION", "value": "env:prod AND NOT always-on"}
+    ]
+  }'
+```
+
+**Available task types:**
+- `snapshot_create` - Creates VM snapshots with optional rotation
+- `test_task` - Simple test task for verification
+- More tasks coming: backup creation, power scheduling, old snapshot cleanup
+
 ## Common Issues and Solutions
 
 ### Authentication Parameter Issues

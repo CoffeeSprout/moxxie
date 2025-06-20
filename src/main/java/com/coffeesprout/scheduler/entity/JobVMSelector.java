@@ -37,7 +37,7 @@ public class JobVMSelector extends PanacheEntity {
         
         public static SelectorType fromValue(String value) {
             for (SelectorType type : values()) {
-                if (type.value.equals(value)) {
+                if (type.value.equals(value) || type.name().equals(value)) {
                     return type;
                 }
             }

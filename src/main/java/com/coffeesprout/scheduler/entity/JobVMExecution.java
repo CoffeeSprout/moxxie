@@ -35,7 +35,7 @@ public class JobVMExecution extends PanacheEntity {
     public String errorMessage;
     
     @Column(name = "result_data", columnDefinition = "JSONB")
-    @Convert(converter = JsonMapConverter.class)
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     public Map<String, Object> resultData; // Task-specific results
     
     public enum Status {

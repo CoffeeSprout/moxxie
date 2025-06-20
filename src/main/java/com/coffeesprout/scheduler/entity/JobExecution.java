@@ -48,7 +48,7 @@ public class JobExecution extends PanacheEntity {
     public int failedVMs = 0;
     
     @Column(name = "execution_details", columnDefinition = "JSONB")
-    @Convert(converter = JsonMapConverter.class)
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     public Map<String, Object> executionDetails;
     
     @OneToMany(mappedBy = "execution", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)

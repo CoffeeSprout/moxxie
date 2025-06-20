@@ -54,6 +54,7 @@ public class MoxxieScheduledJob implements Job {
      * Helper class to handle transactional job execution
      */
     @ApplicationScoped
+    @io.quarkus.arc.Unremovable
     public static class JobExecutor {
         
         private static final Logger log = LoggerFactory.getLogger(JobExecutor.class);

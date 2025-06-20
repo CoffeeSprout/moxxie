@@ -277,6 +277,8 @@ public class SchedulerResource {
             }
             
             // Update parameters
+            // Delete existing parameters first
+            JobParameter.delete("job.id = ?1", id);
             job.parameters.clear();
             if (request.parameters() != null) {
                 for (Map.Entry<String, String> entry : request.parameters().entrySet()) {
