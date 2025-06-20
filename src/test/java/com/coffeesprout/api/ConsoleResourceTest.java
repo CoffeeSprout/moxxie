@@ -3,7 +3,7 @@ package com.coffeesprout.api;
 import com.coffeesprout.client.*;
 import com.coffeesprout.service.ConsoleService;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.mockito.InjectMock;
+import io.quarkus.test.InjectMock;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.BeforeEach;

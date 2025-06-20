@@ -46,7 +46,7 @@ public class SDNResource {
     @APIResponse(responseCode = "500", description = "Error listing zones")
     public Response listZones() {
         try {
-            NetworkZonesResponse zones = sdnService.listZones();
+            NetworkZonesResponse zones = sdnService.listZones(null);
             
             List<SDNZoneResponseDTO> response = zones.getData().stream()
                 .map(zone -> new SDNZoneResponseDTO(
@@ -81,7 +81,7 @@ public class SDNResource {
         @QueryParam("client") String clientId
     ) {
         try {
-            VNetsResponse vnets = sdnService.listVNets(zone);
+            VNetsResponse vnets = sdnService.listVNets(zone, null);
             
             List<VNetResponseDTO> response = vnets.getData().stream()
                 .filter(vnet -> clientId == null || 
@@ -128,7 +128,7 @@ public class SDNResource {
                     .build();
             }
             
-            VNet vnet = sdnService.createVNetWithVlan(request.clientId(), request.project(), request.vlanTag());
+            VNet vnet = sdnService.createVNetWithVlan(request.clientId(), request.project(), request.vlanTag(), null);
             
             VNetResponseDTO response = new VNetResponseDTO(
                 vnet.getVnet(),
@@ -164,7 +164,7 @@ public class SDNResource {
         @QueryParam("force") boolean force
     ) {
         try {
-            sdnService.deleteVNet(vnetId);
+            sdnService.deleteVNet(vnetId, null);
             return Response.noContent().build();
             
         } catch (Exception e) {
@@ -191,7 +191,7 @@ public class SDNResource {
     ) {
         try {
             // Get all VNets to build VLAN assignment map
-            VNetsResponse vnets = sdnService.listVNets(null);
+            VNetsResponse vnets = sdnService.listVNets(null, null);
             
             // Build a map of VLAN to VNet assignments
             Map<Integer, List<VNet>> vlanToVnets = new HashMap<>();
@@ -259,7 +259,7 @@ public class SDNResource {
             Integer vlanTag = sdnService.getOrAllocateVlan(clientId);
             
             // Get VNets for this client
-            VNetsResponse vnets = sdnService.listVNets(null);
+            VNetsResponse vnets = sdnService.listVNets(null, null);
             List<String> clientVnetIds = vnets.getData().stream()
                 .filter(vnet -> clientId.equals(vnet.getAlias()))
                 .map(VNet::getVnet)
@@ -290,7 +290,7 @@ public class SDNResource {
     @SafeMode(operation = SafeMode.Operation.WRITE)
     public Response applyConfiguration() {
         try {
-            sdnService.applySDNConfiguration();
+            sdnService.applySDNConfiguration(null);
             return Response.ok()
                 .entity(new MessageResponse("SDN configuration applied successfully"))
                 .build();

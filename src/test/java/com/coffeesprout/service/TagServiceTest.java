@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.mockito.InjectMock;
+import io.quarkus.test.InjectMock;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,7 +69,7 @@ class TagServiceTest {
             .thenReturn(configResponse);
         
         // Test
-        Set<String> tags = tagService.getVMTags(101);
+        Set<String> tags = tagService.getVMTags(101, null);
         
         assertEquals(3, tags.size());
         assertTrue(tags.contains("moxxie"));
@@ -86,7 +86,7 @@ class TagServiceTest {
         when(proxmoxClient.getClusterResources(anyString(), anyString(), eq("vm")))
             .thenReturn(clusterResponse);
         
-        Set<String> tags = tagService.getVMTags(999);
+        Set<String> tags = tagService.getVMTags(999, null);
         assertTrue(tags.isEmpty());
     }
     
@@ -116,7 +116,7 @@ class TagServiceTest {
             .thenReturn(configResponse);
         
         // Test adding tag
-        tagService.addTag(101, "env:prod");
+        tagService.addTag(101, "env:prod", null);
         
         // Verify update was called with correct tags
         ArgumentCaptor<String> formDataCaptor = ArgumentCaptor.forClass(String.class);
@@ -155,7 +155,7 @@ class TagServiceTest {
             .thenReturn(configResponse);
         
         // Test removing tag
-        tagService.removeTag(101, "env:prod");
+        tagService.removeTag(101, "env:prod", null);
         
         // Verify update was called with correct tags
         ArgumentCaptor<String> formDataCaptor = ArgumentCaptor.forClass(String.class);
@@ -193,7 +193,7 @@ class TagServiceTest {
         when(proxmoxClient.getClusterResources(anyString(), anyString(), eq("vm")))
             .thenReturn(clusterResponse);
         
-        Set<String> allTags = tagService.getAllUniqueTags();
+        Set<String> allTags = tagService.getAllUniqueTags(null);
         
         assertEquals(5, allTags.size());
         assertTrue(allTags.contains("moxxie"));
@@ -228,13 +228,13 @@ class TagServiceTest {
             .thenReturn(clusterResponse);
         
         // Test finding VMs with client:nixz tag
-        List<Integer> nixzVMs = tagService.getVMsByTag("client:nixz");
+        List<Integer> nixzVMs = tagService.getVMsByTag("client:nixz", null);
         assertEquals(2, nixzVMs.size());
         assertTrue(nixzVMs.contains(101));
         assertTrue(nixzVMs.contains(103));
         
         // Test finding VMs with env:prod tag
-        List<Integer> prodVMs = tagService.getVMsByTag("env:prod");
+        List<Integer> prodVMs = tagService.getVMsByTag("env:prod", null);
         assertEquals(1, prodVMs.size());
         assertTrue(prodVMs.contains(102));
     }
@@ -248,7 +248,7 @@ class TagServiceTest {
         List<Integer> vmIds = List.of(101, 102, 999); // 999 doesn't exist
         Set<String> tagsToAdd = Set.of("env:test", "bulk-tag");
         
-        Map<Integer, String> results = tagService.bulkAddTags(vmIds, tagsToAdd);
+        Map<Integer, String> results = tagService.bulkAddTags(vmIds, tagsToAdd, null);
         
         assertEquals("success", results.get(101));
         assertEquals("success", results.get(102));
@@ -268,7 +268,7 @@ class TagServiceTest {
         List<Integer> vmIds = List.of(101, 102);
         Set<String> tagsToRemove = Set.of("moxxie");
         
-        Map<Integer, String> results = tagService.bulkRemoveTags(vmIds, tagsToRemove);
+        Map<Integer, String> results = tagService.bulkRemoveTags(vmIds, tagsToRemove, null);
         
         assertEquals("success", results.get(101));
         assertEquals("success", results.get(102));
@@ -303,13 +303,13 @@ class TagServiceTest {
             .thenReturn(clusterResponse);
         
         // Test pattern matching
-        List<Integer> nixzVMs = tagService.findVMsByNamePattern("nixz-*");
+        List<Integer> nixzVMs = tagService.findVMsByNamePattern("nixz-*", null);
         assertEquals(2, nixzVMs.size());
         assertTrue(nixzVMs.contains(101));
         assertTrue(nixzVMs.contains(102));
         
         // Test suffix pattern
-        List<Integer> webVMs = tagService.findVMsByNamePattern("*-web-*");
+        List<Integer> webVMs = tagService.findVMsByNamePattern("*-web-*", null);
         assertEquals(2, webVMs.size());
         assertTrue(webVMs.contains(101));
         assertTrue(webVMs.contains(103));

@@ -78,7 +78,7 @@ public class SafeModeInterceptor {
     
     private SafetyDecision evaluateSafety(int vmId, InvocationContext context) {
         // Get VM tags
-        Set<String> tags = tagService.getVMTags(vmId);
+        Set<String> tags = tagService.getVMTags(vmId, null);
         boolean isMoxxieManaged = tags.contains(safetyConfig.tagName());
         
         // Check for manual override

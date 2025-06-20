@@ -3,7 +3,7 @@ package com.coffeesprout.api.filter;
 import com.coffeesprout.model.LocationInfo;
 import com.coffeesprout.service.LocationService;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.mockito.InjectMock;
+import io.quarkus.test.InjectMock;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;

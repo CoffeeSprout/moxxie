@@ -69,7 +69,7 @@ class VMResourceSafeModeTest {
     void testDeleteBlockedInStrictMode() {
         // Given
         when(vmService.listVMsWithFilters(null, null, null, null, null)).thenReturn(List.of(testVM));
-        when(tagService.getVMTags(100)).thenReturn(Set.of("production", "critical"));
+        when(tagService.getVMTags(eq(100), any())).thenReturn(Set.of("production", "critical"));
 
         // When & Then
         given()
@@ -91,7 +91,7 @@ class VMResourceSafeModeTest {
     void testDeleteAllowedForMoxxieVMs() throws Exception {
         // Given
         when(vmService.listVMsWithFilters(null, null, null, null, null)).thenReturn(List.of(testVM));
-        when(tagService.getVMTags(100)).thenReturn(Set.of("moxxie", "test"));
+        when(tagService.getVMTags(eq(100), any())).thenReturn(Set.of("moxxie", "test"));
         doNothing().when(vmService).deleteVM("node1", 100, null);
 
         // When & Then
@@ -111,7 +111,7 @@ class VMResourceSafeModeTest {
     void testDeleteWithForceOverride() throws Exception {
         // Given
         when(vmService.listVMsWithFilters(null, null, null, null, null)).thenReturn(List.of(testVM));
-        when(tagService.getVMTags(100)).thenReturn(Set.of("production"));
+        when(tagService.getVMTags(eq(100), any())).thenReturn(Set.of("production"));
         doNothing().when(vmService).deleteVM("node1", 100, null);
 
         // When & Then
@@ -134,7 +134,7 @@ class VMResourceSafeModeTest {
         // Given
         when(safetyConfig.mode()).thenReturn(SafetyConfig.Mode.PERMISSIVE);
         when(vmService.listVMsWithFilters(null, null, null, null, null)).thenReturn(List.of(testVM));
-        when(tagService.getVMTags(100)).thenReturn(Set.of("production"));
+        when(tagService.getVMTags(eq(100), any())).thenReturn(Set.of("production"));
         
         // When & Then - should block destructive operation
         given()
@@ -167,7 +167,7 @@ class VMResourceSafeModeTest {
             testVM.pool()
         );
         when(vmService.listVMsWithFilters(null, null, null, null, null)).thenReturn(List.of(stoppedVM));
-        when(tagService.getVMTags(100)).thenReturn(Set.of("production"));
+        when(tagService.getVMTags(eq(100), any())).thenReturn(Set.of("production"));
         doNothing().when(vmService).startVM("node1", 100, null);
 
         // When & Then - should allow non-destructive operation
@@ -187,7 +187,7 @@ class VMResourceSafeModeTest {
         // Given
         when(safetyConfig.mode()).thenReturn(SafetyConfig.Mode.AUDIT);
         when(vmService.listVMsWithFilters(null, null, null, null, null)).thenReturn(List.of(testVM));
-        when(tagService.getVMTags(100)).thenReturn(Set.of("production"));
+        when(tagService.getVMTags(eq(100), any())).thenReturn(Set.of("production"));
         doNothing().when(vmService).deleteVM("node1", 100, null);
 
         // When & Then
@@ -207,7 +207,7 @@ class VMResourceSafeModeTest {
     void testReadOperationsAlwaysAllowed() {
         // Given
         when(vmService.listVMsWithFilters(null, null, null, null, null)).thenReturn(List.of(testVM));
-        when(tagService.getVMTags(100)).thenReturn(Set.of("production"));
+        when(tagService.getVMTags(eq(100), any())).thenReturn(Set.of("production"));
 
         // When & Then
         given()
@@ -220,7 +220,7 @@ class VMResourceSafeModeTest {
             .body("name", is("test-vm"));
         
         // Should not interact with tag service for read operations
-        verify(tagService, never()).getVMTags(anyInt());
+        verify(tagService, never()).getVMTags(anyInt(), any());
     }
 
     @Test
@@ -239,7 +239,7 @@ class VMResourceSafeModeTest {
         var response = new com.coffeesprout.client.CreateVMResponse();
         response.setStatus("UPID:node1:12345");
         when(vmService.createVM(eq("node1"), any(), any())).thenReturn(response);
-        doNothing().when(tagService).addTag(anyInt(), eq("moxxie"));
+        doNothing().when(tagService).addTag(anyInt(), eq("moxxie"), any());
 
         // When & Then
         given()
@@ -251,14 +251,14 @@ class VMResourceSafeModeTest {
             .statusCode(201)
             .header("Location", containsString("/api/v1/vms/"));
         
-        verify(tagService).addTag(anyInt(), eq("moxxie"));
+        verify(tagService).addTag(anyInt(), eq("moxxie"), any());
     }
 
     @Test
     @DisplayName("Tag operations should respect safe mode")
     void testTagOperationsRespectSafeMode() {
         // Given
-        when(tagService.getVMTags(100)).thenReturn(Set.of("production"));
+        when(tagService.getVMTags(eq(100), any())).thenReturn(Set.of("production"));
         
         var tagRequest = """
             {
@@ -276,15 +276,15 @@ class VMResourceSafeModeTest {
             .statusCode(403)
             .body("error", is("SAFE_MODE_VIOLATION"));
         
-        verify(tagService, never()).addTag(100, "new-tag");
+        verify(tagService, never()).addTag(eq(100), eq("new-tag"), any());
     }
 
     @Test
     @DisplayName("Tag operations with force flag should override safe mode")
     void testTagOperationsWithForce() throws Exception {
         // Given
-        when(tagService.getVMTags(100)).thenReturn(Set.of("production"));
-        doNothing().when(tagService).addTag(100, "new-tag");
+        when(tagService.getVMTags(eq(100), any())).thenReturn(Set.of("production"));
+        doNothing().when(tagService).addTag(eq(100), eq("new-tag"), any());
         
         var tagRequest = """
             {
@@ -302,7 +302,7 @@ class VMResourceSafeModeTest {
         .then()
             .statusCode(200);
         
-        verify(tagService).addTag(100, "new-tag");
+        verify(tagService).addTag(eq(100), eq("new-tag"), any());
     }
 
     @Test
@@ -322,7 +322,7 @@ class VMResourceSafeModeTest {
             .statusCode(204);
         
         verify(vmService).deleteVM("node1", 100, null);
-        verify(tagService, never()).getVMTags(anyInt());
+        verify(tagService, never()).getVMTags(anyInt(), any());
     }
 
     @Test
@@ -331,7 +331,7 @@ class VMResourceSafeModeTest {
         // Given
         when(safetyConfig.allowManualOverride()).thenReturn(false);
         when(vmService.listVMsWithFilters(null, null, null, null, null)).thenReturn(List.of(testVM));
-        when(tagService.getVMTags(100)).thenReturn(Set.of("production"));
+        when(tagService.getVMTags(eq(100), any())).thenReturn(Set.of("production"));
 
         // When & Then
         given()

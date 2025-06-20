@@ -17,6 +17,7 @@ import java.util.regex.Pattern;
 import com.fasterxml.jackson.databind.JsonNode;
 
 @ApplicationScoped
+@AutoAuthenticate
 public class TagService {
     
     private static final Logger LOG = Logger.getLogger(TagService.class);
@@ -28,9 +29,9 @@ public class TagService {
     @Inject
     TicketManager ticketManager;
     
-    public Set<String> getVMTags(int vmId) {
+    public Set<String> getVMTags(int vmId, @AuthTicket String ticket) {
         try {
-            String node = getNodeForVM(vmId);
+            String node = getNodeForVM(vmId, ticket);
             if (node == null) {
                 LOG.warn("Could not find node for VM " + vmId);
                 return new HashSet<>();
@@ -40,7 +41,7 @@ public class TagService {
             var config = proxmoxClient.getVMConfig(
                 node,
                 vmId,
-                ticketManager.getTicket(),
+                ticket,
                 ticketManager.getCsrfToken()
             );
             
@@ -52,15 +53,15 @@ public class TagService {
         }
     }
     
-    public void addTag(int vmId, String tag) {
+    public void addTag(int vmId, String tag, @AuthTicket String ticket) {
         try {
-            String node = getNodeForVM(vmId);
+            String node = getNodeForVM(vmId, ticket);
             if (node == null) {
                 LOG.warn("Could not find node for VM " + vmId);
                 return;
             }
             
-            Set<String> currentTags = getVMTags(vmId);
+            Set<String> currentTags = getVMTags(vmId, ticket);
             currentTags.add(tag);
             
             String tagsString = TagUtils.tagsToString(currentTags);
@@ -72,7 +73,7 @@ public class TagService {
             proxmoxClient.updateVMConfig(
                 node,
                 vmId,
-                ticketManager.getTicket(),
+                ticket,
                 ticketManager.getCsrfToken(),
                 "tags=" + encodedTags
             );
@@ -83,15 +84,15 @@ public class TagService {
         }
     }
     
-    public void removeTag(int vmId, String tag) {
+    public void removeTag(int vmId, String tag, @AuthTicket String ticket) {
         try {
-            String node = getNodeForVM(vmId);
+            String node = getNodeForVM(vmId, ticket);
             if (node == null) {
                 LOG.warn("Could not find node for VM " + vmId);
                 return;
             }
             
-            Set<String> currentTags = getVMTags(vmId);
+            Set<String> currentTags = getVMTags(vmId, ticket);
             currentTags.remove(tag);
             
             String tagsString = TagUtils.tagsToString(currentTags);
@@ -103,7 +104,7 @@ public class TagService {
             proxmoxClient.updateVMConfig(
                 node,
                 vmId,
-                ticketManager.getTicket(),
+                ticket,
                 ticketManager.getCsrfToken(),
                 "tags=" + encodedTags
             );
@@ -117,11 +118,11 @@ public class TagService {
     /**
      * Get all unique tags in use across all VMs
      */
-    public Set<String> getAllUniqueTags() {
+    public Set<String> getAllUniqueTags(@AuthTicket String ticket) {
         Set<String> allTags = new HashSet<>();
         try {
             var resources = proxmoxClient.getClusterResources(
-                ticketManager.getTicket(),
+                ticket,
                 ticketManager.getCsrfToken(),
                 "vm"
             );
@@ -144,11 +145,11 @@ public class TagService {
     /**
      * Get VMs by specific tag
      */
-    public List<Integer> getVMsByTag(String tag) {
+    public List<Integer> getVMsByTag(String tag, @AuthTicket String ticket) {
         List<Integer> vmIds = new ArrayList<>();
         try {
             var resources = proxmoxClient.getClusterResources(
-                ticketManager.getTicket(),
+                ticket,
                 ticketManager.getCsrfToken(),
                 "vm"
             );
@@ -174,15 +175,15 @@ public class TagService {
     /**
      * Bulk add tags to multiple VMs
      */
-    public Map<Integer, String> bulkAddTags(List<Integer> vmIds, Set<String> tagsToAdd) {
+    public Map<Integer, String> bulkAddTags(List<Integer> vmIds, Set<String> tagsToAdd, @AuthTicket String ticket) {
         Map<Integer, String> results = new HashMap<>();
         
         for (Integer vmId : vmIds) {
             try {
-                Set<String> currentTags = getVMTags(vmId);
+                Set<String> currentTags = getVMTags(vmId, ticket);
                 currentTags.addAll(tagsToAdd);
                 
-                String node = getNodeForVM(vmId);
+                String node = getNodeForVM(vmId, ticket);
                 if (node == null) {
                     results.put(vmId, "error: VM not found");
                     continue;
@@ -196,7 +197,7 @@ public class TagService {
                 proxmoxClient.updateVMConfig(
                     node,
                     vmId,
-                    ticketManager.getTicket(),
+                    ticket,
                     ticketManager.getCsrfToken(),
                     "tags=" + encodedTags
                 );
@@ -215,15 +216,15 @@ public class TagService {
     /**
      * Bulk remove tags from multiple VMs
      */
-    public Map<Integer, String> bulkRemoveTags(List<Integer> vmIds, Set<String> tagsToRemove) {
+    public Map<Integer, String> bulkRemoveTags(List<Integer> vmIds, Set<String> tagsToRemove, @AuthTicket String ticket) {
         Map<Integer, String> results = new HashMap<>();
         
         for (Integer vmId : vmIds) {
             try {
-                Set<String> currentTags = getVMTags(vmId);
+                Set<String> currentTags = getVMTags(vmId, ticket);
                 currentTags.removeAll(tagsToRemove);
                 
-                String node = getNodeForVM(vmId);
+                String node = getNodeForVM(vmId, ticket);
                 if (node == null) {
                     results.put(vmId, "error: VM not found");
                     continue;
@@ -237,7 +238,7 @@ public class TagService {
                 proxmoxClient.updateVMConfig(
                     node,
                     vmId,
-                    ticketManager.getTicket(),
+                    ticket,
                     ticketManager.getCsrfToken(),
                     "tags=" + encodedTags
                 );
@@ -256,13 +257,13 @@ public class TagService {
     /**
      * Find VMs by name pattern
      */
-    public List<Integer> findVMsByNamePattern(String pattern) {
+    public List<Integer> findVMsByNamePattern(String pattern, @AuthTicket String ticket) {
         List<Integer> vmIds = new ArrayList<>();
         Pattern namePattern = Pattern.compile(pattern.replace("*", ".*"));
         
         try {
             var resources = proxmoxClient.getClusterResources(
-                ticketManager.getTicket(),
+                ticket,
                 ticketManager.getCsrfToken(),
                 "vm"
             );
@@ -285,10 +286,10 @@ public class TagService {
         return vmIds;
     }
     
-    private String getNodeForVM(int vmId) {
+    private String getNodeForVM(int vmId, String ticket) {
         try {
             var resources = proxmoxClient.getClusterResources(
-                ticketManager.getTicket(),
+                ticket,
                 ticketManager.getCsrfToken(),
                 "vm"
             );

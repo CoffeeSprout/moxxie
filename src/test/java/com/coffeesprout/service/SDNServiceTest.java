@@ -3,7 +3,7 @@ package com.coffeesprout.service;
 import com.coffeesprout.client.*;
 import com.coffeesprout.config.MoxxieConfig;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.mockito.InjectMock;
+import io.quarkus.test.InjectMock;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.junit.jupiter.api.BeforeEach;
@@ -98,7 +98,7 @@ class SDNServiceTest {
             .thenReturn(applyResponse);
         
         // Test VNet creation
-        VNet vnet = sdnService.createClientVNet(clientId, projectName);
+        VNet vnet = sdnService.createClientVNet(clientId, projectName, null);
         
         assertNotNull(vnet);
         assertEquals("test-client-web-app", vnet.getVnet());
@@ -136,7 +136,7 @@ class SDNServiceTest {
         when(proxmoxClient.listSDNZones(anyString())).thenReturn(response);
         
         // Test listing zones
-        NetworkZonesResponse zones = sdnService.listZones();
+        NetworkZonesResponse zones = sdnService.listZones(null);
         
         assertNotNull(zones);
         assertEquals(2, zones.getData().size());
@@ -163,7 +163,7 @@ class SDNServiceTest {
         when(proxmoxClient.listVNets(anyString(), anyString())).thenReturn(response);
         
         // Test listing VNets
-        VNetsResponse vnets = sdnService.listVNets("localzone");
+        VNetsResponse vnets = sdnService.listVNets("localzone", null);
         
         assertNotNull(vnets);
         assertEquals(2, vnets.getData().size());
@@ -187,7 +187,7 @@ class SDNServiceTest {
             .thenReturn(applyResponse);
         
         // Test VNet deletion
-        assertDoesNotThrow(() -> sdnService.deleteVNet("test-vnet"));
+        assertDoesNotThrow(() -> sdnService.deleteVNet("test-vnet", null));
         
         // Verify API calls
         verify(proxmoxClient).deleteVNet(eq("test-vnet"), anyString(), anyString());
@@ -207,7 +207,7 @@ class SDNServiceTest {
         when(proxmoxClient.listVNets(anyString(), anyString())).thenReturn(response);
         
         // Test ensuring VNet exists
-        String vnetId = sdnService.ensureClientVNet("client1", "webapp");
+        String vnetId = sdnService.ensureClientVNet("client1", "webapp", null);
         
         assertEquals("client1-webapp", vnetId);
         
@@ -241,7 +241,7 @@ class SDNServiceTest {
             .thenReturn(applyResponse);
         
         // Test ensuring VNet exists (should create new)
-        String vnetId = sdnService.ensureClientVNet("client1", "webapp");
+        String vnetId = sdnService.ensureClientVNet("client1", "webapp", null);
         
         assertEquals("client1-webapp", vnetId);
         
@@ -264,7 +264,7 @@ class SDNServiceTest {
         
         SDNService.SDNException exception = assertThrows(
             SDNService.SDNException.class,
-            () -> sdnService.listZones()
+            () -> sdnService.listZones(null)
         );
         
         assertTrue(exception.getMessage().contains("Failed to list SDN zones"));

@@ -4,7 +4,7 @@ import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.client.*;
 import com.coffeesprout.config.MoxxieConfig;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.mockito.InjectMock;
+import io.quarkus.test.InjectMock;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.junit.jupiter.api.BeforeEach;

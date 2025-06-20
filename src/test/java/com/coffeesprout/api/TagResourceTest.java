@@ -4,7 +4,7 @@ import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.service.TagService;
 import com.coffeesprout.service.VMService;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.mockito.InjectMock;
+import io.quarkus.test.InjectMock;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,7 +36,7 @@ class TagResourceTest {
     @Test
     void testGetAllTags() {
         Set<String> mockTags = Set.of("moxxie", "client:nixz", "env:prod", "always-on");
-        when(tagService.getAllUniqueTags()).thenReturn(mockTags);
+        when(tagService.getAllUniqueTags(any())).thenReturn(mockTags);
         
         given()
             .when()
@@ -51,7 +51,7 @@ class TagResourceTest {
     @Test
     void testGetVMsByTag() {
         // Mock tag service returning VM IDs
-        when(tagService.getVMsByTag("client:nixz")).thenReturn(List.of(101, 102));
+        when(tagService.getVMsByTag(eq("client:nixz"), any())).thenReturn(List.of(101, 102));
         
         // Mock VM service returning full VM info
         List<VMResponse> mockVMs = List.of(
@@ -92,7 +92,7 @@ class TagResourceTest {
             103, "error: VM not found"
         );
         
-        when(tagService.bulkAddTags(eq(List.of(101, 102, 103)), any()))
+        when(tagService.bulkAddTags(eq(List.of(101, 102, 103)), any(), any()))
             .thenReturn(mockResults);
         
         String requestBody = """
@@ -118,14 +118,14 @@ class TagResourceTest {
     
     @Test
     void testBulkAddTagsByNamePattern() {
-        when(tagService.findVMsByNamePattern("nixz-*")).thenReturn(List.of(101, 102));
+        when(tagService.findVMsByNamePattern(eq("nixz-*"), any())).thenReturn(List.of(101, 102));
         
         Map<Integer, String> mockResults = Map.of(
             101, "success",
             102, "success"
         );
         
-        when(tagService.bulkAddTags(eq(List.of(101, 102)), any()))
+        when(tagService.bulkAddTags(eq(List.of(101, 102)), any(), any()))
             .thenReturn(mockResults);
         
         String requestBody = """
@@ -153,7 +153,7 @@ class TagResourceTest {
             102, "success"
         );
         
-        when(tagService.bulkRemoveTags(eq(List.of(101, 102)), any()))
+        when(tagService.bulkRemoveTags(eq(List.of(101, 102)), any(), any()))
             .thenReturn(mockResults);
         
         String requestBody = """
@@ -255,7 +255,7 @@ class TagResourceTest {
     
     @Test
     void testBulkOperationNoVmsMatchPattern() {
-        when(tagService.findVMsByNamePattern("nomatch-*")).thenReturn(List.of());
+        when(tagService.findVMsByNamePattern(eq("nomatch-*"), any())).thenReturn(List.of());
         
         String requestBody = """
             {

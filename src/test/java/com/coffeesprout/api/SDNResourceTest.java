@@ -7,7 +7,7 @@ import com.coffeesprout.client.VNet;
 import com.coffeesprout.client.VNetsResponse;
 import com.coffeesprout.service.SDNService;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.mockito.InjectMock;
+import io.quarkus.test.InjectMock;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,7 +50,7 @@ class SDNResourceTest {
         
         response.setData(Arrays.asList(zone1, zone2));
         
-        when(sdnService.listZones()).thenReturn(response);
+        when(sdnService.listZones(any())).thenReturn(response);
         
         // Test endpoint
         given()
@@ -85,7 +85,7 @@ class SDNResourceTest {
         
         response.setData(Arrays.asList(vnet1, vnet2));
         
-        when(sdnService.listVNets(anyString())).thenReturn(response);
+        when(sdnService.listVNets(anyString(), any())).thenReturn(response);
         
         // Test endpoint without filters
         given()
@@ -120,7 +120,7 @@ class SDNResourceTest {
         createdVNet.setTag(102);
         createdVNet.setAlias("client3");
         
-        when(sdnService.createClientVNet(anyString(), anyString())).thenReturn(createdVNet);
+        when(sdnService.createVNetWithVlan(anyString(), anyString(), anyInt(), any())).thenReturn(createdVNet);
         
         // Test endpoint
         CreateVNetRequestDTO request = new CreateVNetRequestDTO("client3", "webapp", "localzone", 102);
@@ -137,7 +137,7 @@ class SDNResourceTest {
             .body("vlanTag", equalTo(102))
             .body("alias", equalTo("client3"));
         
-        verify(sdnService).createClientVNet("client3", "webapp");
+        verify(sdnService).createVNetWithVlan(eq("client3"), eq("webapp"), eq(102), any());
     }
     
     @Test
@@ -164,7 +164,7 @@ class SDNResourceTest {
             .then()
             .statusCode(204);
         
-        verify(sdnService).deleteVNet("test-vnet");
+        verify(sdnService).deleteVNet(eq("test-vnet"), any());
     }
     
     @Test
@@ -183,7 +183,7 @@ class SDNResourceTest {
         
         vnetsResponse.setData(Arrays.asList(vnet1, vnet2));
         
-        when(sdnService.listVNets(null)).thenReturn(vnetsResponse);
+        when(sdnService.listVNets(isNull(), any())).thenReturn(vnetsResponse);
         
         // Test endpoint
         given()
@@ -207,7 +207,7 @@ class SDNResourceTest {
             .statusCode(200)
             .body("message", containsString("SDN configuration applied successfully"));
         
-        verify(sdnService).applySDNConfiguration();
+        verify(sdnService).applySDNConfiguration(any());
     }
     
     @Test
@@ -224,7 +224,7 @@ class SDNResourceTest {
     @Test
     void testErrorHandling() {
         // Setup mock to throw exception
-        when(sdnService.listZones()).thenThrow(new RuntimeException("Connection failed"));
+        when(sdnService.listZones(any())).thenThrow(new RuntimeException("Connection failed"));
         
         // Test error response
         given()

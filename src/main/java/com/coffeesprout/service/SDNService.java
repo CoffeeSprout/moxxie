@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 @ApplicationScoped
+@AutoAuthenticate
 public class SDNService {
     
     private static final Logger LOG = Logger.getLogger(SDNService.class);
@@ -42,7 +43,7 @@ public class SDNService {
     /**
      * Create or retrieve a VNet for a client/project combination
      */
-    public VNet createClientVNet(String clientId, String projectName) {
+    public VNet createClientVNet(String clientId, String projectName, @AuthTicket String ticket) {
         if (!sdnConfig.enabled()) {
             throw new IllegalStateException("SDN functionality is not enabled");
         }
@@ -56,13 +57,13 @@ public class SDNService {
         LOG.infof("Creating VNet %s for client %s with VLAN %d", vnetId, clientId, vlanTag);
         
         // Create in Proxmox SDN
-        return createVNet(vnetId, vlanTag, clientId);
+        return createVNet(vnetId, vlanTag, clientId, ticket);
     }
     
     /**
      * Create a VNet with explicit VLAN tag
      */
-    public VNet createVNetWithVlan(String clientId, String projectName, int vlanTag) {
+    public VNet createVNetWithVlan(String clientId, String projectName, int vlanTag, @AuthTicket String ticket) {
         if (!sdnConfig.enabled()) {
             throw new IllegalStateException("SDN functionality is not enabled");
         }
@@ -82,7 +83,7 @@ public class SDNService {
         clientVlanMap.put(clientId, vlanTag);
         
         // Create in Proxmox SDN
-        return createVNet(vnetId, vlanTag, clientId);
+        return createVNet(vnetId, vlanTag, clientId, ticket);
     }
     
     /**
@@ -142,14 +143,14 @@ public class SDNService {
     /**
      * Create a VNet in Proxmox SDN
      */
-    private VNet createVNet(String vnetId, int vlanTag, String alias) {
+    private VNet createVNet(String vnetId, int vlanTag, String alias, String ticket) {
         try {
             CreateVNetResponse response = proxmoxClient.createVNet(
                 vnetId,
                 sdnConfig.defaultZone(),
                 vlanTag,
                 alias,
-                ticketManager.getTicket(),
+                ticket,
                 ticketManager.getCsrfToken()
             );
             
@@ -157,7 +158,7 @@ public class SDNService {
             
             // Apply SDN configuration if enabled
             if (sdnConfig.applyOnChange()) {
-                applySDNConfiguration();
+                applySDNConfiguration(ticket);
             }
             
             // Create and return VNet object
@@ -178,10 +179,10 @@ public class SDNService {
     /**
      * Apply SDN configuration changes
      */
-    public void applySDNConfiguration() {
+    public void applySDNConfiguration(@AuthTicket String ticket) {
         try {
             ApplySDNResponse response = proxmoxClient.applySDNConfig(
-                ticketManager.getTicket(),
+                ticket,
                 ticketManager.getCsrfToken()
             );
             
@@ -196,9 +197,9 @@ public class SDNService {
     /**
      * List all SDN zones
      */
-    public NetworkZonesResponse listZones() {
+    public NetworkZonesResponse listZones(@AuthTicket String ticket) {
         try {
-            return proxmoxClient.listSDNZones(ticketManager.getTicket());
+            return proxmoxClient.listSDNZones(ticket);
         } catch (Exception e) {
             LOG.errorf(e, "Failed to list SDN zones");
             throw new SDNException("Failed to list SDN zones: " + e.getMessage(), e);
@@ -208,9 +209,9 @@ public class SDNService {
     /**
      * List all VNets
      */
-    public VNetsResponse listVNets(String zone) {
+    public VNetsResponse listVNets(String zone, @AuthTicket String ticket) {
         try {
-            return proxmoxClient.listVNets(zone, ticketManager.getTicket());
+            return proxmoxClient.listVNets(zone, ticket);
         } catch (Exception e) {
             LOG.errorf(e, "Failed to list VNets");
             throw new SDNException("Failed to list VNets: " + e.getMessage(), e);
@@ -220,11 +221,11 @@ public class SDNService {
     /**
      * Delete a VNet
      */
-    public void deleteVNet(String vnetId) {
+    public void deleteVNet(String vnetId, @AuthTicket String ticket) {
         try {
             DeleteResponse response = proxmoxClient.deleteVNet(
                 vnetId,
-                ticketManager.getTicket(),
+                ticket,
                 ticketManager.getCsrfToken()
             );
             
@@ -232,7 +233,7 @@ public class SDNService {
             
             // Apply SDN configuration if enabled
             if (sdnConfig.applyOnChange()) {
-                applySDNConfiguration();
+                applySDNConfiguration(ticket);
             }
             
         } catch (Exception e) {
@@ -244,7 +245,7 @@ public class SDNService {
     /**
      * Ensure a VNet exists for a client/project, creating if necessary
      */
-    public String ensureClientVNet(String clientId, String projectName) {
+    public String ensureClientVNet(String clientId, String projectName, @AuthTicket String ticket) {
         if (!sdnConfig.enabled()) {
             return null; // SDN not enabled, return null
         }
@@ -253,12 +254,12 @@ public class SDNService {
         
         // Check if VNet already exists
         try {
-            VNetsResponse vnets = listVNets(sdnConfig.defaultZone());
+            VNetsResponse vnets = listVNets(sdnConfig.defaultZone(), ticket);
             boolean exists = vnets.getData().stream()
                 .anyMatch(vnet -> vnet.getVnet().equals(vnetId));
             
             if (!exists && sdnConfig.autoCreateVnets()) {
-                createClientVNet(clientId, projectName);
+                createClientVNet(clientId, projectName, ticket);
             }
             
             return vnetId;
@@ -267,7 +268,7 @@ public class SDNService {
             LOG.warnf("Failed to check/create VNet for client %s: %s", clientId, e.getMessage());
             if (sdnConfig.autoCreateVnets()) {
                 // Try to create anyway
-                createClientVNet(clientId, projectName);
+                createClientVNet(clientId, projectName, ticket);
                 return vnetId;
             }
             return null;

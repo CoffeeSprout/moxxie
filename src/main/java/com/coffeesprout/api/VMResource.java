@@ -423,7 +423,7 @@ public class VMResource {
             long totalDiskSize = calculateTotalDiskSize(disks);
             
             // Get VM tags
-            List<String> tags = new ArrayList<>(tagService.getVMTags(vmId));
+            List<String> tags = new ArrayList<>(tagService.getVMTags(vmId, null));
             
             VMDetailResponse response = new VMDetailResponse(
                 vm.vmid(),
@@ -930,7 +930,7 @@ public class VMResource {
             @Parameter(description = "VM ID", required = true)
             @PathParam("vmId") int vmId) {
         try {
-            var tags = tagService.getVMTags(vmId);
+            var tags = tagService.getVMTags(vmId, null);
             return Response.ok(new TagsResponse(tags)).build();
         } catch (Exception e) {
             log.error("Failed to get tags for VM: " + vmId, e);
@@ -971,7 +971,7 @@ public class VMResource {
                         .build();
             }
             
-            tagService.addTag(vmId, request.tag());
+            tagService.addTag(vmId, request.tag(), null);
             return Response.ok().build();
         } catch (Exception e) {
             log.error("Failed to add tag to VM: " + vmId, e);
@@ -1002,7 +1002,7 @@ public class VMResource {
             @Parameter(description = "Force remove even if not managed by Moxxie")
             @QueryParam("force") boolean force) {
         try {
-            tagService.removeTag(vmId, tag);
+            tagService.removeTag(vmId, tag, null);
             return Response.noContent().build();
         } catch (Exception e) {
             log.error("Failed to remove tag from VM: " + vmId, e);

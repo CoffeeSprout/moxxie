@@ -154,7 +154,7 @@ public class VMService {
                 
                 // Apply tags to the VM
                 if (!autoTags.isEmpty()) {
-                    tagService.bulkAddTags(List.of(request.getVmid()), autoTags);
+                    tagService.bulkAddTags(List.of(request.getVmid()), autoTags, null);
                     log.info("Auto-tagged VM {} with tags: {}", request.getVmid(), autoTags);
                 }
             } catch (Exception e) {

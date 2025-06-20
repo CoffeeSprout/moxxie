@@ -60,7 +60,7 @@ public class TagResource {
     })
     public Response getAllTags() {
         try {
-            Set<String> tags = tagService.getAllUniqueTags();
+            Set<String> tags = tagService.getAllUniqueTags(null);
             return Response.ok(new TagsListResponse(tags, tags.size())).build();
         } catch (Exception e) {
             log.error("Failed to get all tags", e);
@@ -93,7 +93,7 @@ public class TagResource {
             }
             
             // Get VM IDs with this tag
-            List<Integer> vmIds = tagService.getVMsByTag(tag);
+            List<Integer> vmIds = tagService.getVMsByTag(tag, null);
             
             // Get full VM information
             List<VMResponse> allVMs = vmService.listVMs(null);
@@ -171,7 +171,7 @@ public class TagResource {
                 }
             } else if (namePattern != null && !namePattern.isEmpty()) {
                 // Find VMs by name pattern
-                targetVmIds = tagService.findVMsByNamePattern(namePattern);
+                targetVmIds = tagService.findVMsByNamePattern(namePattern, null);
                 if (targetVmIds.isEmpty()) {
                     return Response.ok(new BulkTagResponse(Map.of(), 
                         "No VMs found matching pattern: " + namePattern)).build();
@@ -183,9 +183,9 @@ public class TagResource {
             Set<String> tagSet = new HashSet<>(request.tags());
             
             if (request.action() == BulkTagRequest.Action.ADD) {
-                results = tagService.bulkAddTags(targetVmIds, tagSet);
+                results = tagService.bulkAddTags(targetVmIds, tagSet, null);
             } else {
-                results = tagService.bulkRemoveTags(targetVmIds, tagSet);
+                results = tagService.bulkRemoveTags(targetVmIds, tagSet, null);
             }
             
             // Count successes
