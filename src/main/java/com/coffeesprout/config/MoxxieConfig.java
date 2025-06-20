@@ -22,6 +22,11 @@ public interface MoxxieConfig {
     Proxmox proxmox();
     
     /**
+     * Resource management configuration
+     */
+    Resources resources();
+    
+    /**
      * API server configuration
      */
     Api api();
@@ -163,5 +168,54 @@ public interface MoxxieConfig {
          * Unique instance identifier (auto-generated if not provided)
          */
         Optional<String> instanceId();
+    }
+    
+    /**
+     * Resource management configuration
+     */
+    interface Resources {
+        
+        interface Cpu {
+            @WithDefault("4.0")
+            double overcommitRatio();
+            
+            @WithDefault("10")
+            double reservePercent();
+            
+            @WithDefault("0")
+            int maxCoresPerVm();
+        }
+        
+        interface Memory {
+            @WithDefault("1.0")
+            double overcommitRatio();
+            
+            @WithDefault("15")
+            double reservePercent();
+            
+            @WithDefault("false")
+            boolean includeSwap();
+            
+            @WithDefault("0")
+            int maxGbPerVm();
+        }
+        
+        interface Storage {
+            @WithDefault("1.5")
+            double overprovisionRatio();
+            
+            @WithDefault("10")
+            double reservePercent();
+            
+            @WithDefault("true")
+            boolean thinProvisioningEnabled();
+            
+            @WithDefault("80")
+            double warningThreshold();
+        }
+        
+        Cpu cpu();
+        Memory memory();
+        Storage storage();
     }
 }

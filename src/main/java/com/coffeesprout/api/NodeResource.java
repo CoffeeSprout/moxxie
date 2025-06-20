@@ -27,6 +27,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
 @Path("/api/v1/nodes")
@@ -166,37 +168,35 @@ public class NodeResource {
         try {
             // Get VMs on the node
             List<VM> vms = nodeService.getNodeVMs(nodeName, null);
-            List<NodeResourcesResponse.VMSummary> vmSummaries = vms.stream()
-                .map(vm -> new NodeResourcesResponse.VMSummary(
-                    vm.getVmid(),
-                    vm.getName() != null ? vm.getName() : "VM-" + vm.getVmid(),
-                    vm.getStatus(),
-                    vm.getCpus(),
-                    vm.getMaxmem(),
-                    vm.getMaxdisk()
-                ))
-                .collect(Collectors.toList());
             
             // Get storage on the node
             List<StoragePool> storage = nodeService.getNodeStorage(nodeName, null);
-            List<NodeResourcesResponse.StorageSummary> storageSummaries = storage.stream()
-                .map(pool -> new NodeResourcesResponse.StorageSummary(
-                    pool.getStorage(),
-                    pool.getType(),
-                    pool.getTotal(),
-                    pool.getUsed(),
-                    pool.getAvail(),
-                    pool.getActive() == 1
-                ))
-                .collect(Collectors.toList());
             
-            NodeResourcesResponse response = new NodeResourcesResponse(
-                nodeName,
-                vmSummaries,
-                storageSummaries,
-                vmSummaries.size(),
-                storageSummaries.size()
-            );
+            // Build response using simple structure
+            NodeResourcesResponse response = new NodeResourcesResponse();
+            response.setNodeId(nodeName);
+            response.setNodeName(nodeName);
+            response.setStatus("online");
+            
+            // Set VM info
+            Map<String, Integer> vmInfo = new HashMap<>();
+            vmInfo.put("total", vms.size());
+            vmInfo.put("running", (int) vms.stream()
+                .filter(vm -> "running".equals(vm.getStatus()))
+                .count());
+            response.setVmInfo(vmInfo);
+            
+            // Set storage info
+            long totalStorage = storage.stream().mapToLong(StoragePool::getTotal).sum();
+            long usedStorage = storage.stream().mapToLong(StoragePool::getUsed).sum();
+            long availStorage = storage.stream().mapToLong(StoragePool::getAvail).sum();
+            
+            Map<String, Object> storageInfo = new HashMap<>();
+            storageInfo.put("totalGB", totalStorage / (1024.0 * 1024 * 1024));
+            storageInfo.put("usedGB", usedStorage / (1024.0 * 1024 * 1024));
+            storageInfo.put("availableGB", availStorage / (1024.0 * 1024 * 1024));
+            storageInfo.put("poolCount", storage.size());
+            response.setStorage(storageInfo);
             
             return Response.ok(response).build();
         } catch (ClientWebApplicationException e) {

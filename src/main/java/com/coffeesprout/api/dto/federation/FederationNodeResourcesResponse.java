@@ -1,4 +1,4 @@
-package com.coffeesprout.api.dto;
+package com.coffeesprout.api.dto.federation;
 
 import java.time.Instant;
 import java.util.Map;
@@ -6,7 +6,7 @@ import java.util.Map;
 /**
  * Response DTO for node resources
  */
-public class NodeResourcesResponse {
+public class FederationNodeResourcesResponse {
     
     private String nodeId;
     private String nodeName;
