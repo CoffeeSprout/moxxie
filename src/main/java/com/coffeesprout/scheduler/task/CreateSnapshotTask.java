@@ -57,17 +57,12 @@ public class CreateSnapshotTask extends AbstractVMTask {
         // Generate snapshot name
         String snapshotName = generateSnapshotName(namePattern, vm.name() != null ? vm.name() : "vm-" + vm.vmid());
         
-        // Append TTL to description if specified
-        String finalDescription = description;
-        if (snapshotTTL != null && snapshotTTL > 0) {
-            finalDescription = description + " (TTL: " + snapshotTTL + "h)";
-        }
-        
         // Create snapshot request
         CreateSnapshotRequest request = new CreateSnapshotRequest(
             snapshotName,
-            finalDescription,
-            includeVmState
+            description,
+            includeVmState,
+            snapshotTTL
         );
         
         log.info("Creating snapshot '{}' for VM {} ({})", snapshotName, vm.vmid(), vm.name());
