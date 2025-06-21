@@ -356,7 +356,7 @@ public interface ProxmoxClient {
                                     @FormParam("storage") String storage,
                                     @FormParam("mode") String mode,
                                     @FormParam("compress") String compress,
-                                    @FormParam("notes") String notes,
+                                    @FormParam("notes-template") String notes,
                                     @FormParam("protected") Integer protectedFlag,
                                     @FormParam("remove") Integer removeOlder,
                                     @FormParam("mailnotification") String mailNotification,

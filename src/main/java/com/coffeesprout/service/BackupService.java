@@ -2,14 +2,18 @@ package com.coffeesprout.service;
 
 import com.coffeesprout.api.dto.BackupRequest;
 import com.coffeesprout.api.dto.BackupResponse;
+import com.coffeesprout.api.dto.BulkBackupRequest;
+import com.coffeesprout.api.dto.BulkBackupResponse;
 import com.coffeesprout.api.dto.RestoreRequest;
 import com.coffeesprout.api.dto.TaskResponse;
+import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.client.ProxmoxClient;
 import com.coffeesprout.client.StorageContent;
 import com.coffeesprout.client.StorageContentResponse;
 import com.coffeesprout.client.TaskStatusResponse;
 import com.coffeesprout.client.NodesResponse;
 import com.coffeesprout.client.StorageResponse;
+import com.coffeesprout.scheduler.service.VMSelectorService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
@@ -18,6 +22,10 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -44,6 +52,9 @@ public class BackupService {
     
     @Inject
     TicketManager ticketManager;
+    
+    @Inject
+    VMSelectorService vmSelectorService;
     
     /**
      * Create a backup for a VM
@@ -452,5 +463,214 @@ public class BackupService {
             }
         }
         return null;
+    }
+    
+    /**
+     * Perform bulk backup operations on multiple VMs
+     */
+    public BulkBackupResponse bulkCreateBackups(BulkBackupRequest request, @AuthTicket String ticket) {
+        log.info("Starting bulk backup operation with {} selectors to storage '{}'", 
+                request.vmSelectors().size(), request.storage());
+        
+        Instant startTime = Instant.now();
+        
+        // Get all VMs that match the selectors
+        List<VMResponse> targetVMs = new ArrayList<>();
+        for (var selector : request.vmSelectors()) {
+            try {
+                List<VMResponse> vms = vmSelectorService.selectVMs(selector, ticket);
+                targetVMs.addAll(vms);
+            } catch (Exception e) {
+                log.error("Failed to select VMs with selector {}: {}", selector, e.getMessage());
+                throw new RuntimeException("Failed to select VMs: " + e.getMessage(), e);
+            }
+        }
+        
+        // Remove duplicates
+        Map<Integer, VMResponse> uniqueVMs = new HashMap<>();
+        for (VMResponse vm : targetVMs) {
+            uniqueVMs.put(vm.vmid(), vm);
+        }
+        targetVMs = new ArrayList<>(uniqueVMs.values());
+        
+        log.info("Found {} unique VMs matching selectors", targetVMs.size());
+        
+        if (targetVMs.isEmpty()) {
+            Instant endTime = Instant.now();
+            return new BulkBackupResponse(
+                Map.of(),
+                "No VMs found matching the provided selectors",
+                0, 0, 0, 0,
+                request.dryRun(),
+                startTime,
+                endTime,
+                java.time.Duration.between(startTime, endTime).getSeconds()
+            );
+        }
+        
+        // Check if storage exists (do this once for all VMs)
+        if (!request.dryRun()) {
+            try {
+                // Verify storage exists by getting storage info
+                var nodes = nodeService.listNodes(ticket);
+                if (!nodes.isEmpty()) {
+                    // Just check on the first node - storage should be available cluster-wide
+                    StorageContentResponse storageCheck = proxmoxClient.listStorageContent(
+                        nodes.get(0).getName(),
+                        request.storage(),
+                        null,
+                        null,
+                        ticket
+                    );
+                    log.debug("Storage '{}' verified", request.storage());
+                }
+            } catch (Exception e) {
+                log.error("Storage verification failed for '{}': {}", request.storage(), e.getMessage());
+                throw new RuntimeException("Storage '" + request.storage() + "' not accessible: " + e.getMessage());
+            }
+        }
+        
+        // Prepare results map - use concurrent map for thread safety
+        Map<Integer, BulkBackupResponse.BackupResult> results = new ConcurrentHashMap<>();
+        
+        // If dry run, just show what would be done
+        if (request.dryRun()) {
+            for (VMResponse vm : targetVMs) {
+                // Check if VM is running and mode requires stop/suspend
+                if ("stop".equals(request.mode()) && "running".equals(vm.status())) {
+                    results.put(vm.vmid(), BulkBackupResponse.BackupResult.dryRun(
+                        vm.name() + " (would stop VM)", vm.node(), request.storage()
+                    ));
+                } else if ("suspend".equals(request.mode()) && "running".equals(vm.status())) {
+                    results.put(vm.vmid(), BulkBackupResponse.BackupResult.dryRun(
+                        vm.name() + " (would suspend VM)", vm.node(), request.storage()
+                    ));
+                } else {
+                    results.put(vm.vmid(), BulkBackupResponse.BackupResult.dryRun(
+                        vm.name(), vm.node(), request.storage()
+                    ));
+                }
+            }
+            
+            Instant endTime = Instant.now();
+            return new BulkBackupResponse(
+                results,
+                String.format("Dry run: Would create %d backups on storage '%s'", 
+                    targetVMs.size(), request.storage()),
+                targetVMs.size(),
+                targetVMs.size(),
+                0,
+                0,
+                true,
+                startTime,
+                endTime,
+                java.time.Duration.between(startTime, endTime).getSeconds()
+            );
+        }
+        
+        // Create executor for parallel backup operations
+        ExecutorService executor = Executors.newFixedThreadPool(request.maxParallel());
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        
+        // Get CSRF token once for all operations
+        String csrfToken = ticketManager.getCsrfToken();
+        
+        for (VMResponse vm : targetVMs) {
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                try {
+                    log.info("Creating backup for VM {} ({}) on node {} to storage '{}'", 
+                        vm.vmid(), vm.name(), vm.node(), request.storage());
+                    
+                    // Build notes with VM info
+                    String notes = request.notes();
+                    if (notes == null || notes.isBlank()) {
+                        notes = String.format("Bulk backup of VM %s (%d)", vm.name(), vm.vmid());
+                    }
+                    
+                    // Append TTL to notes if specified
+                    if (request.ttlDays() != null && request.ttlDays() > 0) {
+                        notes += String.format(" (TTL: %dd)", request.ttlDays());
+                    }
+                    
+                    // Debug log the notes
+                    log.debug("Backup notes for VM {}: {}", vm.vmid(), notes);
+                    
+                    // Create backup with notes (using notes-template parameter)
+                    TaskStatusResponse response = proxmoxClient.createBackup(
+                        vm.node(),
+                        String.valueOf(vm.vmid()),
+                        request.storage(),
+                        request.mode(),
+                        request.compress(),
+                        notes,  // Now using correct notes-template parameter
+                        null,  // protected flag - omit for now
+                        null,  // removeOlder - omit for now
+                        null,  // mailNotification - omit for now
+                        ticket,
+                        csrfToken
+                    );
+                    
+                    if (response.getData() == null) {
+                        throw new RuntimeException("No task ID returned from Proxmox");
+                    }
+                    
+                    results.put(vm.vmid(), BulkBackupResponse.BackupResult.success(
+                        response.getData(), vm.name(), vm.node(), request.storage()
+                    ));
+                    
+                    log.info("Backup task {} started for VM {} ({})", 
+                        response.getData(), vm.vmid(), vm.name());
+                    
+                } catch (Exception e) {
+                    log.error("Failed to create backup for VM {} ({}): {}", 
+                        vm.vmid(), vm.name(), e.getMessage());
+                    results.put(vm.vmid(), BulkBackupResponse.BackupResult.error(
+                        e.getMessage(), vm.name(), vm.node()
+                    ));
+                }
+            }, executor);
+            
+            futures.add(future);
+        }
+        
+        // Wait for all backup tasks to be submitted
+        try {
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get();
+        } catch (Exception e) {
+            log.error("Error waiting for bulk backup completion: {}", e.getMessage());
+        } finally {
+            executor.shutdown();
+        }
+        
+        // Count results
+        long successCount = results.values().stream()
+            .filter(r -> "success".equals(r.status()))
+            .count();
+        long failureCount = results.values().stream()
+            .filter(r -> "error".equals(r.status()))
+            .count();
+        long skippedCount = results.values().stream()
+            .filter(r -> "skipped".equals(r.status()))
+            .count();
+        
+        String summary = String.format("Started %d/%d backup tasks on storage '%s'",
+            successCount, targetVMs.size(), request.storage());
+        if (failureCount > 0) {
+            summary += String.format(" (%d failed)", failureCount);
+        }
+        
+        Instant endTime = Instant.now();
+        return new BulkBackupResponse(
+            results,
+            summary,
+            targetVMs.size(),
+            (int) successCount,
+            (int) failureCount,
+            (int) skippedCount,
+            false,
+            startTime,
+            endTime,
+            java.time.Duration.between(startTime, endTime).getSeconds()
+        );
     }
 }

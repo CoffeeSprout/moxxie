@@ -10,6 +10,7 @@ This document provides working examples of Moxxie's REST API endpoints. All exam
 - [Tag Management](#tag-management)
 - [Scheduler Management](#scheduler-management)
 - [Backup Operations](#backup-operations)
+- [Bulk Backup Operations](#bulk-backup-operations)
 
 ## VM Management
 
@@ -347,6 +348,104 @@ curl -X POST http://localhost:8080/api/v1/backups/cleanup \
     "tags": ["env:dev"]
   }' | jq .
 ```
+
+## Bulk Backup Operations
+
+### Create Backups by VM IDs
+```bash
+# Dry run first
+curl -X POST http://localhost:8080/api/v1/backups/bulk \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vmSelectors": [
+      {"type": "VM_IDS", "value": "8200,8201,8202"}
+    ],
+    "storage": "local",
+    "mode": "snapshot",
+    "compress": "zstd",
+    "notes": "Pre-maintenance backup",
+    "dryRun": true
+  }' | jq .
+
+# Actual backup creation
+curl -X POST http://localhost:8080/api/v1/backups/bulk \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vmSelectors": [
+      {"type": "VM_IDS", "value": "8200,8201,8202"}
+    ],
+    "storage": "local",
+    "mode": "snapshot",
+    "compress": "zstd",
+    "notes": "Pre-maintenance backup",
+    "maxParallel": 3,
+    "dryRun": false
+  }' | jq .
+```
+
+### Create Backups by Name Pattern
+```bash
+# Backup all worker nodes
+curl -X POST http://localhost:8080/api/v1/backups/bulk \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vmSelectors": [
+      {"type": "NAME_PATTERN", "value": "workshop-wk-*"}
+    ],
+    "storage": "local",
+    "mode": "snapshot",
+    "compress": "zstd",
+    "notes": "Worker nodes backup",
+    "maxParallel": 2
+  }' | jq .
+```
+
+### Create Backups by Tag Expression
+```bash
+# Backup all production VMs with 30-day TTL
+curl -X POST http://localhost:8080/api/v1/backups/bulk \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vmSelectors": [
+      {"type": "TAG_EXPRESSION", "value": "env:prod AND client:acme"}
+    ],
+    "storage": "local",
+    "mode": "snapshot",
+    "compress": "zstd",
+    "notes": "Production backup",
+    "ttlDays": 30,
+    "protectBackup": true,
+    "maxParallel": 5
+  }' | jq .
+```
+
+### Create Backups with Stop Mode
+```bash
+# Backup VMs that need to be stopped first
+curl -X POST http://localhost:8080/api/v1/backups/bulk \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vmSelectors": [
+      {"type": "TAG_EXPRESSION", "value": "backup:stop-required"}
+    ],
+    "storage": "local",
+    "mode": "stop",
+    "compress": "lzo",
+    "notes": "Consistent backup with VM stop",
+    "mailNotification": "failure"
+  }' | jq .
+```
+
+### Backup Options Reference
+- **Modes**: `snapshot` (default), `suspend`, `stop`
+- **Compression**: `zstd` (default), `gzip`, `lzo`, `0` (no compression)
+- **Options**:
+  - `ttlDays`: Auto-delete backup after N days (1-3653)
+  - `removeOlder`: Remove backups older than N days (0-365)
+  - `protectBackup`: Protect backup from deletion
+  - `mailNotification`: Send email on `always` or `failure`
+  - `maxParallel`: Concurrent backup operations (1-20, default: 3)
+  - `dryRun`: Preview without executing
 
 ## Common Patterns
 
