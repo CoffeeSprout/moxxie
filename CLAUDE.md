@@ -165,10 +165,70 @@ curl -X POST http://localhost:8080/api/v1/scheduler/jobs \
   }'
 ```
 
+**Create pre-update snapshots with TTL and cleanup:**
+```bash
+# Create snapshot with 24-hour TTL
+curl -X POST http://localhost:8080/api/v1/scheduler/jobs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "pre-update-snapshots",
+    "taskType": "snapshot_create",
+    "cronExpression": "0 0 0 1 1 ? 2099",  # Manual trigger only
+    "enabled": true,
+    "parameters": {
+      "snapshotNamePattern": "preupd-{date}-{time}",
+      "description": "Pre-update snapshot",
+      "snapshotTTL": "24"  # Auto-expire after 24 hours
+    },
+    "vmSelectors": [
+      {"type": "TAG_EXPRESSION", "value": "client:acme"}
+    ]
+  }'
+
+# Schedule cleanup job to run hourly
+curl -X POST http://localhost:8080/api/v1/scheduler/jobs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "cleanup-temp-snapshots",
+    "taskType": "snapshot_delete",
+    "cronExpression": "0 0 * * * ?",
+    "enabled": true,
+    "parameters": {
+      "ageThresholdHours": "24",
+      "namePattern": "preupd-*",
+      "checkDescription": "true",  # Check TTL in descriptions
+      "safeMode": "true",
+      "dryRun": "false"
+    },
+    "vmSelectors": [
+      {"type": "ALL", "value": "*"}
+    ]
+  }'
+```
+
 **Available task types:**
-- `snapshot_create` - Creates VM snapshots with optional rotation
+- `snapshot_create` - Creates VM snapshots with optional rotation and TTL
+- `snapshot_delete` - Deletes old snapshots based on age, pattern, or TTL
 - `test_task` - Simple test task for verification
-- More tasks coming: backup creation, power scheduling, old snapshot cleanup
+- More tasks coming: backup creation, power scheduling
+
+## Snapshot TTL Feature
+
+Snapshots can now be created with a Time-To-Live (TTL) value. This is useful for temporary snapshots that should be automatically deleted after a certain time.
+
+**Via REST API:**
+```bash
+# Create snapshot with 4-hour TTL
+curl -X POST http://localhost:8080/api/v1/vms/8200/snapshots \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "pre-update-20240621",
+    "description": "Before system updates",
+    "ttlHours": 4
+  }'
+```
+
+The TTL is appended to the description as "(TTL: 4h)" and can be parsed by the `snapshot_delete` scheduled task when `checkDescription` is enabled.
 
 ## Common Issues and Solutions
 

@@ -100,6 +100,15 @@ curl -X POST http://localhost:8080/api/v1/vms/101/stop
 curl -X POST http://localhost:8080/api/v1/vms/101/snapshots \
   -H "Content-Type: application/json" \
   -d '{"name": "backup-before-update"}'
+
+# Create snapshot with TTL (auto-delete after 4 hours)
+curl -X POST http://localhost:8080/api/v1/vms/101/snapshots \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "pre-update-snapshot",
+    "description": "Before system updates",
+    "ttlHours": 4
+  }'
 ```
 
 ### Tag Management

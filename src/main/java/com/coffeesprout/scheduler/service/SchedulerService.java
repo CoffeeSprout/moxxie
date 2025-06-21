@@ -144,7 +144,7 @@ public class SchedulerService {
         
         // Create job data for this execution
         JobDataMap dataMap = new JobDataMap();
-        dataMap.put("manualTrigger", true);
+        dataMap.put("manualTrigger", "true");
         dataMap.put("executionId", executionId);
         
         // Trigger the job

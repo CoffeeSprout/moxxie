@@ -4,6 +4,7 @@ import com.coffeesprout.api.dto.CreateSnapshotRequest;
 import com.coffeesprout.api.dto.SnapshotResponse;
 import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.service.SnapshotService;
+import io.quarkus.arc.Unremovable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.slf4j.Logger;
@@ -23,8 +24,10 @@ import java.util.Map;
  * - includeVmState: Whether to include VM state in snapshot (default: false)
  * - description: Description for the snapshot
  * - maxSnapshots: Maximum number of snapshots to keep per VM (optional, for rotation)
+ * - snapshotTTL: Time-to-live in hours (optional, adds TTL info to description)
  */
 @ApplicationScoped
+@Unremovable
 public class CreateSnapshotTask extends AbstractVMTask {
     
     private static final Logger log = LoggerFactory.getLogger(CreateSnapshotTask.class);
@@ -49,14 +52,21 @@ public class CreateSnapshotTask extends AbstractVMTask {
         boolean includeVmState = context.getBooleanParameter("includeVmState", false);
         String description = context.getParameter("description", "Scheduled snapshot");
         Integer maxSnapshots = context.getIntParameter("maxSnapshots", null);
+        Integer snapshotTTL = context.getIntParameter("snapshotTTL", null);
         
         // Generate snapshot name
         String snapshotName = generateSnapshotName(namePattern, vm.name() != null ? vm.name() : "vm-" + vm.vmid());
         
+        // Append TTL to description if specified
+        String finalDescription = description;
+        if (snapshotTTL != null && snapshotTTL > 0) {
+            finalDescription = description + " (TTL: " + snapshotTTL + "h)";
+        }
+        
         // Create snapshot request
         CreateSnapshotRequest request = new CreateSnapshotRequest(
             snapshotName,
-            description,
+            finalDescription,
             includeVmState
         );
         
@@ -67,7 +77,13 @@ public class CreateSnapshotTask extends AbstractVMTask {
         
         result.put("snapshotName", snapshotName);
         result.put("taskId", taskResponse.taskId());
-        result.put("message", String.format("Created snapshot '%s' (task: %s)", snapshotName, taskResponse.taskId()));
+        
+        String message = String.format("Created snapshot '%s' (task: %s)", snapshotName, taskResponse.taskId());
+        if (snapshotTTL != null && snapshotTTL > 0) {
+            message += String.format(" - TTL: %d hours", snapshotTTL);
+            result.put("ttlHours", snapshotTTL);
+        }
+        result.put("message", message);
         
         // Handle snapshot rotation if configured
         if (maxSnapshots != null && maxSnapshots > 0) {
@@ -96,6 +112,12 @@ public class CreateSnapshotTask extends AbstractVMTask {
         Integer maxSnapshots = context.getIntParameter("maxSnapshots", null);
         if (maxSnapshots != null && maxSnapshots < 1) {
             throw new IllegalArgumentException("maxSnapshots must be at least 1");
+        }
+        
+        // Validate snapshotTTL if provided
+        Integer snapshotTTL = context.getIntParameter("snapshotTTL", null);
+        if (snapshotTTL != null && snapshotTTL < 1) {
+            throw new IllegalArgumentException("snapshotTTL must be at least 1 hour");
         }
     }
     

@@ -88,12 +88,18 @@ public class SnapshotService {
             // Get CSRF token
             String csrfToken = ticketManager.getCsrfToken();
             
+            // Append TTL to description if specified
+            String description = request.description();
+            if (request.ttlHours() != null && request.ttlHours() > 0) {
+                description = (description != null ? description : "") + " (TTL: " + request.ttlHours() + "h)";
+            }
+            
             // Create snapshot
             TaskStatusResponse response = proxmoxClient.createSnapshot(
                     vm.node(),
                     vmId,
                     request.name(),
-                    request.description(),
+                    description,
                     request.includeVmState() ? 1 : 0,
                     ticket,
                     csrfToken

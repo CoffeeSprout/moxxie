@@ -250,7 +250,7 @@ CREATE TABLE job_vm_executions (
 INSERT INTO task_types (id, name, display_name, description, task_class) VALUES
 (1, 'test', 'Test Task', 'Simple test task for verification', 'com.coffeesprout.scheduler.task.TestTask'),
 (51, 'snapshot_create', 'Create Snapshot', 'Creates a snapshot of selected VMs', 'com.coffeesprout.scheduler.task.CreateSnapshotTask'),
-(101, 'snapshot_delete', 'Delete Old Snapshots', 'Deletes snapshots older than specified retention', 'com.coffeesprout.scheduler.tasks.DeleteOldSnapshotsTask'),
+(101, 'snapshot_delete', 'Delete Old Snapshots', 'Deletes snapshots older than specified retention', 'com.coffeesprout.scheduler.task.DeleteOldSnapshotsTask'),
 (151, 'snapshot_rotate', 'Rotate Snapshots', 'Maintains snapshot count based on rotation policy', 'com.coffeesprout.scheduler.tasks.RotateSnapshotsTask'),
 (201, 'backup_create', 'Create Backup', 'Creates a backup of selected VMs', 'com.coffeesprout.scheduler.tasks.CreateBackupTask'),
 (251, 'backup_rotate', 'Rotate Backups', 'Maintains backup count based on rotation policy', 'com.coffeesprout.scheduler.tasks.RotateBackupsTask'),

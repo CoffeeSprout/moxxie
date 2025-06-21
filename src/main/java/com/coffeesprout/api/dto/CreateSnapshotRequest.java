@@ -1,5 +1,7 @@
 package com.coffeesprout.api.dto;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -18,7 +20,13 @@ public record CreateSnapshotRequest(
     String description,
     
     @Schema(description = "Include VM RAM state in snapshot", defaultValue = "false")
-    Boolean includeVmState
+    Boolean includeVmState,
+    
+    @Schema(description = "Time-to-live in hours. If set, snapshot will be auto-deleted after this time", 
+            example = "24", minimum = "1", maximum = "8760")
+    @Min(value = 1, message = "TTL must be at least 1 hour")
+    @Max(value = 8760, message = "TTL must not exceed 8760 hours (1 year)")
+    Integer ttlHours
 ) {
     public CreateSnapshotRequest {
         // Default includeVmState to false if not provided
