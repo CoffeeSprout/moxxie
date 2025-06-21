@@ -6,6 +6,7 @@ This document provides working examples of Moxxie's REST API endpoints. All exam
 - [VM Management](#vm-management)
 - [Snapshot Management](#snapshot-management)
 - [Bulk Snapshot Operations](#bulk-snapshot-operations)
+- [Bulk Power Operations](#bulk-power-operations)
 - [Tag Management](#tag-management)
 - [Scheduler Management](#scheduler-management)
 - [Backup Operations](#backup-operations)
@@ -121,6 +122,75 @@ curl -X POST http://localhost:8080/api/v1/snapshots/bulk \
     "ttlHours": 72
   }' | jq .
 ```
+
+## Bulk Power Operations
+
+### Start Multiple VMs
+```bash
+# Start specific VMs
+curl -X POST http://localhost:8080/api/v1/vms/power/bulk \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vmSelectors": [
+      {"type": "VM_IDS", "value": "8200,8201,8202"}
+    ],
+    "operation": "START",
+    "skipIfAlreadyInState": true
+  }' | jq .
+```
+
+### Shutdown VMs by Pattern
+```bash
+# Gracefully shutdown all worker nodes
+curl -X POST http://localhost:8080/api/v1/vms/power/bulk \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vmSelectors": [
+      {"type": "NAME_PATTERN", "value": "workshop-wk-*"}
+    ],
+    "operation": "SHUTDOWN",
+    "timeoutSeconds": 300,
+    "maxParallel": 3
+  }' | jq .
+```
+
+### Force Stop VMs
+```bash
+# Force stop VMs (use with caution)
+curl -X POST http://localhost:8080/api/v1/vms/power/bulk \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vmSelectors": [
+      {"type": "TAG_EXPRESSION", "value": "env:dev AND NOT always-on"}
+    ],
+    "operation": "STOP",
+    "force": true,
+    "dryRun": true
+  }' | jq .
+```
+
+### Reboot VMs
+```bash
+# Reboot all VMs in maintenance window
+curl -X POST http://localhost:8080/api/v1/vms/power/bulk \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vmSelectors": [
+      {"type": "TAG_EXPRESSION", "value": "maint-ok"}
+    ],
+    "operation": "REBOOT",
+    "maxParallel": 5
+  }' | jq .
+```
+
+### Power Operations Reference
+- **Operations**: `START`, `STOP`, `SHUTDOWN`, `REBOOT`
+- **Options**:
+  - `skipIfAlreadyInState`: Skip VMs already in target state (default: true)
+  - `force`: Force operation for stop/reboot (default: false)
+  - `timeoutSeconds`: Timeout for graceful operations (30-3600, default: 300)
+  - `maxParallel`: Concurrent operations (1-20, default: 5)
+  - `dryRun`: Preview without executing (default: false)
 
 ## Tag Management
 
