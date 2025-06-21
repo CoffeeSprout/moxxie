@@ -532,5 +532,34 @@ public interface ProxmoxClient {
     @Produces(MediaType.APPLICATION_JSON)
     BackupJobDetailResponse getBackupJob(@PathParam("id") String id,
                                          @CookieParam("PVEAuthCookie") String ticket);
+    
+    // VM Migration
+    
+    // Check migration preconditions
+    @GET
+    @Path("/nodes/{node}/qemu/{vmid}/migrate")
+    @Produces(MediaType.APPLICATION_JSON)
+    MigrationPreconditionsResponse checkMigrationPreconditions(@PathParam("node") String node,
+                                                              @PathParam("vmid") int vmid,
+                                                              @QueryParam("target") String targetNode,
+                                                              @CookieParam("PVEAuthCookie") String ticket);
+    
+    // Execute VM migration
+    @POST
+    @Path("/nodes/{node}/qemu/{vmid}/migrate")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.APPLICATION_JSON)
+    TaskStatusResponse migrateVM(@PathParam("node") String node,
+                                 @PathParam("vmid") int vmid,
+                                 @FormParam("target") String targetNode,
+                                 @FormParam("online") Integer online,
+                                 @FormParam("with-local-disks") Integer withLocalDisks,
+                                 @FormParam("force") Integer force,
+                                 @FormParam("bwlimit") Integer bwlimit,
+                                 @FormParam("targetstorage") String targetStorage,
+                                 @FormParam("migration_type") String migrationType,
+                                 @FormParam("migration_network") String migrationNetwork,
+                                 @CookieParam("PVEAuthCookie") String ticket,
+                                 @HeaderParam("CSRFPreventionToken") String csrfToken);
 }
 

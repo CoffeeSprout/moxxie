@@ -11,6 +11,7 @@ This document provides working examples of Moxxie's REST API endpoints. All exam
 - [Scheduler Management](#scheduler-management)
 - [Backup Operations](#backup-operations)
 - [Bulk Backup Operations](#bulk-backup-operations)
+- [VM Migration](#vm-migration)
 
 ## VM Management
 
@@ -471,3 +472,72 @@ curl -X POST http://localhost:8080/api/v1/backups/bulk \
 
 ### TTL Format
 TTL is specified in hours (1-8760). When set, it's appended to descriptions as "(TTL: Xh)" and can be processed by the cleanup scheduler.
+
+## VM Migration
+
+### Migrate Single VM
+```bash
+# Simple migration - will use online migration if VM is running
+curl -X POST http://localhost:8080/api/v1/vms/8200/migrate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "targetNode": "hv2"
+  }' | jq .
+
+# Migration with offline fallback if online fails
+curl -X POST http://localhost:8080/api/v1/vms/8200/migrate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "targetNode": "hv2",
+    "allowOfflineMigration": true
+  }' | jq .
+
+# Migration with local disks and bandwidth limit
+curl -X POST http://localhost:8080/api/v1/vms/8200/migrate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "targetNode": "hv2",
+    "withLocalDisks": true,
+    "bwlimit": 51200,
+    "allowOfflineMigration": true
+  }' | jq .
+
+# Force migration with specific storage mapping
+curl -X POST http://localhost:8080/api/v1/vms/8200/migrate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "targetNode": "hv2",
+    "force": true,
+    "targetStorage": "local-lvm",
+    "withLocalDisks": true
+  }' | jq .
+```
+
+### Check Migration Preconditions
+```bash
+# Check if VM can be migrated to a specific node
+curl -X GET "http://localhost:8080/api/v1/vms/8200/migrate/check?target=hv2" | jq .
+```
+
+### Get Migration History
+```bash
+# Get all migrations for a specific VM
+curl -X GET http://localhost:8080/api/v1/vms/8200/migrate/history | jq .
+```
+
+### Migration Options Reference
+- **targetNode**: Target node name (required)
+- **allowOfflineMigration**: Allow offline migration if online fails (default: false)
+- **withLocalDisks**: Migrate with local disks (default: false)
+- **force**: Force migration of VMs with local devices (default: false)
+- **bwlimit**: Bandwidth limit in KiB/s
+- **targetStorage**: Storage mapping (single ID or mapping string)
+- **migrationType**: "secure" (default) or "insecure"
+- **migrationNetwork**: CIDR for migration network
+
+### Migration Behavior
+1. **Running VMs**: Attempts online migration by default
+2. **Stopped VMs**: Performs offline migration
+3. **Failed Online**: Returns error unless `allowOfflineMigration=true`
+4. **State Recovery**: Automatically restarts VMs that were running before migration
+5. **History Tracking**: All migrations are recorded in database for audit
