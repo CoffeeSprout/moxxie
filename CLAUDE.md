@@ -140,6 +140,16 @@ Default Proxmox API endpoint is configured in `application.properties`:
 quarkus.rest-client.proxmox-api.url=https://10.0.0.10:8006/api2/json
 ```
 
+## API Documentation
+
+For comprehensive API examples with working curl commands, see [API_EXAMPLES.md](./API_EXAMPLES.md). This includes examples for:
+- VM management and filtering
+- Snapshot creation with TTL
+- Bulk operations
+- Tag management
+- Scheduler configuration
+- Backup lifecycle management
+
 ## Scheduler System
 
 Moxxie includes a flexible task scheduling system built on Quartz. For detailed information on implementing new scheduled tasks, see the [Scheduler Task Implementation Guide](./SCHEDULER_TASK_IMPLEMENTATION_GUIDE.md).
