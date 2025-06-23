@@ -276,6 +276,49 @@ public class MyService {
     // methods here
 }
 
+## Proxmox Client Logging
+
+Moxxie includes comprehensive logging for all Proxmox API interactions to help debug issues. The `ProxmoxClientLoggingFilter` automatically logs request and response details.
+
+### Features
+- Logs all HTTP methods, URLs, and headers
+- Captures full request bodies (for POST/PUT requests)
+- Captures full response bodies (especially useful for error details)
+- Automatically logs error responses at ERROR level
+- Respects configured body size limits (default 10KB)
+
+### Configuration
+The logging is configured in `application.properties`:
+```properties
+# Enable REST client logging
+quarkus.log.category."org.eclipse.microprofile.rest.client".level=DEBUG
+quarkus.rest-client.logging.scope=request-response
+quarkus.rest-client.logging.body-limit=10000
+# Enable Proxmox client logging filter
+quarkus.log.category."com.coffeesprout.client.ProxmoxClientLoggingFilter".level=INFO
+```
+
+### Example Log Output
+```
+09:42:26 INFO  [co.co.cl.ProxmoxClientLoggingFilter] === Proxmox API Request ===
+09:42:26 INFO  [co.co.cl.ProxmoxClientLoggingFilter] Method: POST https://10.0.0.10:8006/api2/json/nodes/hv7/qemu
+09:42:26 INFO  [co.co.cl.ProxmoxClientLoggingFilter] Headers: [Content-Type=application/x-www-form-urlencoded, Cookie=PVEAuthCookie=...]
+09:42:26 INFO  [co.co.cl.ProxmoxClientLoggingFilter] Request Body: {net0=[virtio,bridge=vmbr0], cores=[2], memory=[4096], ...}
+09:42:26 ERROR [co.co.cl.ProxmoxClientLoggingFilter] Response Body (Error): {"data":null,"errors":{"boot":"invalid format - format error\nboot.legacy: value does not match the regex pattern\n"}}
+```
+
+### Benefits
+- **Detailed Error Messages**: Instead of generic "Parameter verification failed", you see exactly which parameter failed and why
+- **Request Debugging**: See the exact parameters being sent to Proxmox
+- **Performance Monitoring**: Track response times and payload sizes
+- **Audit Trail**: Full record of all API interactions
+
+### Usage Tips
+- Error responses (4xx, 5xx) are logged at ERROR level for easy filtering
+- Large response bodies are truncated to the configured limit
+- Sensitive data like passwords in form parameters are visible in logs - be cautious in production
+- Use `grep "Proxmox API"` to filter all Proxmox interactions in logs
+
 ## Tagging System
 
 Moxxie uses a structured tagging system for VM organization and automation. When implementing new features, consider if they should:
