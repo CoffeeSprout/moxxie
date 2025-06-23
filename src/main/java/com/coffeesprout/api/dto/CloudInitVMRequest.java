@@ -16,6 +16,7 @@ public record CloudInitVMRequest(
     
     @Schema(description = "VM name", example = "k8s-control-01", required = true)
     @NotBlank(message = "VM name is required")
+    @Size(max = 63, message = "VM name must not exceed 63 characters")
     @Pattern(regexp = "^[a-zA-Z0-9.-]+$", message = "VM name can only contain alphanumeric characters, dots, and dashes")
     String name,
     
@@ -32,7 +33,7 @@ public record CloudInitVMRequest(
     @Schema(description = "Memory in MB", example = "8192", required = true)
     @NotNull(message = "Memory is required")
     @Min(value = 512, message = "At least 512 MB of memory is required")
-    @Max(value = 524288, message = "Cannot exceed 512 GB of memory")
+    @Max(value = 1048576, message = "Cannot exceed 1TB of memory")
     Integer memoryMB,
     
     @Schema(description = "Cloud image source", example = "util-iso:iso/debian-12-generic-amd64.qcow2", required = true)

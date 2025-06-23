@@ -15,7 +15,8 @@ public record RestoreRequest(
     
     @Schema(description = "Target VM ID for restore", required = true, example = "101", minimum = "100")
     @NotNull(message = "VM ID is required")
-    @Min(value = 100, message = "VM ID must be >= 100")
+    @Min(value = 100, message = "VM ID must be at least 100")
+    @Max(value = 999999999, message = "VM ID must be less than 999999999")
     Integer vmId,
     
     @Schema(description = "Target node for the restored VM", required = true, example = "pve1")

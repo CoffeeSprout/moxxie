@@ -6,6 +6,7 @@ import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.coffeesprout.dto.*;
 
 @RegisterRestClient(configKey = "proxmox-api")
 @RegisterProvider(ProxmoxClientLoggingFilter.class)
@@ -583,6 +584,14 @@ public interface ProxmoxClient {
     @Produces(MediaType.APPLICATION_JSON)
     BackupJobDetailResponse getBackupJob(@PathParam("id") String id,
                                          @CookieParam("PVEAuthCookie") String ticket);
+    
+    // Cluster Management
+    
+    // Get next available VM ID
+    @GET
+    @Path("/cluster/nextid")
+    @Produces(MediaType.APPLICATION_JSON)
+    ClusterNextIdResponse getNextVmId(@CookieParam("PVEAuthCookie") String ticket);
     
     // VM Migration
     

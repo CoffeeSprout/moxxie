@@ -19,12 +19,14 @@ import com.coffeesprout.client.CreateVMRequest;
 import com.coffeesprout.client.CreateVMResponse;
 import com.coffeesprout.client.VM;
 import com.coffeesprout.client.VMStatusResponse;
+import com.coffeesprout.client.TaskStatusResponse;
 import com.coffeesprout.service.BackupService;
 import com.coffeesprout.service.SafeMode;
 import com.coffeesprout.service.SDNService;
 import com.coffeesprout.service.SnapshotService;
 import com.coffeesprout.service.TagService;
 import com.coffeesprout.service.VMService;
+import com.coffeesprout.service.VMIdService;
 import com.coffeesprout.service.TicketManager;
 import com.coffeesprout.client.ProxmoxClient;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -57,7 +59,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -91,6 +92,9 @@ public class VMResource {
     
     @Inject
     TicketManager ticketManager;
+    
+    @Inject
+    VMIdService vmIdService;
     
     @Context
     UriInfo uriInfo;
@@ -189,19 +193,7 @@ public class VMResource {
             @Parameter(description = "VM ID", required = true)
             @PathParam("vmId") int vmId) {
         try {
-            // First, get all VMs to find the one we're looking for
-            List<VMResponse> vms = vmService.listVMs(null);
-            
-            VMResponse response = vms.stream()
-                .filter(v -> v.vmid() == vmId)
-                .findFirst()
-                .orElse(null);
-            
-            if (response == null) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(new ErrorResponse("VM not found: " + vmId))
-                        .build();
-            }
+            VMResponse response = findVmById(vmId);
             
             return Response.ok(response).build();
         } catch (Exception e) {
@@ -289,7 +281,7 @@ public class VMResource {
             CreateVMRequest clientRequest = new CreateVMRequest();
             
             // Generate VM ID if not provided
-            int vmId = request.vmId() != null ? request.vmId() : generateVMId();
+            int vmId = request.vmId() != null ? request.vmId() : vmIdService.getNextAvailableVmId(null);
             clientRequest.setVmid(vmId);
             clientRequest.setName(request.name());
             clientRequest.setCores(request.cores());
@@ -583,19 +575,7 @@ public class VMResource {
             @Parameter(description = "Force delete even if not managed by Moxxie")
             @QueryParam("force") boolean force) {
         try {
-            // First, find the VM to get its node
-            List<VMResponse> vms = vmService.listVMs(null);
-            
-            VMResponse vm = vms.stream()
-                .filter(v -> v.vmid() == vmId)
-                .findFirst()
-                .orElse(null);
-            
-            if (vm == null) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(new ErrorResponse("VM not found: " + vmId))
-                        .build();
-            }
+            VMResponse vm = findVmById(vmId);
             
             // Delete the VM
             vmService.deleteVM(vm.node(), vmId, null);
@@ -625,18 +605,7 @@ public class VMResource {
             @Parameter(description = "VM ID", required = true)
             @PathParam("vmId") int vmId) {
         try {
-            // Get basic VM info
-            List<VMResponse> vms = vmService.listVMs(null);
-            VMResponse vm = vms.stream()
-                .filter(v -> v.vmid() == vmId)
-                .findFirst()
-                .orElse(null);
-            
-            if (vm == null) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(new ErrorResponse("VM not found: " + vmId))
-                        .build();
-            }
+            VMResponse vm = findVmById(vmId);
             
             // Get detailed VM configuration
             log.debug("Getting config for VM {} on node '{}'", vmId, vm.node());
@@ -744,9 +713,24 @@ public class VMResource {
         }
     }
     
-    private int generateVMId() {
-        // Generate a random VM ID between 100 and 999999
-        return ThreadLocalRandom.current().nextInt(100, 1000000);
+    /**
+     * Find a VM by ID with proper error handling.
+     * Centralizes the common pattern of listing VMs and filtering by ID.
+     * 
+     * @param vmId VM ID to find
+     * @return VM response if found
+     * @throws WebApplicationException with 404 status if VM not found
+     */
+    private VMResponse findVmById(int vmId) {
+        List<VMResponse> vms = vmService.listVMs(null);
+        return vms.stream()
+            .filter(v -> v.vmid() == vmId)
+            .findFirst()
+            .orElseThrow(() -> new WebApplicationException(
+                Response.status(Response.Status.NOT_FOUND)
+                    .entity(new ErrorResponse("VM with ID " + vmId + " not found"))
+                    .build()
+            ));
     }
     
     @GET
@@ -1616,6 +1600,65 @@ public class VMResource {
             log.error("Failed to create backup for VM {}", vmId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to create backup: " + e.getMessage()))
+                    .build();
+        }
+    }
+    
+    @POST
+    @Path("/{vmId}/clone")
+    @SafeMode(value = true, operation = SafeMode.Operation.WRITE)
+    @Operation(summary = "Clone VM", description = "Clone a VM from a template or existing VM")
+    @APIResponses({
+        @APIResponse(responseCode = "202", description = "Clone operation initiated",
+            content = @Content(schema = @Schema(implementation = TaskResponse.class))),
+        @APIResponse(responseCode = "400", description = "Invalid clone request",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "404", description = "Template VM not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "409", description = "Target VM ID already exists",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "500", description = "Failed to clone VM",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public Response cloneVM(
+            @Parameter(description = "Template VM ID", required = true)
+            @PathParam("vmId") int templateId,
+            @RequestBody(description = "Clone configuration", required = true)
+            @Valid com.coffeesprout.api.dto.TemplateCloneRequest request) {
+        try {
+            // Use VMIdService for auto-generation if needed
+            int newVmId = request.newVmId() != null ? request.newVmId() : vmIdService.getNextAvailableVmId(null);
+            
+            VMResponse templateVm = findVmById(templateId);
+            
+            TaskStatusResponse task = vmService.cloneVM(
+                templateVm.node(),
+                templateId,
+                newVmId,
+                request.name(),
+                request.description(),
+                request.fullClone() != null ? request.fullClone() : false,
+                request.pool(),
+                null, // snapname
+                request.targetStorage(),
+                request.targetNode(),
+                null
+            );
+            
+            TaskResponse response = new TaskResponse(
+                task.getData(),
+                "VM clone operation initiated successfully"
+            );
+            
+            return Response.accepted(response).build();
+            
+        } catch (WebApplicationException e) {
+            // Re-throw WebApplicationExceptions (like 404 from findVmById)
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to clone VM {} to {}", templateId, request.newVmId(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErrorResponse("Failed to clone VM: " + e.getMessage()))
                     .build();
         }
     }

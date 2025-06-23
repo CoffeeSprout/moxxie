@@ -23,6 +23,7 @@ public record TemplateCloneRequest(
     
     @Schema(description = "VM name", example = "k8s-control-01", required = true)
     @NotBlank(message = "VM name is required")
+    @Size(max = 63, message = "VM name must not exceed 63 characters")
     @Pattern(regexp = "^[a-zA-Z0-9.-]+$", message = "VM name can only contain alphanumeric characters, dots, and dashes")
     String name,
     

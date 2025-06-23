@@ -364,4 +364,36 @@ public class VMService {
             throw new RuntimeException("Failed to set SSH keys: " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Clone a VM from a template or existing VM.
+     * Creates a new VM based on an existing VM or template.
+     */
+    public TaskStatusResponse cloneVM(String node, int templateId, int newVmId, String name, 
+                                    String description, boolean fullClone, String pool, 
+                                    String snapname, String storage, String targetNode, 
+                                    @AuthTicket String ticket) {
+        try {
+            log.info("Cloning VM {} to new VM {} on node {}", templateId, newVmId, targetNode != null ? targetNode : node);
+            
+            return proxmoxClient.cloneVM(
+                node, 
+                templateId, 
+                newVmId, 
+                name, 
+                description, 
+                fullClone ? 1 : 0, 
+                pool, 
+                snapname, 
+                storage, 
+                targetNode, 
+                ticket, 
+                ticketManager.getCsrfToken()
+            );
+            
+        } catch (Exception e) {
+            log.error("Failed to clone VM {} to {}", templateId, newVmId, e);
+            throw new RuntimeException("Failed to clone VM: " + e.getMessage(), e);
+        }
+    }
 }

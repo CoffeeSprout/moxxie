@@ -7,6 +7,8 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 @Schema(description = "Request to create a new VM")
 public record CreateVMRequestDTO(
     @Schema(description = "VM ID (optional, will be auto-generated if not provided)", example = "101")
+    @Min(value = 100, message = "VM ID must be at least 100")
+    @Max(value = 999999999, message = "VM ID must be less than 999999999")
     Integer vmId,
     
     @Schema(description = "VM name", example = "web-server-01", required = true)
