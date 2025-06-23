@@ -247,7 +247,27 @@ public class CreateVMRequest {
         return sshkeys;
     }
     public void setSshkeys(String sshkeys) {
-        this.sshkeys = sshkeys;
+        if (sshkeys != null) {
+            try {
+                // SSH keys need to be double URL encoded per Proxmox forum recommendation
+                // First normalize the SSH key
+                String normalized = sshkeys.trim()
+                    .replaceAll("\r\n", "\n")
+                    .replaceAll("\r", "\n");
+                
+                // Apply first URL encoding - replace + with %20 to match Python's quote behavior
+                String encoded = java.net.URLEncoder.encode(normalized, "UTF-8")
+                        .replaceAll("\\+", "%20");
+                
+                // Since @FormParam will encode once more, we store the single-encoded version
+                // This results in double encoding when sent
+                this.sshkeys = encoded;
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to encode SSH keys", e);
+            }
+        } else {
+            this.sshkeys = sshkeys;
+        }
     }
     public String getDescription() {
         return description;

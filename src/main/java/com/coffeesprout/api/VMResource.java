@@ -9,6 +9,7 @@ import com.coffeesprout.api.dto.DiskConfig;
 import com.coffeesprout.api.dto.DiskInfo;
 import com.coffeesprout.api.dto.ErrorResponse;
 import com.coffeesprout.api.dto.RestoreRequest;
+import com.coffeesprout.api.dto.SetSSHKeysRequest;
 import com.coffeesprout.api.dto.SnapshotResponse;
 import com.coffeesprout.api.dto.TaskResponse;
 import com.coffeesprout.api.dto.VMDetailResponse;
@@ -438,15 +439,15 @@ public class VMResource {
             // Set SCSI hardware
             clientRequest.setScsihw("virtio-scsi-pci");
             
-            // Add cloud-init drive on ide2
-            clientRequest.setIde2(request.targetStorage() + ":cloudinit");
+            // Add cloud-init drive on scsi2 (better compatibility with cloud images)
+            clientRequest.setScsi2(request.targetStorage() + ":cloudinit");
             
             // Serial console for cloud-init
             clientRequest.setSerial0("socket");
             clientRequest.setVga("serial0");
             
             // Boot order - we'll update this after disk import
-            clientRequest.setBoot("order=ide2");
+            clientRequest.setBoot("order=scsi2");
             
             // Network
             if (request.network() != null) {
@@ -470,6 +471,30 @@ public class VMResource {
             // Tags
             if (request.tags() != null) {
                 clientRequest.setTags(request.tags());
+            }
+            
+            // Set cloud-init parameters during VM creation
+            // This might avoid the SSH key encoding issue
+            if (request.cloudInitUser() != null) {
+                clientRequest.setCiuser(request.cloudInitUser());
+            }
+            
+            if (request.ipConfig() != null) {
+                clientRequest.setIpconfig0(request.ipConfig());
+            }
+            
+            if (request.nameservers() != null) {
+                clientRequest.setNameserver(request.nameservers());
+            }
+            
+            if (request.searchDomain() != null) {
+                clientRequest.setSearchdomain(request.searchDomain());
+            }
+            
+            if (request.sshKeys() != null) {
+                // Pass SSH keys as-is - VMService will handle proper encoding
+                log.info("Setting SSH keys during VM creation (length: {})", request.sshKeys().length());
+                clientRequest.setSshkeys(request.sshKeys());
             }
             
             // Create the VM without main disk
@@ -504,38 +529,13 @@ public class VMResource {
                 throw new RuntimeException("Failed to import disk: " + e.getMessage(), e);
             }
             
-            // Configure cloud-init settings
-            if (request.cloudInitUser() != null || request.ipConfig() != null || request.sshKeys() != null) {
-                log.info("Configuring cloud-init settings for VM {}", request.vmid());
-                
-                CreateVMRequest cloudInitConfig = new CreateVMRequest();
-                
-                if (request.cloudInitUser() != null) {
-                    cloudInitConfig.setCiuser(request.cloudInitUser());
-                }
-                
-                if (request.cloudInitPassword() != null) {
-                    cloudInitConfig.setCipassword(request.cloudInitPassword());
-                }
-                
-                if (request.ipConfig() != null) {
-                    cloudInitConfig.setIpconfig0(request.ipConfig());
-                }
-                
-                if (request.searchDomain() != null) {
-                    cloudInitConfig.setSearchdomain(request.searchDomain());
-                }
-                
-                if (request.nameservers() != null) {
-                    cloudInitConfig.setNameserver(request.nameservers());
-                }
-                
-                if (request.sshKeys() != null) {
-                    cloudInitConfig.setSshkeys(request.sshKeys());
-                }
-                
-                // Update VM config with cloud-init settings
-                vmService.updateVMConfig(request.node(), request.vmid(), cloudInitConfig, null);
+            // Cloud-init settings are now configured during VM creation
+            // Only update password if it was provided (can't be set during creation)
+            if (request.cloudInitPassword() != null) {
+                log.info("Setting cloud-init password for VM {}", request.vmid());
+                CreateVMRequest passwordConfig = new CreateVMRequest();
+                passwordConfig.setCipassword(request.cloudInitPassword());
+                vmService.updateVMConfig(request.node(), request.vmid(), passwordConfig, null);
             }
             
             // Start VM if requested
@@ -1343,6 +1343,58 @@ public class VMResource {
     // DTOs for tag operations
     public record TagsResponse(Set<String> tags) {}
     public record TagRequest(String tag) {}
+    
+    // SSH Key Management
+    @PUT
+    @Path("/{vmId}/ssh-keys")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Set SSH keys on VM", 
+               description = "Set SSH keys on an existing VM. Uses proper double URL encoding required by Proxmox API.")
+    @APIResponses({
+        @APIResponse(responseCode = "200", description = "SSH keys set successfully"),
+        @APIResponse(responseCode = "400", description = "Invalid request",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "404", description = "VM not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "500", description = "Failed to set SSH keys",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public Response setSSHKeys(
+            @Parameter(description = "VM ID", required = true)
+            @PathParam("vmId") int vmId,
+            @Valid SetSSHKeysRequest request) {
+        try {
+            // Find the VM to get its node
+            List<VMResponse> vms = vmService.listVMs(null);
+            VMResponse vm = vms.stream()
+                .filter(v -> v.vmid() == vmId)
+                .findFirst()
+                .orElse(null);
+            
+            if (vm == null) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(new ErrorResponse("VM not found: " + vmId))
+                        .build();
+            }
+            
+            log.info("Setting SSH keys for VM {}", vmId);
+            
+            // Use the direct SSH key method that does double encoding
+            vmService.setSSHKeysDirect(vm.node(), vmId, request.sshKeys(), null);
+            
+            return Response.ok(Map.of(
+                "success", true,
+                "vmId", vmId,
+                "message", "SSH keys set successfully"
+            )).build();
+            
+        } catch (Exception e) {
+            log.error("Failed to set SSH keys for VM {}", vmId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErrorResponse("Failed to set SSH keys: " + e.getMessage()))
+                    .build();
+        }
+    }
     
     // Snapshot Management Endpoints
     

@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.nio.charset.StandardCharsets;
 
 @ApplicationScoped
 @AutoAuthenticate
@@ -122,7 +123,8 @@ public class VMService {
                         resource.path("uptime").asLong(0),
                         resource.path("type").asText(""),
                         vmTagsList,
-                        pool
+                        pool,
+                        resource.path("template").asInt(0)
                     );
                     vms.add(vmResponse);
                 }
@@ -135,6 +137,24 @@ public class VMService {
         }
     }
 
+    @SafeMode(operation = SafeMode.Operation.WRITE)
+    public void resizeDisk(String node, int vmId, String disk, String size, @AuthTicket String ticket) {
+        try {
+            log.info("Resizing disk {} for VM {} to size {}", disk, vmId, size);
+            
+            // The disk parameter should be like "scsi0", size like "+20G" or "50G"
+            String resizeParam = disk + "=" + size;
+            
+            // Use a generic update config method - we may need to add this to ProxmoxClient
+            proxmoxClient.resizeDisk(node, vmId, disk, size, ticket, ticketManager.getCsrfToken());
+            
+            log.info("Successfully resized disk {} for VM {}", disk, vmId);
+        } catch (Exception e) {
+            log.error("Failed to resize disk for VM {}", vmId, e);
+            throw new RuntimeException("Failed to resize disk: " + e.getMessage(), e);
+        }
+    }
+    
     @SafeMode(operation = SafeMode.Operation.WRITE)
     public CreateVMResponse createVM(String node, CreateVMRequest request, @AuthTicket String ticket) {
         // Create the VM
@@ -256,7 +276,17 @@ public class VMService {
             appendFormParam(formData, "searchdomain", config.getSearchdomain());
         }
         if (config.getSshkeys() != null) {
-            appendFormParam(formData, "sshkeys", config.getSshkeys());
+            String sshKeys = config.getSshkeys().trim();
+            
+            // Log the exact SSH key we're about to encode
+            log.info("Raw SSH keys before encoding: '{}'", sshKeys);
+            log.info("SSH keys length: {}, ends with newline: {}", 
+                    sshKeys.length(), sshKeys.endsWith("\n"));
+            
+            // Try the original approach with standard URL encoding
+            appendFormParam(formData, "sshkeys", sshKeys);
+            
+            log.info("SSH keys added to form data");
         }
         if (config.getDescription() != null) {
             appendFormParam(formData, "description", config.getDescription());
@@ -294,5 +324,44 @@ public class VMService {
         }
         
         log.info("Disk import initiated successfully for VM {}", vmId);
+    }
+    
+    /**
+     * Set SSH keys on a VM using the proven double URL encoding method.
+     * Proxmox API requires SSH keys to be double URL encoded.
+     */
+    @SafeMode(operation = SafeMode.Operation.WRITE)
+    public void setSSHKeysDirect(String node, int vmId, String sshKeys, @AuthTicket String ticket) {
+        log.info("Setting SSH keys on VM {} using double encoding", vmId);
+        
+        try {
+            // First, normalize the SSH key
+            String normalized = sshKeys.trim()
+                .replaceAll("\r\n", "\n")
+                .replaceAll("\r", "\n");
+            
+            // Apply double URL encoding as required by Proxmox API
+            // First encoding - replace + with %20 to match Python's quote behavior
+            String encoded = java.net.URLEncoder.encode(normalized, "UTF-8")
+                    .replaceAll("\\+", "%20");
+            
+            // Second encoding - also replace + with %20
+            String doubleEncoded = java.net.URLEncoder.encode(encoded, "UTF-8")
+                    .replaceAll("\\+", "%20");
+            
+            log.debug("SSH key double-encoded successfully");
+            
+            // Build the form data with the double-encoded value
+            String formData = "sshkeys=" + doubleEncoded;
+            
+            // Send the request
+            proxmoxClient.updateVMConfig(node, vmId, ticket, ticketManager.getCsrfToken(), formData);
+            
+            log.info("Successfully set SSH keys on VM {}", vmId);
+            
+        } catch (Exception e) {
+            log.error("Failed to set SSH keys on VM {}", vmId, e);
+            throw new RuntimeException("Failed to set SSH keys: " + e.getMessage(), e);
+        }
     }
 }

@@ -5,6 +5,7 @@ import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import com.fasterxml.jackson.databind.JsonNode;
 
 @RegisterRestClient(configKey = "proxmox-api")
 @RegisterProvider(ProxmoxClientLoggingFilter.class)
@@ -79,6 +80,52 @@ public interface ProxmoxClient {
                                          @CookieParam("PVEAuthCookie") String ticket,
                                          ImportImageRequest request);
 
+    /**
+     * Clone a VM from a template or existing VM.
+     * Creates a new VM based on an existing VM or template.
+     */
+    @POST
+    @Path("/nodes/{node}/qemu/{vmid}/clone")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.APPLICATION_JSON)
+    TaskStatusResponse cloneVM(@PathParam("node") String node,
+                               @PathParam("vmid") int templateId,
+                               @FormParam("newid") int newVmId,
+                               @FormParam("name") String name,
+                               @FormParam("description") String description,
+                               @FormParam("full") Integer fullClone,
+                               @FormParam("pool") String pool,
+                               @FormParam("snapname") String snapname,
+                               @FormParam("storage") String storage,
+                               @FormParam("target") String targetNode,
+                               @CookieParam("PVEAuthCookie") String ticket,
+                               @HeaderParam("CSRFPreventionToken") String csrfToken);
+
+    /**
+     * Convert a VM to a template.
+     * Once converted, the VM becomes a template and cannot be started.
+     */
+    @POST
+    @Path("/nodes/{node}/qemu/{vmid}/template")
+    @Produces(MediaType.APPLICATION_JSON)
+    JsonNode convertToTemplate(@PathParam("node") String node,
+                               @PathParam("vmid") int vmid,
+                               @CookieParam("PVEAuthCookie") String ticket,
+                               @HeaderParam("CSRFPreventionToken") String csrfToken);
+
+    /**
+     * Resize a VM disk.
+     */
+    @PUT
+    @Path("/nodes/{node}/qemu/{vmid}/resize")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.APPLICATION_JSON)
+    ConfigResponse resizeDisk(@PathParam("node") String node,
+                              @PathParam("vmid") int vmid,
+                              @FormParam("disk") String disk,
+                              @FormParam("size") String size,
+                              @CookieParam("PVEAuthCookie") String ticket,
+                              @HeaderParam("CSRFPreventionToken") String csrfToken);
 
     // Set CPU to a specified model (e.g., "host")
     @PUT

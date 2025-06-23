@@ -242,6 +242,26 @@ The TTL is appended to the description as "(TTL: 4h)" and can be parsed by the `
 
 ## Common Issues and Solutions
 
+### SSH Key Double Encoding Solution
+
+**Fixed**: SSH keys now work correctly in cloud-init VM creation. The Proxmox API requires SSH keys to be double URL encoded, as confirmed by Proxmox staff.
+
+**Solution Implemented**:
+- SSH keys are automatically double URL encoded when creating VMs
+- Spaces are encoded as `%20` (not `+`) to match Python's `quote()` behavior
+- The fix is transparent to API users - just pass SSH keys normally
+
+**API Endpoints**:
+1. **During VM Creation**: Include `sshKeys` in cloud-init VM creation request
+2. **Update Existing VM**: `PUT /api/v1/vms/{vmId}/ssh-keys` with JSON body:
+   ```json
+   {
+     "sshKeys": "ssh-ed25519 AAAAC3... user@host"
+   }
+   ```
+
+**Technical Details**: See commit history for the investigation and fix implementation.
+
 ### Authentication Parameter Issues
 If you encounter errors where authentication tickets appear in place of other parameters (e.g., node names), check the following:
 
