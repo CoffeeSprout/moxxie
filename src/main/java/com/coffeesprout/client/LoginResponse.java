@@ -29,5 +29,20 @@ public class LoginResponse {
         public void setCsrfPreventionToken(String csrfPreventionToken) {
             this.csrfPreventionToken = csrfPreventionToken;
         }
+        
+        @Override
+        public String toString() {
+            return "Data{" +
+                    "ticket='" + (ticket != null ? "[REDACTED]" : null) + '\'' +
+                    ", csrfPreventionToken='" + (csrfPreventionToken != null ? "[REDACTED]" : null) + '\'' +
+                    '}';
+        }
+    }
+    
+    @Override
+    public String toString() {
+        return "LoginResponse{" +
+                "data=" + data +
+                '}';
     }
 }

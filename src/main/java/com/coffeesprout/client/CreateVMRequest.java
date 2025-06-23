@@ -275,4 +275,37 @@ public class CreateVMRequest {
     public void setDescription(String description) {
         this.description = description;
     }
+    
+    @Override
+    public String toString() {
+        return "CreateVMRequest{" +
+                "vmid=" + vmid +
+                ", name='" + name + '\'' +
+                ", cores=" + cores +
+                ", memory=" + memory +
+                ", net0='" + net0 + '\'' +
+                ", scsihw='" + scsihw + '\'' +
+                ", scsi0='" + scsi0 + '\'' +
+                ", scsi1='" + scsi1 + '\'' +
+                ", scsi2='" + scsi2 + '\'' +
+                ", scsi3='" + scsi3 + '\'' +
+                ", scsi4='" + scsi4 + '\'' +
+                ", scsi5='" + scsi5 + '\'' +
+                ", ide2='" + ide2 + '\'' +
+                ", boot='" + boot + '\'' +
+                ", onboot=" + onboot +
+                ", pool='" + pool + '\'' +
+                ", tags='" + tags + '\'' +
+                ", agent='" + agent + '\'' +
+                ", cpu='" + cpu + '\'' +
+                ", serial0='" + serial0 + '\'' +
+                ", ciuser='" + ciuser + '\'' +
+                ", cipassword='" + (cipassword != null ? "***" : null) + '\'' +
+                ", searchdomain='" + searchdomain + '\'' +
+                ", nameserver='" + nameserver + '\'' +
+                ", ipconfig0='" + ipconfig0 + '\'' +
+                ", sshkeys='" + (sshkeys != null ? "[REDACTED]" : null) + '\'' +
+                ", description='" + description + '\'' +
+                '}';
+    }
 }
