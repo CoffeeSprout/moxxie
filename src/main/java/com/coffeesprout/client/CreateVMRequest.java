@@ -53,6 +53,39 @@ public class CreateVMRequest {
     
     @FormParam("tags")
     private String tags; // Comma-separated tags
+    
+    @FormParam("agent")
+    private String agent; // QEMU agent (0 or 1)
+    
+    @FormParam("cpu")
+    private String cpu; // CPU type
+    
+    @FormParam("serial0")
+    private String serial0; // Serial console
+    
+    @FormParam("vga")
+    private String vga; // VGA hardware
+    
+    @FormParam("ciuser")
+    private String ciuser; // Cloud-init user
+    
+    @FormParam("cipassword")
+    private String cipassword; // Cloud-init password
+    
+    @FormParam("ipconfig0")
+    private String ipconfig0; // Cloud-init IP config
+    
+    @FormParam("nameserver")
+    private String nameserver; // Cloud-init DNS servers
+    
+    @FormParam("searchdomain")
+    private String searchdomain; // Cloud-init search domain
+    
+    @FormParam("sshkeys")
+    private String sshkeys; // Cloud-init SSH keys
+    
+    @FormParam("description")
+    private String description; // VM description
 
     public int getVmid() {
         return vmid;
@@ -155,5 +188,71 @@ public class CreateVMRequest {
     }
     public void setTags(String tags) {
         this.tags = tags;
+    }
+    public String getAgent() {
+        return agent;
+    }
+    public void setAgent(String agent) {
+        this.agent = agent;
+    }
+    public String getCpu() {
+        return cpu;
+    }
+    public void setCpu(String cpu) {
+        this.cpu = cpu;
+    }
+    public String getSerial0() {
+        return serial0;
+    }
+    public void setSerial0(String serial0) {
+        this.serial0 = serial0;
+    }
+    public String getVga() {
+        return vga;
+    }
+    public void setVga(String vga) {
+        this.vga = vga;
+    }
+    public String getCiuser() {
+        return ciuser;
+    }
+    public void setCiuser(String ciuser) {
+        this.ciuser = ciuser;
+    }
+    public String getCipassword() {
+        return cipassword;
+    }
+    public void setCipassword(String cipassword) {
+        this.cipassword = cipassword;
+    }
+    public String getIpconfig0() {
+        return ipconfig0;
+    }
+    public void setIpconfig0(String ipconfig0) {
+        this.ipconfig0 = ipconfig0;
+    }
+    public String getNameserver() {
+        return nameserver;
+    }
+    public void setNameserver(String nameserver) {
+        this.nameserver = nameserver;
+    }
+    public String getSearchdomain() {
+        return searchdomain;
+    }
+    public void setSearchdomain(String searchdomain) {
+        this.searchdomain = searchdomain;
+    }
+    public String getSshkeys() {
+        return sshkeys;
+    }
+    public void setSshkeys(String sshkeys) {
+        this.sshkeys = sshkeys;
+    }
+    public String getDescription() {
+        return description;
+    }
+    public void setDescription(String description) {
+        this.description = description;
     }
 }

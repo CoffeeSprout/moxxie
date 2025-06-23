@@ -58,7 +58,7 @@ curl -X POST http://localhost:8080/api/v1/vms \
       {
         "interfaceType": "SCSI",
         "slot": 0,
-        "storage": "local-lvm",
+        "storage": "local-zfs",
         "sizeGB": 200,
         "ssd": true,
         "iothread": true,
@@ -66,7 +66,7 @@ curl -X POST http://localhost:8080/api/v1/vms \
         "discard": true
       }
     ],
-    "tags": ["k8s-worker", "env:prod", "moxxie"]
+    "tags": ["k8s-worker", "env-prod", "moxxie"]
   }'
 
 # Create VM with multiple disks
@@ -84,7 +84,7 @@ curl -X POST http://localhost:8080/api/v1/vms \
       {
         "interfaceType": "SCSI",
         "slot": 0,
-        "storage": "local-lvm",
+        "storage": "local-zfs",
         "sizeGB": 100,
         "ssd": true,
         "iothread": true,
@@ -93,14 +93,14 @@ curl -X POST http://localhost:8080/api/v1/vms \
       {
         "interfaceType": "SCSI",
         "slot": 1,
-        "storage": "local-lvm",
+        "storage": "local-zfs",
         "sizeGB": 1000,
         "ssd": false,
         "cache": "WRITEBACK",
         "backup": true
       }
     ],
-    "tags": ["database", "env:prod"]
+    "tags": ["database", "env-prod"]
   }'
 
 # Create VM with legacy disk configuration (backward compatible)
@@ -115,6 +115,101 @@ curl -X POST http://localhost:8080/api/v1/vms \
     "network": {
       "bridge": "vmbr0"
     }
+  }'
+
+# Create VM from cloud-init image
+curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vmid": 200,
+    "name": "k8s-control-01",
+    "node": "hv7",
+    "cores": 4,
+    "memoryMB": 8192,
+    "imageSource": "local:iso/debian-12-generic-amd64.qcow2",
+    "targetStorage": "local-zfs",
+    "diskSizeGB": 50,
+    "cloudInitUser": "debian",
+    "sshKeys": "ssh-rsa AAAAB3NzaC1yc2...",
+    "ipConfig": "ip=192.168.1.100/24,gw=192.168.1.1",
+    "nameservers": "8.8.8.8,8.8.4.4",
+    "searchDomain": "cluster.local",
+    "network": {
+      "model": "virtio",
+      "bridge": "vmbr0"
+    },
+    "diskOptions": {
+      "ssd": true,
+      "iothread": true,
+      "discard": true
+    },
+    "tags": "k8s-controlplane,env-prod,moxxie",
+    "start": true
+  }'
+
+# Create VM from cloud image with DHCP
+curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vmid": 201,
+    "name": "debian-test",
+    "node": "hv7",
+    "cores": 2,
+    "memoryMB": 4096,
+    "imageSource": "local:iso/debian-12-cloud.qcow2",
+    "targetStorage": "local-zfs",
+    "diskSizeGB": 20,
+    "cloudInitUser": "admin",
+    "cloudInitPassword": "temppass123",
+    "ipConfig": "ip=dhcp",
+    "network": {
+      "model": "virtio",
+      "bridge": "vmbr0"
+    },
+    "qemuAgent": true,
+    "start": false
+  }'
+```
+
+### Workflow: Download Cloud Image and Create VM
+
+```bash
+# Step 1: Download cloud image to storage
+curl -X POST http://localhost:8080/api/v1/storage/local/download-url \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2",
+    "filename": "debian-12-generic-amd64.qcow2",
+    "checksumUrl": "https://cloud.debian.org/images/cloud/bookworm/latest/SHA512SUMS",
+    "checksumAlgorithm": "sha512"
+  }'
+
+# Step 2: Create VM from the downloaded image
+curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vmid": 300,
+    "name": "k8s-worker-01",
+    "node": "hv7",
+    "cores": 8,
+    "memoryMB": 16384,
+    "imageSource": "local:iso/debian-12-generic-amd64.qcow2",
+    "targetStorage": "local-zfs",
+    "diskSizeGB": 100,
+    "cloudInitUser": "debian",
+    "sshKeys": "ssh-rsa AAAAB3NzaC1yc2...",
+    "ipConfig": "ip=dhcp",
+    "network": {
+      "model": "virtio",
+      "bridge": "vmbr0"
+    },
+    "diskOptions": {
+      "ssd": true,
+      "iothread": true
+    },
+    "tags": "k8s-worker,env-prod,moxxie",
+    "qemuAgent": true,
+    "start": true
   }'
 ```
 
@@ -587,7 +682,7 @@ curl -X POST http://localhost:8080/api/v1/vms/8200/migrate \
   -d '{
     "targetNode": "hv2",
     "force": true,
-    "targetStorage": "local-lvm",
+    "targetStorage": "local-zfs",
     "withLocalDisks": true
   }' | jq .
 ```

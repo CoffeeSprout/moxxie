@@ -392,6 +392,147 @@ public class VMResource {
         }
     }
 
+    @POST
+    @Path("/cloud-init")
+    @SafeMode(operation = SafeMode.Operation.WRITE)
+    @Operation(summary = "Create VM from cloud image", 
+               description = "Create a new VM from a cloud-init image with automatic disk import")
+    @APIResponses({
+        @APIResponse(responseCode = "201", description = "VM created successfully",
+            content = @Content(schema = @Schema(implementation = CreateVMResponse.class))),
+        @APIResponse(responseCode = "400", description = "Invalid request",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "401", description = "Unauthorized - check Proxmox credentials",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "409", description = "VM ID already exists",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "500", description = "Failed to create VM",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response createCloudInitVM(
+            @RequestBody(description = "Cloud-init VM creation request", required = true,
+                content = @Content(schema = @Schema(implementation = CloudInitVMRequest.class)))
+            @Valid CloudInitVMRequest request) {
+        try {
+            log.info("Creating cloud-init VM {} from image {}", request.name(), request.imageSource());
+            
+            // Build CreateVMRequest with import-from disk
+            CreateVMRequest clientRequest = new CreateVMRequest();
+            clientRequest.setVmid(request.vmid());
+            clientRequest.setName(request.name());
+            clientRequest.setCores(request.cores());
+            clientRequest.setMemory(request.memoryMB());
+            
+            // Set CPU type if specified
+            if (request.cpuType() != null) {
+                clientRequest.setCpu(request.cpuType());
+            }
+            
+            // Set SCSI hardware
+            clientRequest.setScsihw("virtio-scsi-pci");
+            
+            // Create disk with import-from
+            DiskConfig importDisk = request.toDiskConfig();
+            String diskString = importDisk.toProxmoxString();
+            log.info("Importing disk with config: {}", diskString);
+            clientRequest.setScsi0(diskString);
+            
+            // Add cloud-init drive
+            clientRequest.setIde2(request.targetStorage() + ":cloudinit");
+            
+            // Serial console for cloud-init
+            clientRequest.setSerial0("socket");
+            clientRequest.setVga("serial0");
+            
+            // Boot order
+            clientRequest.setBoot("order=scsi0");
+            
+            // Network
+            if (request.network() != null) {
+                String netConfig = request.network().model() + ",bridge=" + request.network().bridge();
+                if (request.network().vlanTag() != null) {
+                    netConfig += ",tag=" + request.network().vlanTag();
+                }
+                clientRequest.setNet0(netConfig);
+            }
+            
+            // QEMU agent
+            if (request.qemuAgent() != null && request.qemuAgent()) {
+                clientRequest.setAgent("1");
+            }
+            
+            // Description
+            if (request.description() != null) {
+                clientRequest.setDescription(request.description());
+            }
+            
+            // Tags
+            if (request.tags() != null) {
+                clientRequest.setTags(request.tags());
+            }
+            
+            // Create the VM
+            CreateVMResponse response = vmService.createVM(request.node(), clientRequest, null);
+            
+            // Configure cloud-init settings
+            if (request.cloudInitUser() != null || request.ipConfig() != null || request.sshKeys() != null) {
+                log.info("Configuring cloud-init settings for VM {}", request.vmid());
+                
+                CreateVMRequest cloudInitConfig = new CreateVMRequest();
+                
+                if (request.cloudInitUser() != null) {
+                    cloudInitConfig.setCiuser(request.cloudInitUser());
+                }
+                
+                if (request.cloudInitPassword() != null) {
+                    cloudInitConfig.setCipassword(request.cloudInitPassword());
+                }
+                
+                if (request.ipConfig() != null) {
+                    cloudInitConfig.setIpconfig0(request.ipConfig());
+                }
+                
+                if (request.searchDomain() != null) {
+                    cloudInitConfig.setSearchdomain(request.searchDomain());
+                }
+                
+                if (request.nameservers() != null) {
+                    cloudInitConfig.setNameserver(request.nameservers());
+                }
+                
+                if (request.sshKeys() != null) {
+                    cloudInitConfig.setSshkeys(request.sshKeys());
+                }
+                
+                // Update VM config with cloud-init settings
+                vmService.updateVMConfig(request.node(), request.vmid(), cloudInitConfig, null);
+            }
+            
+            // Start VM if requested
+            if (request.start() != null && request.start()) {
+                log.info("Starting VM {}", request.vmid());
+                vmService.changeVMState(request.node(), request.vmid(), VMService.VMAction.START, null);
+            }
+            
+            URI location = uriInfo.getAbsolutePathBuilder()
+                    .replacePath("/api/v1/vms/{vmId}")
+                    .build(request.vmid());
+            
+            return Response.created(location)
+                    .entity(response)
+                    .build();
+            
+        } catch (WebApplicationException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to create cloud-init VM", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(new ErrorResponse("Failed to create VM: " + e.getMessage()))
+                    .build();
+        }
+    }
+
     @DELETE
     @Path("/{vmId}")
     @SafeMode(operation = SafeMode.Operation.DELETE)

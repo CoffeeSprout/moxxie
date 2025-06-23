@@ -18,7 +18,7 @@ public record DiskConfig(
     @Max(value = 30, message = "Slot must be <= 30")  // Max for SCSI
     Integer slot,
     
-    @Schema(description = "Storage pool ID", example = "local-lvm", required = true)
+    @Schema(description = "Storage pool ID", example = "local-zfs", required = true)
     @NotBlank(message = "Storage is required")
     String storage,
     
@@ -48,6 +48,9 @@ public record DiskConfig(
     
     @Schema(description = "Enable replication for this disk", example = "false")
     Boolean replicate,
+    
+    @Schema(description = "Source image to import from", example = "local:iso/debian-12-cloud.qcow2")
+    String importFrom,
     
     @Schema(description = "Additional raw options", example = "aio=native")
     String additionalOptions
@@ -124,7 +127,14 @@ public record DiskConfig(
         StringBuilder config = new StringBuilder();
         
         // Storage and size are required
-        config.append(storage).append(":").append(sizeGB);
+        // When importing from an image, size should be 0
+        int diskSize = (importFrom != null) ? 0 : sizeGB;
+        config.append(storage).append(":").append(diskSize);
+        
+        // Add import-from parameter if specified
+        if (importFrom != null && !importFrom.isBlank()) {
+            config.append(",import-from=").append(importFrom);
+        }
         
         // Add optional parameters
         if (ssd != null && ssd) {

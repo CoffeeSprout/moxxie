@@ -224,4 +224,58 @@ public class VMService {
         VMConfigResponse response = proxmoxClient.getVMConfig(node, vmId, ticket);
         return response.getData() != null ? response.getData() : new HashMap<>();
     }
+    
+    @SafeMode(operation = SafeMode.Operation.WRITE)
+    public void updateVMConfig(String node, int vmId, CreateVMRequest config, @AuthTicket String ticket) {
+        log.info("Updating VM {} configuration on node '{}'", vmId, node);
+        
+        // The Proxmox updateVMConfig method expects the config as form data
+        // We need to use the generic update method with the CreateVMRequest
+        String formData = buildFormData(config);
+        
+        proxmoxClient.updateVMConfig(node, vmId, ticket, ticketManager.getCsrfToken(), formData);
+    }
+    
+    private String buildFormData(CreateVMRequest config) {
+        StringBuilder formData = new StringBuilder();
+        
+        // Only include non-null fields
+        if (config.getCiuser() != null) {
+            appendFormParam(formData, "ciuser", config.getCiuser());
+        }
+        if (config.getCipassword() != null) {
+            appendFormParam(formData, "cipassword", config.getCipassword());
+        }
+        if (config.getIpconfig0() != null) {
+            appendFormParam(formData, "ipconfig0", config.getIpconfig0());
+        }
+        if (config.getNameserver() != null) {
+            appendFormParam(formData, "nameserver", config.getNameserver());
+        }
+        if (config.getSearchdomain() != null) {
+            appendFormParam(formData, "searchdomain", config.getSearchdomain());
+        }
+        if (config.getSshkeys() != null) {
+            appendFormParam(formData, "sshkeys", config.getSshkeys());
+        }
+        if (config.getDescription() != null) {
+            appendFormParam(formData, "description", config.getDescription());
+        }
+        if (config.getTags() != null) {
+            appendFormParam(formData, "tags", config.getTags());
+        }
+        
+        return formData.toString();
+    }
+    
+    private void appendFormParam(StringBuilder formData, String name, String value) {
+        if (formData.length() > 0) {
+            formData.append("&");
+        }
+        try {
+            formData.append(name).append("=").append(java.net.URLEncoder.encode(value, "UTF-8"));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to encode form parameter", e);
+        }
+    }
 }
