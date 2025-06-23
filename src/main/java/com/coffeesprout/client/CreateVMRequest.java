@@ -24,6 +24,21 @@ public class CreateVMRequest {
     @FormParam("scsi0")
     private String scsi0; // Disk configuration
     
+    @FormParam("scsi1")
+    private String scsi1;
+    
+    @FormParam("scsi2")
+    private String scsi2;
+    
+    @FormParam("scsi3")
+    private String scsi3;
+    
+    @FormParam("scsi4")
+    private String scsi4;
+    
+    @FormParam("scsi5")
+    private String scsi5;
+    
     @FormParam("ide2")
     private String ide2; // Cloud-init drive
     
@@ -80,6 +95,36 @@ public class CreateVMRequest {
     }
     public void setScsi0(String scsi0) {
         this.scsi0 = scsi0;
+    }
+    public String getScsi1() {
+        return scsi1;
+    }
+    public void setScsi1(String scsi1) {
+        this.scsi1 = scsi1;
+    }
+    public String getScsi2() {
+        return scsi2;
+    }
+    public void setScsi2(String scsi2) {
+        this.scsi2 = scsi2;
+    }
+    public String getScsi3() {
+        return scsi3;
+    }
+    public void setScsi3(String scsi3) {
+        this.scsi3 = scsi3;
+    }
+    public String getScsi4() {
+        return scsi4;
+    }
+    public void setScsi4(String scsi4) {
+        this.scsi4 = scsi4;
+    }
+    public String getScsi5() {
+        return scsi5;
+    }
+    public void setScsi5(String scsi5) {
+        this.scsi5 = scsi5;
     }
     public String getIde2() {
         return ide2;

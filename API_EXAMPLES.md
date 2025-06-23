@@ -39,6 +39,85 @@ curl -X GET http://localhost:8080/api/v1/vms/8200 | jq .
 curl -X GET http://localhost:8080/api/v1/vms | jq '.[] | select(.vmid >= 8200 and .vmid <= 8209) | {vmid, name, status}'
 ```
 
+### Create VM with Advanced Disk Configuration
+```bash
+# Create VM with SSD and iothread enabled
+curl -X POST http://localhost:8080/api/v1/vms \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "k8s-worker-01",
+    "node": "hv6",
+    "cores": 8,
+    "memoryMB": 16384,
+    "network": {
+      "bridge": "vmbr0",
+      "vlan": 100
+    },
+    "bootOrder": "order=net0;scsi0",
+    "disks": [
+      {
+        "interfaceType": "SCSI",
+        "slot": 0,
+        "storage": "local-lvm",
+        "sizeGB": 200,
+        "ssd": true,
+        "iothread": true,
+        "cache": "WRITEBACK",
+        "discard": true
+      }
+    ],
+    "tags": ["k8s-worker", "env:prod", "moxxie"]
+  }'
+
+# Create VM with multiple disks
+curl -X POST http://localhost:8080/api/v1/vms \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "database-server",
+    "node": "hv6",
+    "cores": 16,
+    "memoryMB": 65536,
+    "network": {
+      "bridge": "vmbr0"
+    },
+    "disks": [
+      {
+        "interfaceType": "SCSI",
+        "slot": 0,
+        "storage": "local-lvm",
+        "sizeGB": 100,
+        "ssd": true,
+        "iothread": true,
+        "cache": "NONE"
+      },
+      {
+        "interfaceType": "SCSI",
+        "slot": 1,
+        "storage": "local-lvm",
+        "sizeGB": 1000,
+        "ssd": false,
+        "cache": "WRITEBACK",
+        "backup": true
+      }
+    ],
+    "tags": ["database", "env:prod"]
+  }'
+
+# Create VM with legacy disk configuration (backward compatible)
+curl -X POST http://localhost:8080/api/v1/vms \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "simple-vm",
+    "node": "hv6",
+    "cores": 2,
+    "memoryMB": 4096,
+    "diskGB": 50,
+    "network": {
+      "bridge": "vmbr0"
+    }
+  }'
+```
+
 ## Snapshot Management
 
 ### List Snapshots for a VM

@@ -4,6 +4,7 @@ import com.coffeesprout.api.dto.BackupRequest;
 import com.coffeesprout.api.dto.BackupResponse;
 import com.coffeesprout.api.dto.CreateSnapshotRequest;
 import com.coffeesprout.api.dto.CreateVMRequestDTO;
+import com.coffeesprout.api.dto.DiskConfig;
 import com.coffeesprout.api.dto.DiskInfo;
 import com.coffeesprout.api.dto.ErrorResponse;
 import com.coffeesprout.api.dto.RestoreRequest;
@@ -309,13 +310,69 @@ public class VMResource {
                 clientRequest.setPool(request.pool());
             }
             
-            // Create the VM
-            CreateVMResponse response = vmService.createVM(request.node(), clientRequest, null);
+            // Set boot order if specified
+            if (request.bootOrder() != null && !request.bootOrder().isEmpty()) {
+                clientRequest.setBoot(request.bootOrder());
+            }
             
             // Add tags from the request
             if (request.tags() != null && !request.tags().isEmpty()) {
                 clientRequest.setTags(String.join(",", request.tags()));
             }
+            
+            // Handle disk configurations
+            if (request.disks() != null && !request.disks().isEmpty()) {
+                // Use the new disk configuration
+                for (DiskConfig disk : request.disks()) {
+                    String diskString = disk.toProxmoxString();
+                    log.info("Setting disk {} with config: {}", disk.getParameterName(), diskString);
+                    
+                    // Set the disk based on its interface and slot
+                    switch (disk.interfaceType()) {
+                        case SCSI:
+                            switch (disk.slot()) {
+                                case 0:
+                                    clientRequest.setScsi0(diskString);
+                                    break;
+                                case 1:
+                                    clientRequest.setScsi1(diskString);
+                                    break;
+                                case 2:
+                                    clientRequest.setScsi2(diskString);
+                                    break;
+                                case 3:
+                                    clientRequest.setScsi3(diskString);
+                                    break;
+                                case 4:
+                                    clientRequest.setScsi4(diskString);
+                                    break;
+                                case 5:
+                                    clientRequest.setScsi5(diskString);
+                                    break;
+                                default:
+                                    log.warn("SCSI slot {} is not supported yet (max slot 5)", disk.slot());
+                                    break;
+                            }
+                            break;
+                        case VIRTIO:
+                            // TODO: Add support for virtio disks
+                            break;
+                        case IDE:
+                            // TODO: Add support for IDE disks
+                            break;
+                        case SATA:
+                            // TODO: Add support for SATA disks
+                            break;
+                    }
+                }
+            } else if (request.diskGB() != null && request.diskGB() > 0) {
+                // Fallback to legacy disk configuration
+                // TODO: Make storage configurable - for now use local-zfs
+                clientRequest.setScsi0("local-zfs:" + request.diskGB());
+            }
+            
+            // Create the VM
+            CreateVMResponse response = vmService.createVM(request.node(), clientRequest, null);
             
             // Build location URI
             URI location = UriBuilder.fromResource(VMResource.class)

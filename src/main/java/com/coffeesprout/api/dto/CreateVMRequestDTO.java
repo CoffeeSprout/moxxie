@@ -34,10 +34,15 @@ public record CreateVMRequestDTO(
     @Max(value = 1048576, message = "Cannot exceed 1TB of memory")
     Integer memoryMB,
     
-    @Schema(description = "Disk size in GB", example = "100")
+    @Schema(description = "Disk size in GB (deprecated, use disks instead)", example = "100")
     @Min(value = 1, message = "Disk size must be at least 1 GB")
     @Max(value = 65536, message = "Cannot exceed 64TB disk size")
+    @Deprecated
     Integer diskGB,
+    
+    @Schema(description = "Disk configurations for the VM")
+    @Valid
+    java.util.List<DiskConfig> disks,
     
     @Schema(description = "Network configuration")
     @Valid
@@ -56,7 +61,10 @@ public record CreateVMRequestDTO(
     String project,
     
     @Schema(description = "Tags to apply to the VM (will be auto-tagged with moxxie and other tags based on name)", example = "[\"env:prod\", \"always-on\"]")
-    java.util.List<String> tags
+    java.util.List<String> tags,
+    
+    @Schema(description = "Boot order configuration (e.g., 'order=scsi0;net0' for PXE boot fallback)", example = "order=net0;scsi0")
+    String bootOrder
 ) {
     @Schema(description = "Network configuration for the VM")
     public record NetworkConfig(

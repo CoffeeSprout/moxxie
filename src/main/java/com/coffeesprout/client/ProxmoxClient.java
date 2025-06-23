@@ -2,10 +2,12 @@ package com.coffeesprout.client;
 
 
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
+import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 
 @RegisterRestClient(configKey = "proxmox-api")
+@RegisterProvider(ProxmoxClientLoggingFilter.class)
 @Path("/")
 public interface ProxmoxClient {
 
