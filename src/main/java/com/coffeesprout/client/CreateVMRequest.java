@@ -18,6 +18,27 @@ public class CreateVMRequest {
     @FormParam("net0")
     private String net0; // e.g., "virtio,bridge=vmbr0"
     
+    @FormParam("net1")
+    private String net1;
+    
+    @FormParam("net2")
+    private String net2;
+    
+    @FormParam("net3")
+    private String net3;
+    
+    @FormParam("net4")
+    private String net4;
+    
+    @FormParam("net5")
+    private String net5;
+    
+    @FormParam("net6")
+    private String net6;
+    
+    @FormParam("net7")
+    private String net7;
+    
     @FormParam("scsihw")
     private String scsihw = "virtio-scsi-pci"; // Default SCSI hardware
     
@@ -75,6 +96,27 @@ public class CreateVMRequest {
     @FormParam("ipconfig0")
     private String ipconfig0; // Cloud-init IP config
     
+    @FormParam("ipconfig1")
+    private String ipconfig1;
+    
+    @FormParam("ipconfig2")
+    private String ipconfig2;
+    
+    @FormParam("ipconfig3")
+    private String ipconfig3;
+    
+    @FormParam("ipconfig4")
+    private String ipconfig4;
+    
+    @FormParam("ipconfig5")
+    private String ipconfig5;
+    
+    @FormParam("ipconfig6")
+    private String ipconfig6;
+    
+    @FormParam("ipconfig7")
+    private String ipconfig7;
+    
     @FormParam("nameserver")
     private String nameserver; // Cloud-init DNS servers
     
@@ -116,6 +158,48 @@ public class CreateVMRequest {
     }
     public void setNet0(String net0) {
         this.net0 = net0;
+    }
+    public String getNet1() {
+        return net1;
+    }
+    public void setNet1(String net1) {
+        this.net1 = net1;
+    }
+    public String getNet2() {
+        return net2;
+    }
+    public void setNet2(String net2) {
+        this.net2 = net2;
+    }
+    public String getNet3() {
+        return net3;
+    }
+    public void setNet3(String net3) {
+        this.net3 = net3;
+    }
+    public String getNet4() {
+        return net4;
+    }
+    public void setNet4(String net4) {
+        this.net4 = net4;
+    }
+    public String getNet5() {
+        return net5;
+    }
+    public void setNet5(String net5) {
+        this.net5 = net5;
+    }
+    public String getNet6() {
+        return net6;
+    }
+    public void setNet6(String net6) {
+        this.net6 = net6;
+    }
+    public String getNet7() {
+        return net7;
+    }
+    public void setNet7(String net7) {
+        this.net7 = net7;
     }
     public String getScsihw() {
         return scsihw;
@@ -230,6 +314,48 @@ public class CreateVMRequest {
     }
     public void setIpconfig0(String ipconfig0) {
         this.ipconfig0 = ipconfig0;
+    }
+    public String getIpconfig1() {
+        return ipconfig1;
+    }
+    public void setIpconfig1(String ipconfig1) {
+        this.ipconfig1 = ipconfig1;
+    }
+    public String getIpconfig2() {
+        return ipconfig2;
+    }
+    public void setIpconfig2(String ipconfig2) {
+        this.ipconfig2 = ipconfig2;
+    }
+    public String getIpconfig3() {
+        return ipconfig3;
+    }
+    public void setIpconfig3(String ipconfig3) {
+        this.ipconfig3 = ipconfig3;
+    }
+    public String getIpconfig4() {
+        return ipconfig4;
+    }
+    public void setIpconfig4(String ipconfig4) {
+        this.ipconfig4 = ipconfig4;
+    }
+    public String getIpconfig5() {
+        return ipconfig5;
+    }
+    public void setIpconfig5(String ipconfig5) {
+        this.ipconfig5 = ipconfig5;
+    }
+    public String getIpconfig6() {
+        return ipconfig6;
+    }
+    public void setIpconfig6(String ipconfig6) {
+        this.ipconfig6 = ipconfig6;
+    }
+    public String getIpconfig7() {
+        return ipconfig7;
+    }
+    public void setIpconfig7(String ipconfig7) {
+        this.ipconfig7 = ipconfig7;
     }
     public String getNameserver() {
         return nameserver;

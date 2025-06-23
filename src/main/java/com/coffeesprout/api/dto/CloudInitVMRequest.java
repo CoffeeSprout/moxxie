@@ -2,6 +2,7 @@ package com.coffeesprout.api.dto;
 
 import jakarta.validation.constraints.*;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import java.util.List;
 
 /**
  * Request DTO for creating a VM from a cloud-init image
@@ -60,12 +61,20 @@ public record CloudInitVMRequest(
     @Schema(description = "SSH public keys (one per line)", example = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGLmQqfp8X5DUVxLruBsCmJ7m4mDGcr5V7e2BXMkNPDp user@example.com")
     String sshKeys,
     
-    @Schema(description = "Network configuration", required = true)
-    @NotNull(message = "Network configuration is required")
+    @Schema(description = "Network configurations (supports multiple NICs)", required = false)
+    List<com.coffeesprout.api.dto.NetworkConfig> networks,
+    
+    @Schema(description = "IP configurations for each network interface (ipconfig0, ipconfig1, etc.)", 
+            example = "[\"ip=dhcp\", \"ip=10.0.0.1/24\"]")
+    List<String> ipConfigs,
+    
+    @Schema(description = "Network configuration (deprecated, use 'networks' instead)", required = false)
+    @Deprecated
     NetworkConfig network,
     
-    @Schema(description = "IP configuration (e.g., 'ip=dhcp' or 'ip=192.168.1.100/24,gw=192.168.1.1')", 
+    @Schema(description = "IP configuration (deprecated, use 'ipConfigs' instead)", 
             example = "ip=dhcp")
+    @Deprecated
     String ipConfig,
     
     @Schema(description = "DNS search domain", example = "cluster.local")

@@ -46,8 +46,13 @@ public record CreateVMRequestDTO(
     @Valid
     java.util.List<DiskConfig> disks,
     
-    @Schema(description = "Network configuration")
+    @Schema(description = "Network configurations (supports multiple NICs)")
     @Valid
+    java.util.List<com.coffeesprout.api.dto.NetworkConfig> networks,
+    
+    @Schema(description = "Network configuration (deprecated, use 'networks' instead)")
+    @Valid
+    @Deprecated
     NetworkConfig network,
     
     @Schema(description = "Start VM on boot", example = "true")

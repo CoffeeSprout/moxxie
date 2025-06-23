@@ -15,6 +15,24 @@ This document provides working examples of Moxxie's REST API endpoints. All exam
 
 ## VM Management
 
+### Multiple Network Interface Support
+
+Moxxie supports creating VMs with up to 8 network interfaces. Each interface can have its own configuration including bridge, VLAN, firewall settings, and IP configuration. This is particularly useful for:
+- Gateway/router VMs that need both public and private interfaces
+- Multi-homed application servers
+- Network security appliances
+
+**Key Features:**
+- Supports up to 8 network interfaces (net0-net7)
+- Each interface can have its own IP configuration (ipconfig0-ipconfig7)
+- Works for both cloud-init and standard VM creation
+- Backward compatible with single network configurations
+
+**Note on Cloud-init IP Configuration:**
+- While Proxmox GUI only shows ipconfig0 and ipconfig1, the API supports ipconfig2-ipconfig7
+- All IP configurations will work correctly even if not visible in the GUI
+- Use the API or CLI tools to verify higher-numbered IP configurations
+
 ### List All VMs
 ```bash
 curl -X GET http://localhost:8080/api/v1/vms | jq .
@@ -262,6 +280,43 @@ curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
     },
     "qemuAgent": true,
     "start": true
+  }'
+
+# Create Gateway VM with Multiple NICs
+# This example shows a gateway/router VM with public and private interfaces
+curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vmid": 300,
+    "name": "wsdc1up-gateway",
+    "node": "storage01",
+    "cores": 2,
+    "memoryMB": 4096,
+    "imageSource": "local-zfs:base-9001-disk-0",
+    "targetStorage": "local-zfs",
+    "diskSizeGB": 20,
+    "cloudInitUser": "coffeesprout",
+    "sshKeys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPxB7sI8//r3dmJqfAyln6VtigT5mSwoKz30SnkZiecc barry@coffeesprout.com",
+    "networks": [
+      {
+        "model": "virtio",
+        "bridge": "wsdc1up",
+        "firewall": true
+      },
+      {
+        "model": "virtio",
+        "bridge": "workshop",
+        "firewall": false
+      }
+    ],
+    "ipConfigs": [
+      "ip=185.173.163.43/27,gw=185.173.163.33",
+      "ip=172.17.1.249/16"
+    ],
+    "nameservers": "1.1.1.1",
+    "qemuAgent": true,
+    "start": true,
+    "tags": "gateway,workshop,wsdc1up"
   }'
 ```
 

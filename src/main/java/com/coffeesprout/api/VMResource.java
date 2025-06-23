@@ -291,16 +291,37 @@ public class VMResource {
             clientRequest.setCores(request.cores());
             clientRequest.setMemory(request.memoryMB());
             
-            // Build network configuration
-            if (request.network() != null) {
-                String netConfig = String.format("virtio,bridge=%s", request.network().bridge());
-                
-                // Only use manually specified VLAN
-                if (request.network().vlan() != null) {
-                    netConfig += ",tag=" + request.network().vlan();
+            // Handle multiple networks
+            List<com.coffeesprout.api.dto.NetworkConfig> networks = request.networks();
+            
+            // Backward compatibility: if networks is null/empty but network is set, convert it
+            if ((networks == null || networks.isEmpty()) && request.network() != null) {
+                CreateVMRequestDTO.NetworkConfig oldNet = request.network();
+                networks = List.of(new com.coffeesprout.api.dto.NetworkConfig(
+                    "virtio", 
+                    oldNet.bridge(), 
+                    oldNet.vlan(),
+                    null, null, null, null, null, null
+                ));
+            }
+            
+            // Set up networks
+            if (networks != null) {
+                for (int i = 0; i < Math.min(networks.size(), 8); i++) {
+                    com.coffeesprout.api.dto.NetworkConfig net = networks.get(i);
+                    String netString = net.toProxmoxString();
+                    
+                    switch (i) {
+                        case 0 -> clientRequest.setNet0(netString);
+                        case 1 -> clientRequest.setNet1(netString);
+                        case 2 -> clientRequest.setNet2(netString);
+                        case 3 -> clientRequest.setNet3(netString);
+                        case 4 -> clientRequest.setNet4(netString);
+                        case 5 -> clientRequest.setNet5(netString);
+                        case 6 -> clientRequest.setNet6(netString);
+                        case 7 -> clientRequest.setNet7(netString);
+                    }
                 }
-                
-                clientRequest.setNet0(netConfig);
             }
             
             // Set start on boot
@@ -461,13 +482,37 @@ public class VMResource {
             // Boot order - we'll update this after disk import
             clientRequest.setBoot("order=scsi2");
             
-            // Network
-            if (request.network() != null) {
-                String netConfig = request.network().model() + ",bridge=" + request.network().bridge();
-                if (request.network().vlanTag() != null) {
-                    netConfig += ",tag=" + request.network().vlanTag();
+            // Handle multiple networks
+            List<com.coffeesprout.api.dto.NetworkConfig> networks = request.networks();
+            
+            // Backward compatibility: if networks is null/empty but network is set, convert it
+            if ((networks == null || networks.isEmpty()) && request.network() != null) {
+                CloudInitVMRequest.NetworkConfig oldNet = request.network();
+                networks = List.of(new com.coffeesprout.api.dto.NetworkConfig(
+                    oldNet.model(), 
+                    oldNet.bridge(), 
+                    oldNet.vlanTag(),
+                    null, null, null, null, null, null
+                ));
+            }
+            
+            // Set up networks
+            if (networks != null) {
+                for (int i = 0; i < Math.min(networks.size(), 8); i++) {
+                    com.coffeesprout.api.dto.NetworkConfig net = networks.get(i);
+                    String netString = net.toProxmoxString();
+                    
+                    switch (i) {
+                        case 0 -> clientRequest.setNet0(netString);
+                        case 1 -> clientRequest.setNet1(netString);
+                        case 2 -> clientRequest.setNet2(netString);
+                        case 3 -> clientRequest.setNet3(netString);
+                        case 4 -> clientRequest.setNet4(netString);
+                        case 5 -> clientRequest.setNet5(netString);
+                        case 6 -> clientRequest.setNet6(netString);
+                        case 7 -> clientRequest.setNet7(netString);
+                    }
                 }
-                clientRequest.setNet0(netConfig);
             }
             
             // QEMU agent
@@ -491,8 +536,30 @@ public class VMResource {
                 clientRequest.setCiuser(request.cloudInitUser());
             }
             
-            if (request.ipConfig() != null) {
-                clientRequest.setIpconfig0(request.ipConfig());
+            // Handle IP configurations
+            List<String> ipConfigs = request.ipConfigs();
+            
+            // Backward compatibility: if ipConfigs is null/empty but ipConfig is set, convert it
+            if ((ipConfigs == null || ipConfigs.isEmpty()) && request.ipConfig() != null) {
+                ipConfigs = List.of(request.ipConfig());
+            }
+            
+            // Set up IP configurations
+            if (ipConfigs != null) {
+                for (int i = 0; i < Math.min(ipConfigs.size(), 8); i++) {
+                    String ipConfig = ipConfigs.get(i);
+                    
+                    switch (i) {
+                        case 0 -> clientRequest.setIpconfig0(ipConfig);
+                        case 1 -> clientRequest.setIpconfig1(ipConfig);
+                        case 2 -> clientRequest.setIpconfig2(ipConfig);
+                        case 3 -> clientRequest.setIpconfig3(ipConfig);
+                        case 4 -> clientRequest.setIpconfig4(ipConfig);
+                        case 5 -> clientRequest.setIpconfig5(ipConfig);
+                        case 6 -> clientRequest.setIpconfig6(ipConfig);
+                        case 7 -> clientRequest.setIpconfig7(ipConfig);
+                    }
+                }
             }
             
             if (request.nameservers() != null) {
@@ -524,6 +591,12 @@ public class VMResource {
                 
                 // Use the updateDisk method to import and attach the disk
                 vmService.importDisk(request.node(), request.vmid(), diskString, null);
+                
+                // Resize the disk if needed
+                if (request.diskSizeGB() > 0) {
+                    log.info("Resizing disk scsi0 to {}G for VM {}", request.diskSizeGB(), request.vmid());
+                    vmService.resizeDisk(request.node(), request.vmid(), "scsi0", request.diskSizeGB() + "G", null);
+                }
                 
                 // Update boot order to boot from scsi0
                 CreateVMRequest bootOrderUpdate = new CreateVMRequest();
