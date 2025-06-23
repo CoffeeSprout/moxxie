@@ -215,6 +215,50 @@ curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
   }'
 ```
 
+### Clone VM from Template
+
+Clone an existing VM or template to create a new VM. The new VM ID can be auto-generated if not provided.
+
+```bash
+# Clone with auto-generated VM ID
+curl -X POST http://localhost:8080/api/v1/vms/9000/clone \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "k8s-master-01",
+    "targetNode": "hv7",
+    "description": "Kubernetes control plane node",
+    "fullClone": true,
+    "targetStorage": "local-zfs",
+    "start": false,
+    "tags": ["k8s-controlplane", "env:prod"]
+  }'
+
+# Clone with specific VM ID
+curl -X POST http://localhost:8080/api/v1/vms/9000/clone \
+  -H "Content-Type: application/json" \
+  -d '{
+    "newVmId": 201,
+    "name": "k8s-worker-01",
+    "targetNode": "hv6",
+    "description": "Kubernetes worker node",
+    "fullClone": true,
+    "targetStorage": "local-zfs",
+    "pool": "kubernetes",
+    "tags": ["k8s-worker", "env:prod"]
+  }'
+
+# Linked clone (faster, uses less storage)
+curl -X POST http://localhost:8080/api/v1/vms/9000/clone \
+  -H "Content-Type: application/json" \
+  -d '{
+    "newVmId": 202,
+    "name": "test-vm",
+    "targetNode": "hv7",
+    "fullClone": false,
+    "targetStorage": "local-zfs"
+  }'
+```
+
 ## Snapshot Management
 
 ### List Snapshots for a VM

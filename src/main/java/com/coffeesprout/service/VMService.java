@@ -396,4 +396,37 @@ public class VMService {
             throw new RuntimeException("Failed to clone VM: " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Check if a VM is a template.
+     * Templates have special properties and cannot be started.
+     * 
+     * @param vmId VM ID to check
+     * @param ticket Authentication ticket
+     * @return true if the VM is a template, false otherwise
+     * @throws RuntimeException if VM not found
+     */
+    public boolean isTemplate(int vmId, @AuthTicket String ticket) {
+        List<VMResponse> vms = listVMs(ticket);
+        
+        VMResponse vm = vms.stream()
+            .filter(v -> v.vmid() == vmId)
+            .findFirst()
+            .orElseThrow(() -> new RuntimeException("VM not found: " + vmId));
+            
+        return vm.template() == 1;
+    }
+    
+    /**
+     * Get all templates in the cluster.
+     * Templates are VMs that have been converted to templates and cannot be started.
+     * 
+     * @param ticket Authentication ticket
+     * @return List of VMs that are templates
+     */
+    public List<VMResponse> getTemplates(@AuthTicket String ticket) {
+        return listVMs(ticket).stream()
+            .filter(vm -> vm.template() == 1)
+            .collect(Collectors.toList());
+    }
 }
