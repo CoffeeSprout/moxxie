@@ -2,6 +2,7 @@ package com.coffeesprout.api;
 
 import com.coffeesprout.api.dto.BackupRequest;
 import com.coffeesprout.api.dto.BackupResponse;
+import com.coffeesprout.api.dto.CloudInitVMRequest;
 import com.coffeesprout.api.dto.CreateSnapshotRequest;
 import com.coffeesprout.api.dto.CreateVMRequestDTO;
 import com.coffeesprout.api.dto.DiskConfig;
@@ -34,6 +35,8 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
+import jakarta.ws.rs.core.UriInfo;
+import jakarta.ws.rs.core.Context;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -87,6 +90,9 @@ public class VMResource {
     
     @Inject
     TicketManager ticketManager;
+    
+    @Context
+    UriInfo uriInfo;
 
     @GET
     @SafeMode(value = false)  // Read operation
@@ -417,7 +423,7 @@ public class VMResource {
         try {
             log.info("Creating cloud-init VM {} from image {}", request.name(), request.imageSource());
             
-            // Build CreateVMRequest with import-from disk
+            // Build CreateVMRequest WITHOUT main disk (following Ansible pattern)
             CreateVMRequest clientRequest = new CreateVMRequest();
             clientRequest.setVmid(request.vmid());
             clientRequest.setName(request.name());
@@ -432,21 +438,15 @@ public class VMResource {
             // Set SCSI hardware
             clientRequest.setScsihw("virtio-scsi-pci");
             
-            // Create disk with import-from
-            DiskConfig importDisk = request.toDiskConfig();
-            String diskString = importDisk.toProxmoxString();
-            log.info("Importing disk with config: {}", diskString);
-            clientRequest.setScsi0(diskString);
-            
-            // Add cloud-init drive
+            // Add cloud-init drive on ide2
             clientRequest.setIde2(request.targetStorage() + ":cloudinit");
             
             // Serial console for cloud-init
             clientRequest.setSerial0("socket");
             clientRequest.setVga("serial0");
             
-            // Boot order
-            clientRequest.setBoot("order=scsi0");
+            // Boot order - we'll update this after disk import
+            clientRequest.setBoot("order=ide2");
             
             // Network
             if (request.network() != null) {
@@ -472,8 +472,37 @@ public class VMResource {
                 clientRequest.setTags(request.tags());
             }
             
-            // Create the VM
+            // Create the VM without main disk
+            log.info("Creating VM {} without main disk", request.vmid());
             CreateVMResponse response = vmService.createVM(request.node(), clientRequest, null);
+            
+            // Now import and attach the disk as scsi0
+            try {
+                log.info("Importing disk from {} to VM {}", request.imageSource(), request.vmid());
+                
+                // Build disk config with import-from
+                DiskConfig importDisk = request.toDiskConfig();
+                String diskString = importDisk.toProxmoxString();
+                log.info("Disk import config: {}", diskString);
+                
+                // Use the updateDisk method to import and attach the disk
+                vmService.importDisk(request.node(), request.vmid(), diskString, null);
+                
+                // Update boot order to boot from scsi0
+                CreateVMRequest bootOrderUpdate = new CreateVMRequest();
+                bootOrderUpdate.setBoot("order=scsi0");
+                vmService.updateVMConfig(request.node(), request.vmid(), bootOrderUpdate, null);
+                
+            } catch (Exception e) {
+                log.error("Failed to import disk for VM {}, cleaning up", request.vmid(), e);
+                // Clean up the VM if disk import fails
+                try {
+                    vmService.deleteVM(request.node(), request.vmid(), null);
+                } catch (Exception cleanupEx) {
+                    log.error("Failed to clean up VM {} after disk import failure", request.vmid(), cleanupEx);
+                }
+                throw new RuntimeException("Failed to import disk: " + e.getMessage(), e);
+            }
             
             // Configure cloud-init settings
             if (request.cloudInitUser() != null || request.ipConfig() != null || request.sshKeys() != null) {
@@ -512,7 +541,7 @@ public class VMResource {
             // Start VM if requested
             if (request.start() != null && request.start()) {
                 log.info("Starting VM {}", request.vmid());
-                vmService.changeVMState(request.node(), request.vmid(), VMService.VMAction.START, null);
+                vmService.startVM(request.node(), request.vmid(), null);
             }
             
             URI location = uriInfo.getAbsolutePathBuilder()

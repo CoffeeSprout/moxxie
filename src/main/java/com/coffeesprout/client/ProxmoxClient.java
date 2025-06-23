@@ -117,7 +117,9 @@ public interface ProxmoxClient {
     @Produces(MediaType.APPLICATION_JSON)
     ConfigResponse updateDisk(@PathParam("node") String node,
                               @PathParam("vmid") int vmid,
-                              @FormParam("scsi0") String diskParam);
+                              @FormParam("scsi0") String diskParam,
+                              @CookieParam("PVEAuthCookie") String ticket,
+                              @HeaderParam("CSRFPreventionToken") String csrfToken);
 
     // Start the VM
     @POST

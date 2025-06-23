@@ -343,12 +343,19 @@ public class StorageService {
             // Prepare download parameters
             Integer verifyCerts = request.verifyCertificate() ? 1 : 0;
             
+            // Determine content type from filename
+            String contentType = request.filename().toLowerCase().endsWith(".qcow2") ? "images" :
+                                request.filename().toLowerCase().endsWith(".img") ? "images" :
+                                request.filename().toLowerCase().endsWith(".raw") ? "images" :
+                                request.filename().toLowerCase().endsWith(".iso") ? "iso" :
+                                request.filename().toLowerCase().endsWith(".tar.gz") ? "vztmpl" : "iso";
+            
             // Call Proxmox API
             TaskStatusResponse response = proxmoxClient.downloadUrlToStorage(
                     node,
                     storageId,
                     request.url(),
-                    "iso", // For now, only support ISO downloads
+                    contentType,
                     request.filename(),
                     request.checksum(),
                     request.checksumAlgorithm(),

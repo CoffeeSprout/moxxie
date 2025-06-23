@@ -126,7 +126,7 @@ curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
     "node": "hv7",
     "cores": 4,
     "memoryMB": 8192,
-    "imageSource": "local:iso/debian-12-generic-amd64.qcow2",
+    "imageSource": "util-iso:images/debian-12-generic-amd64.qcow2",
     "targetStorage": "local-zfs",
     "diskSizeGB": 50,
     "cloudInitUser": "debian",
@@ -156,7 +156,7 @@ curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
     "node": "hv7",
     "cores": 2,
     "memoryMB": 4096,
-    "imageSource": "local:iso/debian-12-cloud.qcow2",
+    "imageSource": "util-iso:images/debian-12-cloud.qcow2",
     "targetStorage": "local-zfs",
     "diskSizeGB": 20,
     "cloudInitUser": "admin",
@@ -175,7 +175,7 @@ curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
 
 ```bash
 # Step 1: Download cloud image to storage
-curl -X POST http://localhost:8080/api/v1/storage/local/download-url \
+curl -X POST http://localhost:8080/api/v1/storage/util-iso/download-url \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2",
@@ -193,7 +193,7 @@ curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
     "node": "hv7",
     "cores": 8,
     "memoryMB": 16384,
-    "imageSource": "local:iso/debian-12-generic-amd64.qcow2",
+    "imageSource": "util-iso:images/debian-12-generic-amd64.qcow2",
     "targetStorage": "local-zfs",
     "diskSizeGB": 100,
     "cloudInitUser": "debian",

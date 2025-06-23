@@ -264,6 +264,9 @@ public class VMService {
         if (config.getTags() != null) {
             appendFormParam(formData, "tags", config.getTags());
         }
+        if (config.getBoot() != null) {
+            appendFormParam(formData, "boot", config.getBoot());
+        }
         
         return formData.toString();
     }
@@ -277,5 +280,19 @@ public class VMService {
         } catch (Exception e) {
             throw new RuntimeException("Failed to encode form parameter", e);
         }
+    }
+    
+    @SafeMode(operation = SafeMode.Operation.WRITE)
+    public void importDisk(String node, int vmId, String diskConfig, @AuthTicket String ticket) {
+        log.info("Importing disk for VM {} on node '{}' with config: {}", vmId, node, diskConfig);
+        
+        // Use the updateDisk method from ProxmoxClient which is designed for disk import
+        ConfigResponse response = proxmoxClient.updateDisk(node, vmId, diskConfig, ticket, ticketManager.getCsrfToken());
+        
+        if (response == null) {
+            throw new RuntimeException("Failed to import disk - no response from Proxmox");
+        }
+        
+        log.info("Disk import initiated successfully for VM {}", vmId);
     }
 }
