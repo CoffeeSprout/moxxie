@@ -102,9 +102,9 @@ class TagExpressionWithAbstractVMTaskTest {
         protected List<VMResponse> selectVMs(TaskContext context) {
             // Override to provide test data since services aren't injected
             return List.of(
-                new VMResponse(101, "vm1", "node1", "running", 2, 1024L, 10240L, 3600L, "qemu", List.of("env-prod"), null),
-                new VMResponse(102, "vm2", "node1", "running", 2, 1024L, 10240L, 3600L, "qemu", List.of("env-staging"), null),
-                new VMResponse(103, "vm3", "node1", "running", 2, 1024L, 10240L, 3600L, "qemu", List.of("env-prod"), null)
+                new VMResponse(101, "vm1", "node1", "running", 2, 1024L, 10240L, 3600L, "qemu", List.of("env-prod"), null, 0),
+                new VMResponse(102, "vm2", "node1", "running", 2, 1024L, 10240L, 3600L, "qemu", List.of("env-staging"), null, 0),
+                new VMResponse(103, "vm3", "node1", "running", 2, 1024L, 10240L, 3600L, "qemu", List.of("env-prod"), null, 0)
             );
         }
         

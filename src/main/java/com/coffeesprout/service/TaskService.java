@@ -242,6 +242,42 @@ public class TaskService {
     }
     
     /**
+     * Wait for a task to complete
+     * @return true if task completed successfully, false otherwise
+     */
+    public boolean waitForTask(String node, String upid, int timeoutSeconds, @AuthTicket String ticket) {
+        log.info("Waiting for task {} on node {} with timeout {}s", upid, node, timeoutSeconds);
+        
+        long startTime = System.currentTimeMillis();
+        long timeoutMs = timeoutSeconds * 1000L;
+        
+        while (System.currentTimeMillis() - startTime < timeoutMs) {
+            try {
+                TaskStatusDetailResponse status = getTaskStatus(upid, ticket);
+                
+                if (status.finished()) {
+                    boolean success = "OK".equals(status.exitstatus());
+                    log.info("Task {} finished with status: {}", upid, status.exitstatus());
+                    return success;
+                }
+                
+                // Wait 2 seconds before checking again
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.error("Interrupted while waiting for task", e);
+                return false;
+            } catch (Exception e) {
+                log.error("Error checking task status", e);
+                // Continue waiting - task might still be running
+            }
+        }
+        
+        log.warn("Task {} timed out after {} seconds", upid, timeoutSeconds);
+        return false;
+    }
+    
+    /**
      * Stop a running task
      */
     public void stopTask(String upid, @AuthTicket String ticket) {

@@ -35,5 +35,8 @@ public record VMResponse(
     java.util.List<String> tags,
     
     @Schema(description = "Resource pool the VM belongs to", example = "moxxie-pool")
-    String pool
+    String pool,
+    
+    @Schema(description = "Whether this is a template (1) or regular VM (0)", example = "0")
+    int template
 ) {}

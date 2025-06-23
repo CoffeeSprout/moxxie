@@ -116,6 +116,38 @@ public class TagService {
     }
     
     /**
+     * Update VM tags by replacing all existing tags
+     */
+    public void updateVMTags(int vmId, List<String> newTags, @AuthTicket String ticket) {
+        try {
+            String node = getNodeForVM(vmId, ticket);
+            if (node == null) {
+                LOG.warn("Could not find node for VM " + vmId);
+                return;
+            }
+            
+            String tagsString = newTags != null ? String.join(",", newTags) : "";
+            
+            // URL-encode the tags value to handle special characters
+            String encodedTags = java.net.URLEncoder.encode(tagsString, java.nio.charset.StandardCharsets.UTF_8);
+            
+            // Update VM config with new tags
+            proxmoxClient.updateVMConfig(
+                node,
+                vmId,
+                ticket,
+                ticketManager.getCsrfToken(),
+                "tags=" + encodedTags
+            );
+            
+            LOG.info("Updated tags for VM " + vmId + " to: " + tagsString);
+        } catch (Exception e) {
+            LOG.error("Error updating tags for VM " + vmId, e);
+            throw new RuntimeException("Failed to update VM tags: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
      * Get all unique tags in use across all VMs
      */
     public Set<String> getAllUniqueTags(@AuthTicket String ticket) {

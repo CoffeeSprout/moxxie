@@ -80,7 +80,7 @@ class CreateSnapshotTaskTest {
         
         // Mock VM service
         VMResponse vm = new VMResponse(8200, "test-vm", "node1", "running", 1, 1024L, 
-            2048L, 3600L, "qemu", List.of("env:test"), null);
+            2048L, 3600L, "qemu", List.of("env:test"), null, 0);
         when(vmService.listVMs(null)).thenReturn(List.of(vm));
         
         // Mock tag service
@@ -117,7 +117,7 @@ class CreateSnapshotTaskTest {
         
         // Mock VM service
         VMResponse vm = new VMResponse(8200, "test-vm", "node1", "running", 1, 1024L, 
-            2048L, 3600L, "qemu", List.of("env:test"), null);
+            2048L, 3600L, "qemu", List.of("env:test"), null, 0);
         when(vmService.listVMs(null)).thenReturn(List.of(vm));
         
         // Mock tag service
@@ -154,7 +154,7 @@ class CreateSnapshotTaskTest {
     void testExecute_NoVmsMatchingTag() {
         // Mock VM service
         VMResponse vm = new VMResponse(8200, "test-vm", "node1", "running", 1, 1024L, 
-            2048L, 3600L, "qemu", List.of("env:test"), null);
+            2048L, 3600L, "qemu", List.of("env:test"), null, 0);
         when(vmService.listVMs(null)).thenReturn(List.of(vm));
         
         // Mock tag service - VM doesn't have the required tag
@@ -174,9 +174,9 @@ class CreateSnapshotTaskTest {
     void testExecute_PartialFailure() {
         // Mock VM service with multiple VMs
         VMResponse vm1 = new VMResponse(8200, "test-vm-1", "node1", "running", 1, 1024L, 
-            2048L, 3600L, "qemu", List.of("env:test"), null);
+            2048L, 3600L, "qemu", List.of("env:test"), null, 0);
         VMResponse vm2 = new VMResponse(8201, "test-vm-2", "node1", "running", 1, 1024L, 
-            2048L, 3600L, "qemu", List.of("env:test"), null);
+            2048L, 3600L, "qemu", List.of("env:test"), null, 0);
         when(vmService.listVMs(null)).thenReturn(List.of(vm1, vm2));
         
         // Mock tag service
@@ -220,7 +220,7 @@ class CreateSnapshotTaskTest {
         context.addParameter("snapshotNamePattern", "custom-{vm}-{date}");
         
         VMResponse vm = new VMResponse(8200, "myvm", "node1", "running", 1, 1024L, 
-            2048L, 3600L, "qemu", List.of("env:test"), null);
+            2048L, 3600L, "qemu", List.of("env:test"), null, 0);
         
         when(snapshotService.createSnapshot(eq(8200), any(CreateSnapshotRequest.class), isNull()))
             .thenReturn(new com.coffeesprout.api.dto.TaskResponse("TASK-123", "Creating snapshot"));

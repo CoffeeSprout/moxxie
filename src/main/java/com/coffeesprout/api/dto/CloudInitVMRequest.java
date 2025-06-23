@@ -37,8 +37,8 @@ public record CloudInitVMRequest(
     
     @Schema(description = "Cloud image source", example = "util-iso:iso/debian-12-generic-amd64.qcow2", required = true)
     @NotBlank(message = "Image source is required")
-    @Pattern(regexp = "^[a-zA-Z0-9-]+:(iso|vztmpl|images|\\d+)/[a-zA-Z0-9._-]+$", 
-             message = "Image source must be in format storage:content-type/filename or storage:vmid/filename")
+    @Pattern(regexp = "^[a-zA-Z0-9-]+:((iso|vztmpl|images|\\d+)/)?[a-zA-Z0-9._-]+$", 
+             message = "Image source must be in format storage:content-type/filename, storage:vmid/filename, or storage:base-vmid-disk-N")
     String imageSource,
     
     @Schema(description = "Target storage for the VM disk", example = "local-zfs", required = true)
@@ -56,7 +56,7 @@ public record CloudInitVMRequest(
     @Schema(description = "Cloud-init password")
     String cloudInitPassword,
     
-    @Schema(description = "SSH public keys (one per line)")
+    @Schema(description = "SSH public keys (one per line)", example = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGLmQqfp8X5DUVxLruBsCmJ7m4mDGcr5V7e2BXMkNPDp user@example.com")
     String sshKeys,
     
     @Schema(description = "Network configuration", required = true)

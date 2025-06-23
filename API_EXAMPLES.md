@@ -130,7 +130,8 @@ curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
     "targetStorage": "local-zfs",
     "diskSizeGB": 50,
     "cloudInitUser": "debian",
-    "sshKeys": "ssh-rsa AAAAB3NzaC1yc2...",
+    "cloudInitPassword": "temppassword123",
+    "sshKeys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGLmQqfp8X5DUVxLruBsCmJ7m4mDGcr5V7e2BXMkNPDp user@example.com",
     "ipConfig": "ip=192.168.1.100/24,gw=192.168.1.1",
     "nameservers": "8.8.8.8,8.8.4.4",
     "searchDomain": "cluster.local",
@@ -185,6 +186,7 @@ curl -X POST http://localhost:8080/api/v1/storage/util-iso/download-url \
   }'
 
 # Step 2: Create VM from the downloaded image
+# NOTE: SSH keys omitted due to Proxmox API bug - use password auth
 curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
   -H "Content-Type: application/json" \
   -d '{
@@ -197,7 +199,7 @@ curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
     "targetStorage": "local-zfs",
     "diskSizeGB": 100,
     "cloudInitUser": "debian",
-    "sshKeys": "ssh-rsa AAAAB3NzaC1yc2...",
+    "cloudInitPassword": "changeme123",
     "ipConfig": "ip=dhcp",
     "network": {
       "model": "virtio",
@@ -715,3 +717,27 @@ curl -X GET http://localhost:8080/api/v1/vms/8200/migrate/history | jq .
 3. **Failed Online**: Returns error unless `allowOfflineMigration=true`
 4. **State Recovery**: Automatically restarts VMs that were running before migration
 5. **History Tracking**: All migrations are recorded in database for audit
+
+## SSH Key Management
+
+SSH keys can be set during VM creation or updated on existing VMs.
+
+### Set SSH Keys on Existing VM
+```bash
+# Update SSH keys on an existing VM
+curl -X PUT http://localhost:8080/api/v1/vms/300/ssh-keys \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sshKeys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGLmQqfp8X5DUVxLruBsCmJ7m4mDGcr5V7e2BXMkNPDp user@example.com"
+  }'
+```
+
+### Multiple SSH Keys
+```bash
+# Set multiple SSH keys (one per line)
+curl -X PUT http://localhost:8080/api/v1/vms/300/ssh-keys \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sshKeys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGLmQqfp8X5DUVxLruBsCmJ7m4mDGcr5V7e2BXMkNPDp user1@example.com\nssh-rsa AAAAB3NzaC1yc2EAAAA... user2@example.com"
+  }'
+```

@@ -53,7 +53,8 @@ class VMResourceSafeModeTest {
             0L,                 // uptime
             "qemu",             // type
             List.of(),          // tags
-            null                // pool
+            null,               // pool
+            0                   // template
         );
         
         // Default safety config
@@ -164,7 +165,8 @@ class VMResourceSafeModeTest {
             testVM.uptime(),
             testVM.type(),
             testVM.tags(),
-            testVM.pool()
+            testVM.pool(),
+            testVM.template()
         );
         when(vmService.listVMsWithFilters(null, null, null, null, null)).thenReturn(List.of(stoppedVM));
         when(tagService.getVMTags(eq(100), any())).thenReturn(Set.of("production"));
