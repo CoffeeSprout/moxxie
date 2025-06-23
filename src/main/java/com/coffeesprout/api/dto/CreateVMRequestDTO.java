@@ -66,7 +66,13 @@ public record CreateVMRequestDTO(
     java.util.List<String> tags,
     
     @Schema(description = "Boot order configuration (e.g., 'order=scsi0;net0' for PXE boot fallback)", example = "order=net0;scsi0")
-    String bootOrder
+    String bootOrder,
+    
+    @Schema(description = "CPU type (e.g., 'host', 'kvm64', 'x86-64-v2-AES')", example = "host", defaultValue = "x86-64-v2-AES")
+    String cpuType,
+    
+    @Schema(description = "VGA hardware type (e.g., 'std', 'serial0', 'qxl', 'virtio')", example = "std", defaultValue = "std")
+    String vgaType
 ) {
     @Schema(description = "Network configuration for the VM")
     public record NetworkConfig(

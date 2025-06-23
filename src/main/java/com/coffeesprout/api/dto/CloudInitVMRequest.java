@@ -74,7 +74,7 @@ public record CloudInitVMRequest(
     @Schema(description = "DNS nameservers (comma-separated)", example = "8.8.8.8,8.8.4.4")
     String nameservers,
     
-    @Schema(description = "CPU type", example = "host", defaultValue = "kvm64")
+    @Schema(description = "CPU type", example = "host", defaultValue = "x86-64-v2-AES")
     String cpuType,
     
     @Schema(description = "Enable QEMU agent", defaultValue = "true")

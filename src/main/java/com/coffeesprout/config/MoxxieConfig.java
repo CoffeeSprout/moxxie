@@ -99,6 +99,20 @@ public interface MoxxieConfig {
          */
         @WithDefault("vmbr0")
         String defaultBridge();
+        
+        /**
+         * Default CPU type for VM creation
+         * Can be set via MOXXIE_PROXMOX_DEFAULT_CPU_TYPE
+         */
+        @WithDefault("x86-64-v2-AES")
+        String defaultCpuType();
+        
+        /**
+         * Default VGA type for VM creation
+         * Can be set via MOXXIE_PROXMOX_DEFAULT_VGA_TYPE
+         */
+        @WithDefault("std")
+        String defaultVgaType();
     }
     
     interface Api {

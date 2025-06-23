@@ -117,6 +117,32 @@ curl -X POST http://localhost:8080/api/v1/vms \
     }
   }'
 
+# Create VM with custom CPU and VGA types
+curl -X POST http://localhost:8080/api/v1/vms \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "high-perf-vm",
+    "node": "hv6",
+    "cores": 8,
+    "memoryMB": 32768,
+    "cpuType": "host",
+    "vgaType": "virtio",
+    "disks": [
+      {
+        "interfaceType": "SCSI",
+        "slot": 0,
+        "storage": "local-zfs",
+        "sizeGB": 100,
+        "ssd": true,
+        "iothread": true
+      }
+    ],
+    "network": {
+      "bridge": "vmbr0"
+    },
+    "tags": ["high-performance"]
+  }'
+
 # Create VM from cloud-init image
 curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
   -H "Content-Type: application/json" \
@@ -144,6 +170,7 @@ curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
       "iothread": true,
       "discard": true
     },
+    "cpuType": "host",
     "tags": "k8s-controlplane,env-prod,moxxie",
     "start": true
   }'
@@ -210,6 +237,29 @@ curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
       "iothread": true
     },
     "tags": "k8s-worker,env-prod,moxxie",
+    "qemuAgent": true,
+    "start": true
+  }'
+
+# Create Talos Linux VM from template
+# Note: Talos doesn't use traditional users/SSH, only requires network configuration
+curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vmid": 200,
+    "name": "talos-vm",
+    "node": "storage01",
+    "cores": 2,
+    "memoryMB": 4096,
+    "imageSource": "local-zfs:base-9002-disk-0",
+    "targetStorage": "local-zfs",
+    "diskSizeGB": 20,
+    "ipConfig": "ip=172.17.1.250/16,gw=172.17.1.1",
+    "nameservers": "1.1.1.1",
+    "network": {
+      "model": "virtio",
+      "bridge": "workshop"
+    },
     "qemuAgent": true,
     "start": true
   }'

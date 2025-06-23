@@ -29,6 +29,7 @@ import com.coffeesprout.service.VMService;
 import com.coffeesprout.service.VMIdService;
 import com.coffeesprout.service.TicketManager;
 import com.coffeesprout.client.ProxmoxClient;
+import com.coffeesprout.config.MoxxieConfig;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -95,6 +96,9 @@ public class VMResource {
     
     @Inject
     VMIdService vmIdService;
+    
+    @Inject
+    MoxxieConfig config;
     
     @Context
     UriInfo uriInfo;
@@ -319,6 +323,20 @@ public class VMResource {
                 clientRequest.setTags(String.join(",", request.tags()));
             }
             
+            // Set CPU type (use request value or default)
+            if (request.cpuType() != null && !request.cpuType().isEmpty()) {
+                clientRequest.setCpu(request.cpuType());
+            } else {
+                clientRequest.setCpu(config.proxmox().defaultCpuType());
+            }
+            
+            // Set VGA type (use request value or default)
+            if (request.vgaType() != null && !request.vgaType().isEmpty()) {
+                clientRequest.setVga(request.vgaType());
+            } else {
+                clientRequest.setVga(config.proxmox().defaultVgaType());
+            }
+            
             // Handle disk configurations
             if (request.disks() != null && !request.disks().isEmpty()) {
                 // Use the new disk configuration
@@ -423,9 +441,11 @@ public class VMResource {
             clientRequest.setCores(request.cores());
             clientRequest.setMemory(request.memoryMB());
             
-            // Set CPU type if specified
-            if (request.cpuType() != null) {
+            // Set CPU type (use request value or default)
+            if (request.cpuType() != null && !request.cpuType().isEmpty()) {
                 clientRequest.setCpu(request.cpuType());
+            } else {
+                clientRequest.setCpu(config.proxmox().defaultCpuType());
             }
             
             // Set SCSI hardware
@@ -436,7 +456,7 @@ public class VMResource {
             
             // Serial console for cloud-init
             clientRequest.setSerial0("socket");
-            clientRequest.setVga("serial0");
+            clientRequest.setVga(config.proxmox().defaultVgaType());
             
             // Boot order - we'll update this after disk import
             clientRequest.setBoot("order=scsi2");
