@@ -9,6 +9,8 @@ public class Node {
     private int cpu;
     @JsonProperty("maxmem")
     private long maxmem; // bytes
+    @JsonProperty("status")
+    private String status;
 
     public String getName() {
         return name;
@@ -27,5 +29,11 @@ public class Node {
     }
     public void setMaxmem(long maxmem) {
         this.maxmem = maxmem;
+    }
+    public String getStatus() {
+        return status;
+    }
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

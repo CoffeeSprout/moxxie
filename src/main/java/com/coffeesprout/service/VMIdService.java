@@ -10,6 +10,8 @@ import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
 
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Service for managing VM ID allocation in the Proxmox cluster.
@@ -28,6 +30,13 @@ public class VMIdService {
     
     // Retry configuration
     private static final int MAX_RETRIES = 3;
+    
+    // Track recently allocated VM IDs to avoid conflicts
+    private final ConcurrentHashMap<Integer, Long> recentlyAllocatedIds = new ConcurrentHashMap<>();
+    private static final long ALLOCATION_TIMEOUT_MS = 60000; // 1 minute
+    
+    // Last allocated VM ID for incremental allocation
+    private final AtomicInteger lastAllocatedId = new AtomicInteger(0);
 
     @Inject
     @RestClient
@@ -39,23 +48,53 @@ public class VMIdService {
      * 
      * @return Next available VM ID
      */
-    public int getNextAvailableVmId(@AuthTicket String ticket) {
-        // Try Proxmox cluster API first
-        try {
-            ClusterNextIdResponse response = proxmoxClient.getNextVmId(ticket);
-            if (response != null && response.data() != null) {
-                int vmId = response.data();
-                if (isValidVmId(vmId)) {
-                    log.infof("Got next VM ID from Proxmox cluster API: %d", vmId);
-                    return vmId;
+    public synchronized int getNextAvailableVmId(@AuthTicket String ticket) {
+        // Clean up old allocations
+        cleanupOldAllocations();
+        
+        // Keep trying to get next VM ID from Proxmox until we get an unused one
+        int attempts = 0;
+        int maxAttempts = 10;
+        
+        while (attempts < maxAttempts) {
+            try {
+                ClusterNextIdResponse response = proxmoxClient.getNextVmId(ticket);
+                if (response != null && response.data() != null) {
+                    int vmId = response.data();
+                    if (isValidVmId(vmId) && !isRecentlyAllocated(vmId)) {
+                        // Track this allocation
+                        recentlyAllocatedIds.put(vmId, System.currentTimeMillis());
+                        lastAllocatedId.set(vmId);
+                        log.infof("Allocated VM ID from Proxmox cluster API: %d (attempt %d)", vmId, attempts + 1);
+                        return vmId;
+                    } else {
+                        log.debugf("VM ID %d is recently allocated or invalid, trying again", vmId);
+                    }
                 }
+            } catch (Exception e) {
+                log.warnf("Failed to get next VM ID from Proxmox API (attempt %d): %s", attempts + 1, e.getMessage());
             }
-        } catch (Exception e) {
-            log.warnf("Failed to get next VM ID from Proxmox API, falling back to random generation: %s", e.getMessage());
+            
+            attempts++;
+            
+            // Small delay between attempts
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
         }
         
-        // Fallback to random generation with retry logic
-        return generateRandomVmIdWithRetry();
+        // Fallback to generation if Proxmox API fails after all attempts
+        log.warnf("Failed to get unique VM ID from Proxmox after %d attempts, falling back to generation", maxAttempts);
+        int vmId = generateUniqueVmId(0);
+        
+        // Track this allocation
+        recentlyAllocatedIds.put(vmId, System.currentTimeMillis());
+        log.infof("Allocated VM ID (fallback): %d", vmId);
+        
+        return vmId;
     }
 
     /**
@@ -112,5 +151,61 @@ public class VMIdService {
      */
     public int getMaxVmId() {
         return MAX_VM_ID;
+    }
+    
+    /**
+     * Generate a unique VM ID based on base ID or incremental allocation.
+     * 
+     * @param baseId Base ID from Proxmox API (0 if not available)
+     * @return Unique VM ID
+     */
+    private int generateUniqueVmId(int baseId) {
+        // Use baseId if provided, otherwise use lastAllocated + 1 or MIN_VM_ID
+        int startId = baseId > 0 ? baseId : Math.max(lastAllocatedId.get() + 1, MIN_VM_ID);
+        
+        // Try incremental allocation first
+        for (int i = 0; i < 1000; i++) {
+            int candidateId = startId + i;
+            if (isValidVmId(candidateId) && !isRecentlyAllocated(candidateId)) {
+                lastAllocatedId.set(candidateId);
+                return candidateId;
+            }
+        }
+        
+        // Fall back to random generation
+        for (int attempt = 0; attempt < MAX_RETRIES * 10; attempt++) {
+            int candidateId = generateRandomVmId();
+            if (!isRecentlyAllocated(candidateId)) {
+                lastAllocatedId.updateAndGet(current -> Math.max(current, candidateId));
+                return candidateId;
+            }
+        }
+        
+        // Emergency fallback - increment from last known
+        int fallbackId = lastAllocatedId.incrementAndGet();
+        log.warnf("Using emergency fallback VM ID: %d", fallbackId);
+        return fallbackId;
+    }
+    
+    /**
+     * Check if a VM ID was recently allocated.
+     * 
+     * @param vmId VM ID to check
+     * @return true if recently allocated
+     */
+    private boolean isRecentlyAllocated(int vmId) {
+        Long allocationTime = recentlyAllocatedIds.get(vmId);
+        return allocationTime != null && 
+               (System.currentTimeMillis() - allocationTime) < ALLOCATION_TIMEOUT_MS;
+    }
+    
+    /**
+     * Clean up old VM ID allocations.
+     */
+    private void cleanupOldAllocations() {
+        long now = System.currentTimeMillis();
+        recentlyAllocatedIds.entrySet().removeIf(entry -> 
+            (now - entry.getValue()) > ALLOCATION_TIMEOUT_MS
+        );
     }
 }

@@ -343,7 +343,7 @@ quarkus.log.category."com.coffeesprout.client.ProxmoxClientLoggingFilter".level=
 
 Moxxie uses a structured tagging system for VM organization and automation. When implementing new features, consider if they should:
 
-1. **Add new tags automatically** - e.g., backup features might add `backup:daily` tags
+1. **Add new tags automatically** - e.g., backup features might add `backup-daily` tags
 2. **Query VMs by tags** - e.g., maintenance features should respect `always-on` and `maint-ok` tags
 3. **Create new tag categories** - Coordinate with the team to ensure consistency
 
@@ -355,9 +355,13 @@ Moxxie uses a structured tagging system for VM organization and automation. When
 - **Criticality**: `always-on`, `maint-ok`
 - **Kubernetes**: `k8s-controlplane`, `k8s-worker`
 
+**Important**: Tags in Proxmox cannot contain colons (`:`). Always use dashes (`-`) instead. For example:
+- ✅ Correct: `client-nixz`, `env-prod`, `role-worker`
+- ❌ Incorrect: `client:nixz`, `env:prod`, `role:worker`
+
 ### Tag Colors in Proxmox UI
 
-- Red: Critical/Production (`always-on`, `env:prod`)
+- Red: Critical/Production (`always-on`, `env-prod`)
 - Blue: Clients and environments
 - Purple: Kubernetes nodes
 - Green: Moxxie managed

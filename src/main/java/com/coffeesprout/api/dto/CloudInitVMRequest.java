@@ -9,8 +9,7 @@ import java.util.List;
  */
 @Schema(description = "Request to create a VM from a cloud-init image")
 public record CloudInitVMRequest(
-    @Schema(description = "VM ID (100-999999999)", example = "100", required = true)
-    @NotNull(message = "VM ID is required")
+    @Schema(description = "VM ID (100-999999999). If not provided, next available ID will be allocated automatically", example = "100", required = false)
     @Min(value = 100, message = "VM ID must be at least 100")
     @Max(value = 999999999, message = "VM ID must be less than 999999999")
     Integer vmid,
@@ -21,9 +20,12 @@ public record CloudInitVMRequest(
     @Pattern(regexp = "^[a-zA-Z0-9.-]+$", message = "VM name can only contain alphanumeric characters, dots, and dashes")
     String name,
     
-    @Schema(description = "Target node", example = "hv7", required = true)
+    @Schema(description = "Node where the VM will be created. If template is on a different node, VM will be created there first and migrated", example = "hv7", required = true)
     @NotBlank(message = "Node is required")
     String node,
+    
+    @Schema(description = "Optional: Node where template is located. If specified, VM will be created here first then migrated to target node", example = "storage01", required = false)
+    String templateNode,
     
     @Schema(description = "Number of CPU cores", example = "4", required = true)
     @NotNull(message = "CPU cores is required")

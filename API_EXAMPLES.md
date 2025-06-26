@@ -4,6 +4,7 @@ This document provides working examples of Moxxie's REST API endpoints. All exam
 
 ## Table of Contents
 - [VM Management](#vm-management)
+- [Cluster Provisioning](#cluster-provisioning)
 - [Snapshot Management](#snapshot-management)
 - [Bulk Snapshot Operations](#bulk-snapshot-operations)
 - [Bulk Power Operations](#bulk-power-operations)
@@ -41,7 +42,7 @@ curl -X GET http://localhost:8080/api/v1/vms | jq .
 ### Filter VMs by Tags
 ```bash
 # Filter by multiple tags (AND logic)
-curl "http://localhost:8080/api/v1/vms?tags=client:nixz,env:prod" | jq .
+curl "http://localhost:8080/api/v1/vms?tags=client-nixz,env-prod" | jq .
 
 # Filter by client (convenience)
 curl "http://localhost:8080/api/v1/vms?client=nixz" | jq .
@@ -160,6 +161,14 @@ curl -X POST http://localhost:8080/api/v1/vms \
     },
     "tags": ["high-performance"]
   }'
+
+### IMPORTANT: Image Source Format
+
+When creating VMs from templates, the `imageSource` must reference the actual disk of the template VM, not an ISO file. The correct format is:
+- `local-zfs:base-9002-disk-0` - For template VM 9002 on storage01
+- `local-zfs:base-9001-disk-0` - For template VM 9001 on storage01
+
+**Common Mistake:** Using paths like `local:iso/talos-amd64.qcow2` or `iso/talos-amd64.qcow2` will fail with "unable to parse directory volume name" error.
 
 # Create VM from cloud-init image
 curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
@@ -335,7 +344,7 @@ curl -X POST http://localhost:8080/api/v1/vms/9000/clone \
     "fullClone": true,
     "targetStorage": "local-zfs",
     "start": false,
-    "tags": ["k8s-controlplane", "env:prod"]
+    "tags": ["k8s-controlplane", "env-prod"]
   }'
 
 # Clone with specific VM ID
@@ -349,7 +358,7 @@ curl -X POST http://localhost:8080/api/v1/vms/9000/clone \
     "fullClone": true,
     "targetStorage": "local-zfs",
     "pool": "kubernetes",
-    "tags": ["k8s-worker", "env:prod"]
+    "tags": ["k8s-worker", "env-prod"]
   }'
 
 # Linked clone (faster, uses less storage)
@@ -363,6 +372,217 @@ curl -X POST http://localhost:8080/api/v1/vms/9000/clone \
     "targetStorage": "local-zfs"
   }'
 ```
+
+## Cluster Provisioning
+
+Moxxie supports atomic provisioning of multi-node clusters with advanced features like anti-affinity rules, network topology configuration, and automatic rollback on failure.
+
+### Key Features
+- **Atomic Operations**: All nodes are created successfully or the entire operation is rolled back
+- **Anti-Affinity**: Distribute nodes across hypervisors (NONE, SOFT, HARD strategies)
+- **Flexible Templates**: Define different node groups with varying specifications
+- **Progress Tracking**: Monitor provisioning progress with detailed status updates
+- **Network Topology**: Configure complex network setups with multiple VLANs
+- **Cloud-Init Integration**: Full cloud-init support with IP pattern templating
+
+### IMPORTANT: Image Source Format for Clusters
+
+When provisioning clusters, the `imageSource` in the template must reference the actual disk of a template VM, not an ISO file:
+- **Correct**: `local-zfs:base-9002-disk-0` (for Talos template VM 9002)
+- **Correct**: `local-zfs:base-9001-disk-0` (for Debian template VM 9001)
+- **Wrong**: `local:iso/talos-amd64.qcow2` or `iso/talos-amd64.qcow2`
+
+Using incorrect paths will result in "unable to parse directory volume name" errors.
+
+### Provision a Simple Test Cluster
+```bash
+# Create a 2-node test cluster
+curl -X POST http://localhost:8080/api/v1/clusters/provision \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "test-cluster",
+    "type": "GENERIC",
+    "nodeGroups": [
+      {
+        "name": "nodes",
+        "role": "WORKER",
+        "count": 2,
+        "template": {
+          "cores": 2,
+          "memoryMB": 4096,
+          "disks": [{"diskInterface": "SCSI", "slot": 0, "storage": "local-zfs", "sizeGB": 20}],
+          "networks": [{"model": "virtio", "bridge": "vmbr0"}],
+          "imageSource": "local-zfs:base-9001-disk-0",
+          "cloudInit": {
+            "user": "debian",
+            "password": "changeme",
+            "sshKeys": "ssh-ed25519 AAAAC3... user@example",
+            "ipConfigPatterns": ["ip=dhcp"]
+          }
+        },
+        "tags": ["test", "debian"]
+      }
+    ],
+    "options": {
+      "startAfterCreation": true,
+      "parallelProvisioning": true,
+      "rollbackStrategy": "FULL"
+    }
+  }'
+```
+
+### Provision a Talos Kubernetes Cluster
+```bash
+# Create a production-ready Talos cluster with 3 control plane and 3 worker nodes
+curl -X POST http://localhost:8080/api/v1/clusters/provision \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "talos-prod-01",
+    "type": "TALOS",
+    "nodeGroups": [
+      {
+        "name": "control-plane",
+        "role": "CONTROL_PLANE",
+        "count": 3,
+        "template": {
+          "cores": 4,
+          "memoryMB": 8192,
+          "disks": [
+            {
+              "diskInterface": "SCSI",
+              "slot": 0,
+              "storage": "local-zfs",
+              "sizeGB": 50,
+              "ssd": true,
+              "iothread": true
+            }
+          ],
+          "networks": [{"model": "virtio", "bridge": "vmbr0", "vlanTag": 100}],
+          "imageSource": "local-zfs:base-9002-disk-0",
+          "cloudInit": {
+            "user": "talos",
+            "sshKeys": "ssh-ed25519 AAAAC3... admin@talos",
+            "ipConfigPatterns": ["ip=10.0.100.{10+index}/24,gw=10.0.100.1"]
+          }
+        },
+        "placement": {"antiAffinity": "HARD"},
+        "tags": ["talos", "control-plane", "k8s"]
+      },
+      {
+        "name": "worker",
+        "role": "WORKER",
+        "count": 3,
+        "template": {
+          "cores": 8,
+          "memoryMB": 16384,
+          "disks": [
+            {
+              "diskInterface": "SCSI",
+              "slot": 0,
+              "storage": "local-zfs",
+              "sizeGB": 100,
+              "ssd": true,
+              "iothread": true
+            }
+          ],
+          "networks": [{"model": "virtio", "bridge": "vmbr0", "vlanTag": 100}],
+          "imageSource": "local-zfs:base-9002-disk-0",
+          "cloudInit": {
+            "user": "talos",
+            "sshKeys": "ssh-ed25519 AAAAC3... admin@talos",
+            "ipConfigPatterns": ["ip=10.0.100.{20+index}/24,gw=10.0.100.1"]
+          }
+        },
+        "placement": {"antiAffinity": "SOFT"},
+        "tags": ["talos", "worker", "k8s"]
+      }
+    ],
+    "networkTopology": {
+      "primaryBridge": "vmbr0",
+      "clusterVlan": 100
+    },
+    "globalCloudInit": {
+      "nameservers": "1.1.1.1,8.8.8.8",
+      "searchDomain": "cluster.local"
+    },
+    "options": {
+      "startAfterCreation": false,
+      "parallelProvisioning": true,
+      "maxParallelOperations": 3,
+      "rollbackStrategy": "FULL"
+    }
+  }'
+```
+
+### Check Provisioning Status
+```bash
+# Get status of a specific operation
+curl http://localhost:8080/api/v1/clusters/operations/op-12345678 | jq .
+
+# Response example:
+{
+  "operationId": "op-12345678",
+  "clusterName": "talos-prod-01",
+  "status": "PROVISIONING",
+  "progressPercentage": 50,
+  "currentOperation": "Creating worker nodes",
+  "totalNodes": 6,
+  "successfulNodes": 3,
+  "failedNodes": 0,
+  "nodeStates": [
+    {
+      "name": "talos-prod-01-control-plane-01",
+      "nodeGroup": "control-plane",
+      "vmId": 201,
+      "host": "pve-node-01",
+      "status": "READY"
+    },
+    {
+      "name": "talos-prod-01-worker-01",
+      "nodeGroup": "worker",
+      "vmId": 204,
+      "host": "pve-node-02",
+      "status": "CREATING_VM"
+    }
+  ],
+  "links": {
+    "status": "http://localhost:8080/api/v1/clusters/operations/op-12345678",
+    "cancel": "http://localhost:8080/api/v1/clusters/operations/op-12345678/cancel",
+    "logs": "http://localhost:8080/api/v1/clusters/operations/op-12345678/logs",
+    "cluster": null
+  }
+}
+```
+
+### List All Provisioning Operations
+```bash
+curl http://localhost:8080/api/v1/clusters/operations | jq .
+```
+
+### Cancel a Provisioning Operation
+```bash
+curl -X POST http://localhost:8080/api/v1/clusters/operations/op-12345678/cancel
+```
+
+### Advanced Features
+
+#### IP Configuration Patterns
+The `ipConfigPatterns` field supports dynamic IP assignment based on node index:
+- `"ip=dhcp"` - Use DHCP
+- `"ip=10.0.1.{10+index}/24,gw=10.0.1.1"` - Static IPs starting from 10.0.1.10
+- Multiple patterns for multiple interfaces
+
+#### Anti-Affinity Strategies
+- `NONE`: No anti-affinity rules
+- `SOFT`: Best effort to spread nodes across hosts
+- `HARD`: Strictly enforce distribution (fails if impossible)
+- `ZONE_AWARE`: Distribute across failure domains (future)
+
+#### Rollback Strategies
+- `FULL`: Delete all VMs if any fail
+- `PARTIAL`: Keep successfully created VMs
+- `NONE`: No rollback
+- `MARK_FAILED`: Keep VMs but mark as failed
 
 ## Snapshot Management
 

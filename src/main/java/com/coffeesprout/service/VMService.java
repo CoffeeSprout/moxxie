@@ -1,6 +1,8 @@
 package com.coffeesprout.service;
 
 import com.coffeesprout.client.*;
+import com.coffeesprout.api.dto.CloudInitVMRequest;
+import com.coffeesprout.api.dto.DiskConfig;
 import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.util.TagUtils;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -34,6 +36,12 @@ public class VMService {
     
     @Inject
     TagService tagService;
+    
+    @Inject
+    MigrationService migrationService;
+    
+    @Inject
+    VMIdService vmIdService;
     
     @Inject
     ObjectMapper objectMapper;
@@ -428,5 +436,225 @@ public class VMService {
         return listVMs(ticket).stream()
             .filter(vm -> vm.template() == 1)
             .collect(Collectors.toList());
+    }
+    
+    /**
+     * Create a VM from a cloud-init image with full configuration.
+     * This method orchestrates the entire cloud-init VM creation process including:
+     * - Creating the VM container
+     * - Importing the disk image
+     * - Configuring cloud-init settings
+     * - Optionally starting the VM
+     * 
+     * @param request CloudInitVMRequest with all VM configuration
+     * @param ticket Authentication ticket  
+     * @return CreateVMResponse with the created VM details
+     */
+    public CreateVMResponse createCloudInitVM(CloudInitVMRequest request, @AuthTicket String ticket) {
+        // Allocate VM ID if not provided
+        Integer vmId = request.vmid();
+        if (vmId == null) {
+            vmId = vmIdService.getNextAvailableVmId(ticket);
+            log.info("Allocated VM ID {} for VM {}", vmId, request.name());
+        }
+        
+        // Determine creation node - use templateNode if specified, otherwise use target node
+        String creationNode = request.templateNode() != null ? request.templateNode() : request.node();
+        String targetNode = request.node();
+        
+        log.info("Creating cloud-init VM {} (ID: {}) from image {} on node {}", 
+                 request.name(), vmId, request.imageSource(), creationNode);
+        
+        // Build CreateVMRequest WITHOUT main disk (following Ansible pattern)
+        CreateVMRequest clientRequest = new CreateVMRequest();
+        clientRequest.setVmid(vmId);
+        clientRequest.setName(request.name());
+        clientRequest.setCores(request.cores());
+        clientRequest.setMemory(request.memoryMB());
+        
+        // Set CPU type (use request value or default)
+        if (request.cpuType() != null && !request.cpuType().isEmpty()) {
+            clientRequest.setCpu(request.cpuType());
+        } else {
+            clientRequest.setCpu("x86-64-v2-AES");
+        }
+        
+        // Set VGA to std (for Talos and other headless systems)
+        clientRequest.setVga("std");
+        
+        // Handle multiple networks
+        List<com.coffeesprout.api.dto.NetworkConfig> networks = request.networks();
+        
+        // Backward compatibility: if networks is null/empty but network is set, convert it
+        if ((networks == null || networks.isEmpty()) && request.network() != null) {
+            CloudInitVMRequest.NetworkConfig oldNet = request.network();
+            networks = List.of(new com.coffeesprout.api.dto.NetworkConfig(
+                "virtio", 
+                oldNet.bridge(), 
+                oldNet.vlanTag(),
+                null, null, null, null, null, null
+            ));
+        }
+        
+        // Set up networks
+        if (networks != null) {
+            for (int i = 0; i < Math.min(networks.size(), 8); i++) {
+                com.coffeesprout.api.dto.NetworkConfig net = networks.get(i);
+                String netString = net.toProxmoxString();
+                
+                switch (i) {
+                    case 0 -> clientRequest.setNet0(netString);
+                    case 1 -> clientRequest.setNet1(netString);
+                    case 2 -> clientRequest.setNet2(netString);
+                    case 3 -> clientRequest.setNet3(netString);
+                    case 4 -> clientRequest.setNet4(netString);
+                    case 5 -> clientRequest.setNet5(netString);
+                    case 6 -> clientRequest.setNet6(netString);
+                    case 7 -> clientRequest.setNet7(netString);
+                }
+            }
+        }
+        
+        // QEMU agent
+        if (request.qemuAgent() != null && request.qemuAgent()) {
+            clientRequest.setAgent("1");
+        }
+        
+        // Description
+        if (request.description() != null) {
+            clientRequest.setDescription(request.description());
+        }
+        
+        // Tags
+        if (request.tags() != null) {
+            clientRequest.setTags(request.tags());
+        }
+        
+        // Set cloud-init parameters during VM creation
+        if (request.cloudInitUser() != null) {
+            clientRequest.setCiuser(request.cloudInitUser());
+        }
+        
+        // Handle IP configurations
+        List<String> ipConfigs = request.ipConfigs();
+        
+        // Backward compatibility: if ipConfigs is null/empty but ipConfig is set, convert it
+        if ((ipConfigs == null || ipConfigs.isEmpty()) && request.ipConfig() != null) {
+            ipConfigs = List.of(request.ipConfig());
+        }
+        
+        // Set up IP configurations
+        if (ipConfigs != null) {
+            for (int i = 0; i < Math.min(ipConfigs.size(), 8); i++) {
+                String ipConfig = ipConfigs.get(i);
+                
+                switch (i) {
+                    case 0 -> clientRequest.setIpconfig0(ipConfig);
+                    case 1 -> clientRequest.setIpconfig1(ipConfig);
+                    case 2 -> clientRequest.setIpconfig2(ipConfig);
+                    case 3 -> clientRequest.setIpconfig3(ipConfig);
+                    case 4 -> clientRequest.setIpconfig4(ipConfig);
+                    case 5 -> clientRequest.setIpconfig5(ipConfig);
+                    case 6 -> clientRequest.setIpconfig6(ipConfig);
+                    case 7 -> clientRequest.setIpconfig7(ipConfig);
+                }
+            }
+        }
+        
+        if (request.nameservers() != null) {
+            clientRequest.setNameserver(request.nameservers());
+        }
+        
+        if (request.searchDomain() != null) {
+            clientRequest.setSearchdomain(request.searchDomain());
+        }
+        
+        if (request.sshKeys() != null) {
+            // Pass SSH keys as-is - createVM will handle proper encoding
+            log.info("Setting SSH keys during VM creation (length: {})", request.sshKeys().length());
+            clientRequest.setSshkeys(request.sshKeys());
+        }
+        
+        // Create the VM without main disk
+        log.info("Creating VM {} without main disk", vmId);
+        CreateVMResponse response = createVM(creationNode, clientRequest, ticket);
+        
+        // Now import and attach the disk as scsi0
+        try {
+            log.info("Importing disk from {} to VM {}", request.imageSource(), vmId);
+            
+            // Build disk config with import-from
+            DiskConfig importDisk = request.toDiskConfig();
+            String diskString = importDisk.toProxmoxString();
+            log.info("Disk import config: {}", diskString);
+            
+            // Use the updateDisk method to import and attach the disk
+            importDisk(creationNode, vmId, diskString, ticket);
+            
+            // Resize the disk if needed
+            if (request.diskSizeGB() > 0) {
+                log.info("Resizing disk scsi0 to {}G for VM {}", request.diskSizeGB(), vmId);
+                resizeDisk(creationNode, vmId, "scsi0", request.diskSizeGB() + "G", ticket);
+            }
+            
+            // Update boot order to boot from scsi0
+            CreateVMRequest bootOrderUpdate = new CreateVMRequest();
+            bootOrderUpdate.setBoot("order=scsi0");
+            updateVMConfig(creationNode, vmId, bootOrderUpdate, ticket);
+            
+        } catch (Exception e) {
+            log.error("Failed to import disk for VM {}, cleaning up", vmId, e);
+            // Clean up the VM if disk import fails
+            try {
+                deleteVM(creationNode, vmId, ticket);
+            } catch (Exception cleanupEx) {
+                log.error("Failed to clean up VM {} after disk import failure", vmId, cleanupEx);
+            }
+            throw new RuntimeException("Failed to import disk: " + e.getMessage(), e);
+        }
+        
+        // Cloud-init settings are now configured during VM creation
+        // Only update password if it was provided (can't be set during creation)
+        if (request.cloudInitPassword() != null) {
+            log.info("Setting cloud-init password for VM {}", vmId);
+            CreateVMRequest passwordConfig = new CreateVMRequest();
+            passwordConfig.setCipassword(request.cloudInitPassword());
+            updateVMConfig(creationNode, vmId, passwordConfig, ticket);
+        }
+        
+        // Migrate VM if created on different node than target
+        if (!creationNode.equals(targetNode)) {
+            log.info("Migrating VM {} from '{}' to target node '{}'", vmId, creationNode, targetNode);
+            try {
+                com.coffeesprout.api.dto.MigrationRequest migrationRequest = new com.coffeesprout.api.dto.MigrationRequest(
+                    targetNode,
+                    true,  // allowOfflineMigration
+                    true,  // withLocalDisks
+                    false, // force
+                    null,  // bwlimit
+                    null,  // targetStorage
+                    null,  // migrationType
+                    null   // migrationNetwork
+                );
+                
+                migrationService.migrateVM(vmId, migrationRequest, ticket);
+                log.info("Successfully migrated VM {} to '{}'", vmId, targetNode);
+                
+                // Update creationNode to targetNode for subsequent operations
+                creationNode = targetNode;
+            } catch (Exception e) {
+                log.error("Failed to migrate VM {} to '{}': {}", vmId, targetNode, e.getMessage());
+                // Migration failed but VM exists - continue with warning
+                log.warn("VM {} created on '{}' but migration to '{}' failed", vmId, creationNode, targetNode);
+            }
+        }
+        
+        // Start VM if requested
+        if (request.start() != null && request.start()) {
+            log.info("Starting VM {}", vmId);
+            startVM(creationNode, vmId, ticket);
+        }
+        
+        return response;
     }
 }
