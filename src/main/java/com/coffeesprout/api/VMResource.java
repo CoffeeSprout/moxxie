@@ -250,13 +250,10 @@ public class VMResource {
             @RequestBody(description = "VM creation request", required = true,
                 content = @Content(schema = @Schema(implementation = CreateVMRequestDTO.class)))
             @Valid CreateVMRequestDTO request) {
-        try {
-            // Validate node exists
-            if (request.node() == null || request.node().isEmpty()) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(new ErrorResponse("Node is required"))
-                        .build();
-            }
+        // Validate node exists
+        if (request.node() == null || request.node().isEmpty()) {
+            throw ProxmoxException.validation("node", "null", "Required field");
+        }
             
             // Convert DTO to client request
             CreateVMRequest clientRequest = new CreateVMRequest();
@@ -397,14 +394,6 @@ public class VMResource {
             return Response.created(location)
                     .entity(response)
                     .build();
-        } catch (WebApplicationException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Failed to create VM", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to create VM: " + e.getMessage()))
-                    .build();
-        }
     }
 
     @POST
@@ -541,11 +530,10 @@ public class VMResource {
     }
     
     private VMDetailResponse.NetworkInterfaceInfo parseNetworkInterface(String name, String rawConfig) {
-        try {
-            // Parse network config string (e.g., "virtio=BC:24:11:5E:7D:2C,bridge=vmbr0,tag=101")
-            Map<String, String> params = new HashMap<>();
-            String model = "virtio";
-            String macAddress = null;
+        // Parse network config string (e.g., "virtio=BC:24:11:5E:7D:2C,bridge=vmbr0,tag=101")
+        Map<String, String> params = new HashMap<>();
+        String model = "virtio";
+        String macAddress = null;
             
             // Split by comma and parse key=value pairs
             String[] parts = rawConfig.split(",");
@@ -583,10 +571,6 @@ public class VMResource {
                 firewall,
                 rawConfig
             );
-        } catch (Exception e) {
-            log.warn("Failed to parse network interface config: " + rawConfig, e);
-            return null;
-        }
     }
     
     /**
@@ -682,35 +666,24 @@ public class VMResource {
             @PathParam("vmId") int vmId,
             @Parameter(description = "Force start even if not managed by Moxxie")
             @QueryParam("force") boolean force) {
-        try {
-            List<VMResponse> vms = vmService.listVMs(null);
-            VMResponse vm = vms.stream()
-                .filter(v -> v.vmid() == vmId)
-                .findFirst()
-                .orElse(null);
-            
-            if (vm == null) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(new ErrorResponse("VM not found: " + vmId))
-                        .build();
-            }
-            
-            if ("running".equals(vm.status())) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(new ErrorResponse("VM is already running"))
-                        .build();
-            }
-            
-            vmService.startVM(vm.node(), vmId, null);
-            return Response.accepted()
-                    .entity(new ErrorResponse("VM start initiated"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to start VM: " + vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to start VM: " + e.getMessage()))
-                    .build();
+        List<VMResponse> vms = vmService.listVMs(null);
+        VMResponse vm = vms.stream()
+            .filter(v -> v.vmid() == vmId)
+            .findFirst()
+            .orElse(null);
+        
+        if (vm == null) {
+            throw ProxmoxException.notFound("VM", String.valueOf(vmId));
         }
+        
+        if ("running".equals(vm.status())) {
+            throw ProxmoxException.conflict("VM", "VM is already running");
+        }
+        
+        vmService.startVM(vm.node(), vmId, null);
+        return Response.accepted()
+                .entity(new ErrorResponse("VM start initiated"))
+                .build();
     }
     
     @POST
@@ -736,35 +709,24 @@ public class VMResource {
             @PathParam("vmId") int vmId,
             @Parameter(description = "Force stop even if not managed by Moxxie")
             @QueryParam("force") boolean force) {
-        try {
-            List<VMResponse> vms = vmService.listVMs(null);
-            VMResponse vm = vms.stream()
-                .filter(v -> v.vmid() == vmId)
-                .findFirst()
-                .orElse(null);
-            
-            if (vm == null) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(new ErrorResponse("VM not found: " + vmId))
-                        .build();
-            }
-            
-            if ("stopped".equals(vm.status())) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(new ErrorResponse("VM is not running"))
-                        .build();
-            }
-            
-            vmService.stopVM(vm.node(), vmId, null);
-            return Response.accepted()
-                    .entity(new ErrorResponse("VM stop initiated"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to stop VM: " + vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to stop VM: " + e.getMessage()))
-                    .build();
+        List<VMResponse> vms = vmService.listVMs(null);
+        VMResponse vm = vms.stream()
+            .filter(v -> v.vmid() == vmId)
+            .findFirst()
+            .orElse(null);
+        
+        if (vm == null) {
+            throw ProxmoxException.notFound("VM", String.valueOf(vmId));
         }
+        
+        if ("stopped".equals(vm.status())) {
+            throw ProxmoxException.conflict("VM", "VM is not running");
+        }
+        
+        vmService.stopVM(vm.node(), vmId, null);
+        return Response.accepted()
+                .entity(new ErrorResponse("VM stop initiated"))
+                .build();
     }
     
     @POST
@@ -790,35 +752,24 @@ public class VMResource {
             @PathParam("vmId") int vmId,
             @Parameter(description = "Force reboot even if not managed by Moxxie")
             @QueryParam("force") boolean force) {
-        try {
-            List<VMResponse> vms = vmService.listVMs(null);
-            VMResponse vm = vms.stream()
-                .filter(v -> v.vmid() == vmId)
-                .findFirst()
-                .orElse(null);
-            
-            if (vm == null) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(new ErrorResponse("VM not found: " + vmId))
-                        .build();
-            }
-            
-            if (!"running".equals(vm.status())) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(new ErrorResponse("VM is not running"))
-                        .build();
-            }
-            
-            vmService.rebootVM(vm.node(), vmId, null);
-            return Response.accepted()
-                    .entity(new ErrorResponse("VM reboot initiated"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to reboot VM: " + vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to reboot VM: " + e.getMessage()))
-                    .build();
+        List<VMResponse> vms = vmService.listVMs(null);
+        VMResponse vm = vms.stream()
+            .filter(v -> v.vmid() == vmId)
+            .findFirst()
+            .orElse(null);
+        
+        if (vm == null) {
+            throw ProxmoxException.notFound("VM", String.valueOf(vmId));
         }
+        
+        if (!"running".equals(vm.status())) {
+            throw ProxmoxException.conflict("VM", "VM is not running");
+        }
+        
+        vmService.rebootVM(vm.node(), vmId, null);
+        return Response.accepted()
+                .entity(new ErrorResponse("VM reboot initiated"))
+                .build();
     }
     
     @POST
@@ -844,35 +795,24 @@ public class VMResource {
             @PathParam("vmId") int vmId,
             @Parameter(description = "Force shutdown even if not managed by Moxxie")
             @QueryParam("force") boolean force) {
-        try {
-            List<VMResponse> vms = vmService.listVMs(null);
-            VMResponse vm = vms.stream()
-                .filter(v -> v.vmid() == vmId)
-                .findFirst()
-                .orElse(null);
-            
-            if (vm == null) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(new ErrorResponse("VM not found: " + vmId))
-                        .build();
-            }
-            
-            if (!"running".equals(vm.status())) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(new ErrorResponse("VM is not running"))
-                        .build();
-            }
-            
-            vmService.shutdownVM(vm.node(), vmId, null);
-            return Response.accepted()
-                    .entity(new ErrorResponse("VM shutdown initiated"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to shutdown VM: " + vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to shutdown VM: " + e.getMessage()))
-                    .build();
+        List<VMResponse> vms = vmService.listVMs(null);
+        VMResponse vm = vms.stream()
+            .filter(v -> v.vmid() == vmId)
+            .findFirst()
+            .orElse(null);
+        
+        if (vm == null) {
+            throw ProxmoxException.notFound("VM", String.valueOf(vmId));
         }
+        
+        if (!"running".equals(vm.status())) {
+            throw ProxmoxException.conflict("VM", "VM is not running");
+        }
+        
+        vmService.shutdownVM(vm.node(), vmId, null);
+        return Response.accepted()
+                .entity(new ErrorResponse("VM shutdown initiated"))
+                .build();
     }
     
     @POST
@@ -898,35 +838,24 @@ public class VMResource {
             @PathParam("vmId") int vmId,
             @Parameter(description = "Force suspend even if not managed by Moxxie")
             @QueryParam("force") boolean force) {
-        try {
-            List<VMResponse> vms = vmService.listVMs(null);
-            VMResponse vm = vms.stream()
-                .filter(v -> v.vmid() == vmId)
-                .findFirst()
-                .orElse(null);
-            
-            if (vm == null) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(new ErrorResponse("VM not found: " + vmId))
-                        .build();
-            }
-            
-            if (!"running".equals(vm.status())) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(new ErrorResponse("VM is not running"))
-                        .build();
-            }
-            
-            vmService.suspendVM(vm.node(), vmId, null);
-            return Response.accepted()
-                    .entity(new ErrorResponse("VM suspend initiated"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to suspend VM: " + vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to suspend VM: " + e.getMessage()))
-                    .build();
+        List<VMResponse> vms = vmService.listVMs(null);
+        VMResponse vm = vms.stream()
+            .filter(v -> v.vmid() == vmId)
+            .findFirst()
+            .orElse(null);
+        
+        if (vm == null) {
+            throw ProxmoxException.notFound("VM", String.valueOf(vmId));
         }
+        
+        if (!"running".equals(vm.status())) {
+            throw ProxmoxException.conflict("VM", "VM is not running");
+        }
+        
+        vmService.suspendVM(vm.node(), vmId, null);
+        return Response.accepted()
+                .entity(new ErrorResponse("VM suspend initiated"))
+                .build();
     }
     
     @POST
@@ -952,31 +881,22 @@ public class VMResource {
             @PathParam("vmId") int vmId,
             @Parameter(description = "Force resume even if not managed by Moxxie")
             @QueryParam("force") boolean force) {
-        try {
-            List<VMResponse> vms = vmService.listVMs(null);
-            VMResponse vm = vms.stream()
-                .filter(v -> v.vmid() == vmId)
-                .findFirst()
-                .orElse(null);
-            
-            if (vm == null) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(new ErrorResponse("VM not found: " + vmId))
-                        .build();
-            }
-            
-            // Check if VM is suspended - Proxmox might report this as "stopped" with suspend disk
-            // For now, we'll attempt resume regardless
-            vmService.resumeVM(vm.node(), vmId, null);
-            return Response.accepted()
-                    .entity(new ErrorResponse("VM resume initiated"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to resume VM: " + vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to resume VM: " + e.getMessage()))
-                    .build();
+        List<VMResponse> vms = vmService.listVMs(null);
+        VMResponse vm = vms.stream()
+            .filter(v -> v.vmid() == vmId)
+            .findFirst()
+            .orElse(null);
+        
+        if (vm == null) {
+            throw ProxmoxException.notFound("VM", String.valueOf(vmId));
         }
+        
+        // Check if VM is suspended - Proxmox might report this as "stopped" with suspend disk
+        // For now, we'll attempt resume regardless
+        vmService.resumeVM(vm.node(), vmId, null);
+        return Response.accepted()
+                .entity(new ErrorResponse("VM resume initiated"))
+                .build();
     }
     
     @GET
@@ -994,15 +914,8 @@ public class VMResource {
     public Response getVMTags(
             @Parameter(description = "VM ID", required = true)
             @PathParam("vmId") int vmId) {
-        try {
-            var tags = tagService.getVMTags(vmId, null);
-            return Response.ok(new TagsResponse(tags)).build();
-        } catch (Exception e) {
-            log.error("Failed to get tags for VM: " + vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to get tags: " + e.getMessage()))
-                    .build();
-        }
+        var tags = tagService.getVMTags(vmId, null);
+        return Response.ok(new TagsResponse(tags)).build();
     }
     
     @POST
@@ -1029,21 +942,12 @@ public class VMResource {
             @RequestBody(description = "Tag to add", required = true,
                 content = @Content(schema = @Schema(implementation = TagRequest.class)))
             TagRequest request) {
-        try {
-            if (request.tag() == null || request.tag().trim().isEmpty()) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(new ErrorResponse("Tag cannot be empty"))
-                        .build();
-            }
-            
-            tagService.addTag(vmId, request.tag(), null);
-            return Response.ok().build();
-        } catch (Exception e) {
-            log.error("Failed to add tag to VM: " + vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to add tag: " + e.getMessage()))
-                    .build();
+        if (request.tag() == null || request.tag().trim().isEmpty()) {
+            throw ProxmoxException.validation("tag", request.tag(), "Cannot be empty");
         }
+            
+        tagService.addTag(vmId, request.tag(), null);
+        return Response.ok().build();
     }
     
     @DELETE
@@ -1066,15 +970,8 @@ public class VMResource {
             @PathParam("tag") String tag,
             @Parameter(description = "Force remove even if not managed by Moxxie")
             @QueryParam("force") boolean force) {
-        try {
-            tagService.removeTag(vmId, tag, null);
-            return Response.noContent().build();
-        } catch (Exception e) {
-            log.error("Failed to remove tag from VM: " + vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to remove tag: " + e.getMessage()))
-                    .build();
-        }
+        tagService.removeTag(vmId, tag, null);
+        return Response.noContent().build();
     }
     
     private List<DiskInfo> parseDiskInfo(Map<String, Object> config) {
@@ -1201,37 +1098,27 @@ public class VMResource {
             @Parameter(description = "VM ID", required = true)
             @PathParam("vmId") int vmId,
             @Valid SetSSHKeysRequest request) {
-        try {
-            // Find the VM to get its node
-            List<VMResponse> vms = vmService.listVMs(null);
-            VMResponse vm = vms.stream()
-                .filter(v -> v.vmid() == vmId)
-                .findFirst()
-                .orElse(null);
-            
-            if (vm == null) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(new ErrorResponse("VM not found: " + vmId))
-                        .build();
-            }
-            
-            log.info("Setting SSH keys for VM {}", vmId);
-            
-            // Use the direct SSH key method that does double encoding
-            vmService.setSSHKeysDirect(vm.node(), vmId, request.sshKeys(), null);
-            
-            return Response.ok(Map.of(
-                "success", true,
-                "vmId", vmId,
-                "message", "SSH keys set successfully"
-            )).build();
-            
-        } catch (Exception e) {
-            log.error("Failed to set SSH keys for VM {}", vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to set SSH keys: " + e.getMessage()))
-                    .build();
+        // Find the VM to get its node
+        List<VMResponse> vms = vmService.listVMs(null);
+        VMResponse vm = vms.stream()
+            .filter(v -> v.vmid() == vmId)
+            .findFirst()
+            .orElse(null);
+        
+        if (vm == null) {
+            throw ProxmoxException.notFound("VM", String.valueOf(vmId));
         }
+        
+        log.info("Setting SSH keys for VM {}", vmId);
+        
+        // Use the direct SSH key method that does double encoding
+        vmService.setSSHKeysDirect(vm.node(), vmId, request.sshKeys(), null);
+        
+        return Response.ok(Map.of(
+            "success", true,
+            "vmId", vmId,
+            "message", "SSH keys set successfully"
+        )).build();
     }
     
     // Snapshot Management Endpoints
@@ -1252,22 +1139,8 @@ public class VMResource {
     public Response listSnapshots(
             @Parameter(description = "VM ID", required = true, example = "100")
             @PathParam("vmId") int vmId) {
-        try {
-            List<SnapshotResponse> snapshots = snapshotService.listSnapshots(vmId, null);
-            return Response.ok(snapshots).build();
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("VM not found")) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(new ErrorResponse("VM not found: " + vmId))
-                        .build();
-            }
-            throw e;
-        } catch (Exception e) {
-            log.error("Failed to list snapshots for VM {}", vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to list snapshots: " + e.getMessage()))
-                    .build();
-        }
+        List<SnapshotResponse> snapshots = snapshotService.listSnapshots(vmId, null);
+        return Response.ok(snapshots).build();
     }
     
     @POST
@@ -1291,26 +1164,8 @@ public class VMResource {
             @Parameter(description = "VM ID", required = true, example = "100")
             @PathParam("vmId") int vmId,
             @Valid CreateSnapshotRequest request) {
-        try {
-            TaskResponse task = snapshotService.createSnapshot(vmId, request, null);
-            return Response.accepted(task).build();
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("VM not found")) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(new ErrorResponse("VM not found: " + vmId))
-                        .build();
-            } else if (e.getMessage().contains("already exists")) {
-                return Response.status(Response.Status.CONFLICT)
-                        .entity(new ErrorResponse(e.getMessage()))
-                        .build();
-            }
-            throw e;
-        } catch (Exception e) {
-            log.error("Failed to create snapshot for VM {}", vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to create snapshot: " + e.getMessage()))
-                    .build();
-        }
+        TaskResponse task = snapshotService.createSnapshot(vmId, request, null);
+        return Response.accepted(task).build();
     }
     
     @DELETE
@@ -1331,22 +1186,8 @@ public class VMResource {
             @PathParam("vmId") int vmId,
             @Parameter(description = "Snapshot name", required = true, example = "backup-2024-01-15")
             @PathParam("snapshotName") String snapshotName) {
-        try {
-            TaskResponse task = snapshotService.deleteSnapshot(vmId, snapshotName, null);
-            return Response.accepted(task).build();
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("not found")) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(new ErrorResponse(e.getMessage()))
-                        .build();
-            }
-            throw e;
-        } catch (Exception e) {
-            log.error("Failed to delete snapshot {} for VM {}", snapshotName, vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to delete snapshot: " + e.getMessage()))
-                    .build();
-        }
+        TaskResponse task = snapshotService.deleteSnapshot(vmId, snapshotName, null);
+        return Response.accepted(task).build();
     }
     
     @POST
@@ -1367,22 +1208,8 @@ public class VMResource {
             @PathParam("vmId") int vmId,
             @Parameter(description = "Snapshot name", required = true, example = "backup-2024-01-15")
             @PathParam("snapshotName") String snapshotName) {
-        try {
-            TaskResponse task = snapshotService.rollbackSnapshot(vmId, snapshotName, null);
-            return Response.accepted(task).build();
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("not found")) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(new ErrorResponse(e.getMessage()))
-                        .build();
-            }
-            throw e;
-        } catch (Exception e) {
-            log.error("Failed to rollback to snapshot {} for VM {}", snapshotName, vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to rollback snapshot: " + e.getMessage()))
-                    .build();
-        }
+        TaskResponse task = snapshotService.rollbackSnapshot(vmId, snapshotName, null);
+        return Response.accepted(task).build();
     }
     
     // Backup Management Endpoints
@@ -1403,22 +1230,8 @@ public class VMResource {
     public Response listBackups(
             @Parameter(description = "VM ID", required = true, example = "100")
             @PathParam("vmId") int vmId) {
-        try {
-            List<BackupResponse> backups = backupService.listBackups(vmId, null);
-            return Response.ok(backups).build();
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("VM not found")) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(new ErrorResponse("VM not found: " + vmId))
-                        .build();
-            }
-            throw e;
-        } catch (Exception e) {
-            log.error("Failed to list backups for VM {}", vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to list backups: " + e.getMessage()))
-                    .build();
-        }
+        List<BackupResponse> backups = backupService.listBackups(vmId, null);
+        return Response.ok(backups).build();
     }
     
     @POST
@@ -1440,22 +1253,8 @@ public class VMResource {
             @Parameter(description = "VM ID", required = true, example = "100")
             @PathParam("vmId") int vmId,
             @Valid BackupRequest request) {
-        try {
-            TaskResponse task = backupService.createBackup(vmId, request, null);
-            return Response.accepted(task).build();
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("VM not found")) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(new ErrorResponse("VM not found: " + vmId))
-                        .build();
-            }
-            throw e;
-        } catch (Exception e) {
-            log.error("Failed to create backup for VM {}", vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to create backup: " + e.getMessage()))
-                    .build();
-        }
+        TaskResponse task = backupService.createBackup(vmId, request, null);
+        return Response.accepted(task).build();
     }
     
     @POST
@@ -1479,41 +1278,30 @@ public class VMResource {
             @PathParam("vmId") int templateId,
             @RequestBody(description = "Clone configuration", required = true)
             @Valid com.coffeesprout.api.dto.TemplateCloneRequest request) {
-        try {
-            // Use VMIdService for auto-generation if needed
-            int newVmId = request.newVmId() != null ? request.newVmId() : vmIdService.getNextAvailableVmId(null);
-            
-            VMResponse templateVm = findVmById(templateId);
-            
-            TaskStatusResponse task = vmService.cloneVM(
-                templateVm.node(),
-                templateId,
-                newVmId,
-                request.name(),
-                request.description(),
-                request.fullClone() != null ? request.fullClone() : false,
-                request.pool(),
-                null, // snapname
-                request.targetStorage(),
-                request.targetNode(),
-                null
-            );
-            
-            TaskResponse response = new TaskResponse(
-                task.getData(),
-                "VM clone operation initiated successfully"
-            );
-            
-            return Response.accepted(response).build();
-            
-        } catch (WebApplicationException e) {
-            // Re-throw WebApplicationExceptions (like 404 from findVmById)
-            throw e;
-        } catch (Exception e) {
-            log.error("Failed to clone VM {} to {}", templateId, request.newVmId(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to clone VM: " + e.getMessage()))
-                    .build();
-        }
+        // Use VMIdService for auto-generation if needed
+        int newVmId = request.newVmId() != null ? request.newVmId() : vmIdService.getNextAvailableVmId(null);
+        
+        VMResponse templateVm = findVmById(templateId);
+        
+        TaskStatusResponse task = vmService.cloneVM(
+            templateVm.node(),
+            templateId,
+            newVmId,
+            request.name(),
+            request.description(),
+            request.fullClone() != null ? request.fullClone() : false,
+            request.pool(),
+            null, // snapname
+            request.targetStorage(),
+            request.targetNode(),
+            null
+        );
+        
+        TaskResponse response = new TaskResponse(
+            task.getData(),
+            "VM clone operation initiated successfully"
+        );
+        
+        return Response.accepted(response).build();
     }
 }
