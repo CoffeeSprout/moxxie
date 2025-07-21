@@ -170,7 +170,7 @@ curl -X POST http://localhost:8080/api/v1/scheduler/jobs \
       "maxSnapshots": "7"
     },
     "vmSelectors": [
-      {"type": "TAG_EXPRESSION", "value": "env:prod AND NOT always-on"}
+      {"type": "TAG_EXPRESSION", "value": "env-prod AND NOT always-on"}
     ]
   }'
 ```
@@ -191,7 +191,7 @@ curl -X POST http://localhost:8080/api/v1/scheduler/jobs \
       "snapshotTTL": "24"  # Auto-expire after 24 hours
     },
     "vmSelectors": [
-      {"type": "TAG_EXPRESSION", "value": "client:acme"}
+      {"type": "TAG_EXPRESSION", "value": "client-acme"}
     ]
   }'
 
@@ -387,7 +387,7 @@ All features that perform operations on VMs should:
 **Query VMs with tag filtering:**
 ```bash
 # Filter by multiple tags (AND logic)
-curl "http://localhost:8080/api/v1/vms?tags=client:nixz,env:prod"
+curl "http://localhost:8080/api/v1/vms?tags=client-nixz,env-prod"
 
 # Filter by client (convenience)
 curl "http://localhost:8080/api/v1/vms?client=nixz"

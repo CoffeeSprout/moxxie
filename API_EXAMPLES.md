@@ -662,7 +662,7 @@ curl -X POST http://localhost:8080/api/v1/snapshots/bulk \
   -H "Content-Type: application/json" \
   -d '{
     "vmSelectors": [
-      {"type": "TAG_EXPRESSION", "value": "env:prod AND client:acme"}
+      {"type": "TAG_EXPRESSION", "value": "env-prod AND client-acme"}
     ],
     "snapshotName": "prod-backup-{date}",
     "description": "Production backup",
@@ -708,7 +708,7 @@ curl -X POST http://localhost:8080/api/v1/vms/power/bulk \
   -H "Content-Type: application/json" \
   -d '{
     "vmSelectors": [
-      {"type": "TAG_EXPRESSION", "value": "env:dev AND NOT always-on"}
+      {"type": "TAG_EXPRESSION", "value": "env-dev AND NOT always-on"}
     ],
     "operation": "STOP",
     "force": true,
@@ -758,7 +758,7 @@ curl -X POST "http://localhost:8080/api/v1/tags/bulk?namePattern=workshop-*" \
   -H "Content-Type: application/json" \
   -d '{
     "action": "ADD", 
-    "tags": ["workshop", "env:test"]
+    "tags": ["workshop", "env-test"]
   }' | jq .
 
 # Remove tags from specific VMs
@@ -880,7 +880,7 @@ curl -X GET http://localhost:8080/api/v1/backups | jq .
 curl "http://localhost:8080/api/v1/backups/retention-candidates?retentionPolicy=days:30" | jq .
 
 # Get backups to keep only last 5
-curl "http://localhost:8080/api/v1/backups/retention-candidates?retentionPolicy=count:5&tags=env:dev" | jq .
+curl "http://localhost:8080/api/v1/backups/retention-candidates?retentionPolicy=count:5&tags=env-dev" | jq .
 ```
 
 ### Cleanup Old Backups
@@ -891,7 +891,7 @@ curl -X POST http://localhost:8080/api/v1/backups/cleanup \
   -d '{
     "retentionPolicy": "days:30",
     "dryRun": true,
-    "tags": ["env:dev"]
+    "tags": ["env-dev"]
   }' | jq .
 ```
 
@@ -953,7 +953,7 @@ curl -X POST http://localhost:8080/api/v1/backups/bulk \
   -H "Content-Type: application/json" \
   -d '{
     "vmSelectors": [
-      {"type": "TAG_EXPRESSION", "value": "env:prod AND client:acme"}
+      {"type": "TAG_EXPRESSION", "value": "env-prod AND client-acme"}
     ],
     "storage": "local",
     "mode": "snapshot",
@@ -972,7 +972,7 @@ curl -X POST http://localhost:8080/api/v1/backups/bulk \
   -H "Content-Type: application/json" \
   -d '{
     "vmSelectors": [
-      {"type": "TAG_EXPRESSION", "value": "backup:stop-required"}
+      {"type": "TAG_EXPRESSION", "value": "backup-stop-required"}
     ],
     "storage": "local",
     "mode": "stop",
@@ -999,7 +999,7 @@ curl -X POST http://localhost:8080/api/v1/backups/bulk \
 - `ALL`: Select all VMs
 - `VM_IDS`: Comma-separated VM IDs (e.g., "8200,8201,8202")
 - `NAME_PATTERN`: Wildcard patterns (e.g., "web-*", "*-prod", "app-?-server")
-- `TAG_EXPRESSION`: Boolean expressions (e.g., "env:prod AND client:acme", "backup:daily OR backup:weekly")
+- `TAG_EXPRESSION`: Boolean expressions (e.g., "env-prod AND client-acme", "backup-daily OR backup-weekly")
 
 ### Cron Expression Examples
 - `0 0 2 * * ?` - Every day at 2:00 AM
