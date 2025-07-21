@@ -31,7 +31,7 @@ public record VMResponse(
     @Schema(description = "VM type (qemu or lxc)", example = "qemu")
     String type,
     
-    @Schema(description = "VM tags", example = "[\"moxxie\", \"client:nixz\", \"env:prod\"]")
+    @Schema(description = "VM tags", example = "[\"moxxie\", \"client-nixz\", \"env-prod\"]")
     java.util.List<String> tags,
     
     @Schema(description = "Resource pool the VM belongs to", example = "moxxie-pool")

@@ -83,7 +83,7 @@ public class TagResource {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public Response getVMsByTag(
-            @Parameter(description = "Tag to search for", required = true, example = "client:nixz")
+            @Parameter(description = "Tag to search for", required = true, example = "client-nixz")
             @PathParam("tag") String tag) {
         try {
             if (tag == null || tag.trim().isEmpty()) {
@@ -214,7 +214,7 @@ public class TagResource {
     
     @Schema(description = "List of unique tags in use")
     public record TagsListResponse(
-        @Schema(description = "All unique tags", example = "[\"moxxie\", \"client:nixz\", \"env:prod\"]")
+        @Schema(description = "All unique tags", example = "[\"moxxie\", \"client-nixz\", \"env-prod\"]")
         Set<String> tags,
         
         @Schema(description = "Total number of unique tags", example = "3")
@@ -228,7 +228,7 @@ public class TagResource {
         Action action,
         
         @Schema(description = "Tags to add or remove", required = true, 
-                example = "[\"client:nixz\", \"env:prod\"]")
+                example = "[\"client-nixz\", \"env-prod\"]")
         @NotEmpty(message = "Tags list cannot be empty")
         List<String> tags
     ) {

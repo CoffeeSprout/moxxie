@@ -2,6 +2,7 @@ package com.coffeesprout.api.dto.cluster;
 
 import com.coffeesprout.api.dto.DiskConfig;
 import com.coffeesprout.api.dto.NetworkConfig;
+import com.coffeesprout.validation.ValidImageSource;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -35,8 +36,9 @@ public record NodeTemplate(
     @Valid
     List<NetworkConfig> networks,
     
-    @Schema(description = "Source image or template", example = "local:vztmpl/talos-v1.6.0.qcow2", required = true)
+    @Schema(description = "Source image or template (must reference a template VM disk)", example = "local-zfs:9002/base-9002-disk-0.raw", required = true)
     @NotBlank(message = "Image source is required")
+    @ValidImageSource
     String imageSource,
     
     @Schema(description = "Cloud-init configuration")

@@ -1,17 +1,22 @@
 package com.coffeesprout.service;
 
+import com.coffeesprout.service.AuthTicket;
+import com.coffeesprout.service.AutoAuthenticate;
 import com.coffeesprout.client.ProxmoxClient;
+import com.coffeesprout.service.TicketManager;
 import com.coffeesprout.util.TagUtils;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -20,7 +25,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 @AutoAuthenticate
 public class TagService {
     
-    private static final Logger LOG = Logger.getLogger(TagService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TagService.class);
     
     @Inject
     @RestClient
@@ -29,13 +34,20 @@ public class TagService {
     @Inject
     TicketManager ticketManager;
     
+    @Inject
+    VMService vmService;
+    
+    @Inject
+    VMLocatorService vmLocatorService;
+    
     public Set<String> getVMTags(int vmId, @AuthTicket String ticket) {
         try {
-            String node = getNodeForVM(vmId, ticket);
-            if (node == null) {
-                LOG.warn("Could not find node for VM " + vmId);
+            Optional<String> nodeOpt = vmLocatorService.findNodeForVM(vmId, ticket);
+            if (nodeOpt.isEmpty()) {
+                LOG.warn("Could not find node for VM {}", vmId);
                 return new HashSet<>();
             }
+            String node = nodeOpt.get();
             
             // Get VM config which includes tags
             var config = proxmoxClient.getVMConfig(
@@ -55,11 +67,12 @@ public class TagService {
     
     public void addTag(int vmId, String tag, @AuthTicket String ticket) {
         try {
-            String node = getNodeForVM(vmId, ticket);
-            if (node == null) {
-                LOG.warn("Could not find node for VM " + vmId);
+            Optional<String> nodeOpt = vmLocatorService.findNodeForVM(vmId, ticket);
+            if (nodeOpt.isEmpty()) {
+                LOG.warn("Could not find node for VM {}", vmId);
                 return;
             }
+            String node = nodeOpt.get();
             
             Set<String> currentTags = getVMTags(vmId, ticket);
             currentTags.add(tag);
@@ -86,11 +99,12 @@ public class TagService {
     
     public void removeTag(int vmId, String tag, @AuthTicket String ticket) {
         try {
-            String node = getNodeForVM(vmId, ticket);
-            if (node == null) {
-                LOG.warn("Could not find node for VM " + vmId);
+            Optional<String> nodeOpt = vmLocatorService.findNodeForVM(vmId, ticket);
+            if (nodeOpt.isEmpty()) {
+                LOG.warn("Could not find node for VM {}", vmId);
                 return;
             }
+            String node = nodeOpt.get();
             
             Set<String> currentTags = getVMTags(vmId, ticket);
             currentTags.remove(tag);
@@ -120,11 +134,12 @@ public class TagService {
      */
     public void updateVMTags(int vmId, List<String> newTags, @AuthTicket String ticket) {
         try {
-            String node = getNodeForVM(vmId, ticket);
-            if (node == null) {
-                LOG.warn("Could not find node for VM " + vmId);
+            Optional<String> nodeOpt = vmLocatorService.findNodeForVM(vmId, ticket);
+            if (nodeOpt.isEmpty()) {
+                LOG.warn("Could not find node for VM {}", vmId);
                 return;
             }
+            String node = nodeOpt.get();
             
             String tagsString = newTags != null ? String.join(",", newTags) : "";
             
@@ -215,11 +230,12 @@ public class TagService {
                 Set<String> currentTags = getVMTags(vmId, ticket);
                 currentTags.addAll(tagsToAdd);
                 
-                String node = getNodeForVM(vmId, ticket);
-                if (node == null) {
+                Optional<String> nodeOpt = vmLocatorService.findNodeForVM(vmId, ticket);
+                if (nodeOpt.isEmpty()) {
                     results.put(vmId, "error: VM not found");
                     continue;
                 }
+                String node = nodeOpt.get();
                 
                 String tagsString = TagUtils.tagsToString(currentTags);
                 
@@ -256,11 +272,12 @@ public class TagService {
                 Set<String> currentTags = getVMTags(vmId, ticket);
                 currentTags.removeAll(tagsToRemove);
                 
-                String node = getNodeForVM(vmId, ticket);
-                if (node == null) {
+                Optional<String> nodeOpt = vmLocatorService.findNodeForVM(vmId, ticket);
+                if (nodeOpt.isEmpty()) {
                     results.put(vmId, "error: VM not found");
                     continue;
                 }
+                String node = nodeOpt.get();
                 
                 String tagsString = TagUtils.tagsToString(currentTags);
                 
@@ -318,25 +335,4 @@ public class TagService {
         return vmIds;
     }
     
-    private String getNodeForVM(int vmId, String ticket) {
-        try {
-            var resources = proxmoxClient.getClusterResources(
-                ticket,
-                ticketManager.getCsrfToken(),
-                "vm"
-            );
-            
-            if (resources != null && resources.has("data")) {
-                var dataArray = resources.get("data");
-                for (var resource : dataArray) {
-                    if (resource.has("vmid") && resource.get("vmid").asInt() == vmId) {
-                        return resource.get("node").asText();
-                    }
-                }
-            }
-        } catch (Exception e) {
-            LOG.error("Error finding node for VM " + vmId, e);
-        }
-        return null;
-    }
 }

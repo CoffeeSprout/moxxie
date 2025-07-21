@@ -1,9 +1,11 @@
 package com.coffeesprout;
 
 import com.coffeesprout.api.dto.CreateVMRequestDTO;
-import com.coffeesprout.api.dto.SnapshotRequestDTO;
-import com.coffeesprout.api.dto.VMPowerRequestDTO;
+import com.coffeesprout.api.dto.CreateSnapshotRequest;
+import com.coffeesprout.api.dto.BulkPowerRequest;
 import com.coffeesprout.api.dto.VMResponse;
+import com.coffeesprout.api.dto.DiskConfig;
+import com.coffeesprout.api.dto.NetworkConfig;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
@@ -150,35 +152,42 @@ public class MoxxieIntegrationTest {
         String vmName = TEST_PREFIX + "vm-" + testRunId;
         
         CreateVMRequestDTO request = new CreateVMRequestDTO(
-            selectedNode,           // node
             null,                  // vmId (auto-assign)
             vmName,                // name
+            selectedNode,          // node
+            null,                  // template
             2,                     // cores
             2048,                  // memory (MB)
+            null,                  // diskGB (deprecated)
             List.of(               // disks
-                new CreateVMRequestDTO.DiskConfig(
-                    "10G",         // size
-                    TEST_STORAGE,  // storage
-                    "scsi",        // interface
-                    0              // index
+                new DiskConfig(
+                    DiskConfig.DiskInterface.SCSI,  // interface
+                    0,              // slot
+                    TEST_STORAGE,   // storage
+                    10,             // sizeGB
+                    null,           // ssd
+                    null,           // iothread
+                    null,           // cache
+                    null,           // discard
+                    null,           // format
+                    true,           // backup
+                    false,          // replicate
+                    null,           // importFrom
+                    null            // additionalOptions
                 )
             ),
             List.of(               // networks
-                new CreateVMRequestDTO.NetworkConfig(
-                    TEST_BRIDGE,   // bridge
-                    "virtio",      // model
-                    0,             // index
-                    null,          // vlan
-                    false          // firewall
-                )
+                NetworkConfig.simple(TEST_BRIDGE)
             ),
-            "l26",                 // osType (Linux 2.6+)
-            "scsi0",               // bootOrder
-            false,                 // start
-            List.of(TEST_TAG),     // tags
+            null,                  // network (deprecated)
+            false,                 // startOnBoot
             null,                  // pool
+            null,                  // clientId
+            null,                  // project
+            List.of(TEST_TAG),     // tags
+            "scsi0",               // bootOrder
             null,                  // cpuType
-            null                   // vga
+            null                   // vgaType
         );
         
         Response response = given()
@@ -347,7 +356,7 @@ public class MoxxieIntegrationTest {
         Integer vmId = getOrCreateTestVM();
         String snapshotName = TEST_PREFIX + "snap-" + System.currentTimeMillis();
         
-        SnapshotRequestDTO request = new SnapshotRequestDTO(
+        CreateSnapshotRequest request = new CreateSnapshotRequest(
             snapshotName,
             "Test snapshot created at " + LocalDateTime.now(),
             false,  // includeVMState
@@ -468,10 +477,24 @@ public class MoxxieIntegrationTest {
     
     private Integer createTestVM(String name) {
         CreateVMRequestDTO request = new CreateVMRequestDTO(
-            selectedNode, null, name, 1, 1024,
-            List.of(new CreateVMRequestDTO.DiskConfig("8G", TEST_STORAGE, "scsi", 0)),
-            List.of(new CreateVMRequestDTO.NetworkConfig(TEST_BRIDGE, "virtio", 0, null, false)),
-            "l26", "scsi0", false, List.of(TEST_TAG), null, null, null
+            null,               // vmId (auto-assign)
+            name,               // name
+            selectedNode,       // node
+            null,               // template
+            1,                  // cores
+            1024,               // memoryMB
+            null,               // diskGB (deprecated)
+            List.of(new DiskConfig(DiskConfig.DiskInterface.SCSI, 0, TEST_STORAGE, 8, null, null, null, null, null, true, false, null, null)),
+            List.of(NetworkConfig.simple(TEST_BRIDGE)),
+            null,               // network (deprecated)
+            false,              // startOnBoot
+            null,               // pool
+            null,               // clientId
+            null,               // project
+            List.of(TEST_TAG),  // tags
+            "scsi0",            // bootOrder
+            null,               // cpuType
+            null                // vgaType
         );
         
         Response response = given()
@@ -493,8 +516,11 @@ public class MoxxieIntegrationTest {
     }
     
     private void createSnapshot(Integer vmId, String name) {
-        SnapshotRequestDTO request = new SnapshotRequestDTO(
-            name, "Test snapshot", false, null
+        CreateSnapshotRequest request = new CreateSnapshotRequest(
+            name, 
+            "Test snapshot",
+            false,  // vmstate
+            null    // ttlHours
         );
         
         Response response = given()

@@ -216,7 +216,7 @@ curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
     },
     "ipConfig": "ip=192.168.1.100/24,gw=192.168.1.1",
     "start": true,
-    "tags": "web,env:prod,client:acme"
+    "tags": "web,env-prod,client-acme"
   }'
 
 # Create VM from Talos template
@@ -236,7 +236,7 @@ curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
     },
     "ipConfig": "ip=192.168.1.101/24,gw=192.168.1.1",
     "start": true,
-    "tags": "k8s-controlplane,env:prod"
+    "tags": "k8s-controlplane,env-prod"
   }'
 ```
 

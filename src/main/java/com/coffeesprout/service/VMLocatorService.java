@@ -1,192 +1,136 @@
 package com.coffeesprout.service;
 
 import com.coffeesprout.api.dto.VMResponse;
-import com.coffeesprout.api.exception.ProxmoxException;
-import com.coffeesprout.service.AutoAuthenticate;
 import com.coffeesprout.service.AuthTicket;
+import com.coffeesprout.service.AutoAuthenticate;
+import com.coffeesprout.client.ProxmoxClient;
+import com.coffeesprout.service.TicketManager;
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 /**
- * Service to locate VMs across nodes in the cluster.
- * Centralizes VM lookup logic to avoid duplication across services.
+ * Service for locating VMs across Proxmox cluster nodes.
+ * Centralizes the logic for finding which node a VM is running on.
  */
 @ApplicationScoped
 @AutoAuthenticate
 public class VMLocatorService {
     
-    private static final Logger log = LoggerFactory.getLogger(VMLocatorService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(VMLocatorService.class);
+    
+    @Inject
+    @RestClient
+    ProxmoxClient proxmoxClient;
+    
+    @Inject
+    TicketManager ticketManager;
     
     @Inject
     VMService vmService;
     
-    @Inject
-    NodeService nodeService;
-    
-    // Cache for VM locations (VM ID -> Node name)
-    // This is cleared periodically or on certain operations
-    private final Map<Integer, String> vmLocationCache = new ConcurrentHashMap<>();
-    
     /**
-     * Find which node a VM is on.
+     * Find which node a VM is running on.
      * 
      * @param vmId The VM ID to locate
      * @param ticket Authentication ticket
-     * @return The node name where the VM is located
-     * @throws ProxmoxException if VM not found
+     * @return The node name where the VM is located, or empty if not found
      */
-    public String findNodeForVM(int vmId, @AuthTicket String ticket) {
-        // Check cache first
-        String cachedNode = vmLocationCache.get(vmId);
-        if (cachedNode != null) {
-            log.debug("Found VM {} on node {} (cached)", vmId, cachedNode);
-            return cachedNode;
-        }
-        
-        // Search across all VMs
+    public Optional<String> findNodeForVM(int vmId, @AuthTicket String ticket) {
         try {
-            List<VMResponse> allVMs = vmService.listVMs(ticket);
-            Optional<VMResponse> vm = allVMs.stream()
-                .filter(v -> v.vmid() == vmId)
-                .findFirst();
-                
-            if (vm.isPresent()) {
-                String node = vm.get().node();
-                log.debug("Found VM {} on node {}", vmId, node);
-                vmLocationCache.put(vmId, node);
-                return node;
-            }
-        } catch (Exception e) {
-            log.error("Error searching for VM {}: {}", vmId, e.getMessage());
-        }
-        
-        throw ProxmoxException.notFound("VM", String.valueOf(vmId));
-    }
-    
-    /**
-     * Find a VM by ID across all nodes.
-     * 
-     * @param vmId The VM ID to find
-     * @param ticket Authentication ticket
-     * @return The VM response if found
-     * @throws ProxmoxException if VM not found
-     */
-    public VMResponse findVM(int vmId, @AuthTicket String ticket) {
-        // First try to find the VM in the list
-        try {
-            List<VMResponse> allVMs = vmService.listVMs(ticket);
-            Optional<VMResponse> vm = allVMs.stream()
-                .filter(v -> v.vmid() == vmId)
-                .findFirst();
-                
-            if (vm.isPresent()) {
-                // Update cache with node location
-                vmLocationCache.put(vmId, vm.get().node());
-                return vm.get();
-            }
-        } catch (Exception e) {
-            log.error("Failed to find VM {}: {}", vmId, e.getMessage());
-        }
-        
-        throw ProxmoxException.notFound("VM", String.valueOf(vmId));
-    }
-    
-    /**
-     * Find multiple VMs by IDs.
-     * 
-     * @param vmIds List of VM IDs to find
-     * @param ticket Authentication ticket
-     * @return Map of VM ID to VM response
-     */
-    public Map<Integer, VMResponse> findVMs(List<Integer> vmIds, @AuthTicket String ticket) {
-        Map<Integer, VMResponse> result = new HashMap<>();
-        Set<Integer> vmIdSet = new HashSet<>(vmIds);
-        
-        try {
-            // Get all VMs and filter by the requested IDs
-            List<VMResponse> allVMs = vmService.listVMs(ticket);
+            // First, try using cluster resources API (most efficient)
+            var resources = proxmoxClient.getClusterResources(
+                ticket,
+                ticketManager.getCsrfToken(),
+                "vm"
+            );
             
-            for (VMResponse vm : allVMs) {
-                if (vmIdSet.contains(vm.vmid())) {
-                    result.put(vm.vmid(), vm);
-                    // Update cache
-                    vmLocationCache.put(vm.vmid(), vm.node());
+            if (resources != null && resources.has("data")) {
+                var dataArray = resources.get("data");
+                for (var resource : dataArray) {
+                    if (resource.has("vmid") && resource.get("vmid").asInt() == vmId) {
+                        if (resource.has("node")) {
+                            String node = resource.get("node").asText();
+                            LOG.debug("Found VM {} on node {} via cluster resources", vmId, node);
+                            return Optional.of(node);
+                        }
+                    }
                 }
             }
         } catch (Exception e) {
-            log.error("Failed to find VMs: {}", e.getMessage());
+            LOG.warn("Error finding VM {} via cluster resources: {}", vmId, e.getMessage());
         }
         
-        return result;
+        // Fallback: try using VM service (less efficient but more reliable)
+        try {
+            return vmService.listVMs(ticket).stream()
+                .filter(vm -> vm.vmid() == vmId)
+                .map(VMResponse::node)
+                .findFirst();
+        } catch (Exception e) {
+            LOG.error("Error finding VM {} via VM service: {}", vmId, e.getMessage());
+            return Optional.empty();
+        }
     }
     
     /**
-     * Find nodes for multiple VMs.
+     * Find a VM by ID and return its full details.
      * 
-     * @param vmIds List of VM IDs
+     * @param vmId The VM ID to find
      * @param ticket Authentication ticket
-     * @return Map of VM ID to node name
+     * @return The VM details, or empty if not found
      */
-    public Map<Integer, String> findNodesForVMs(List<Integer> vmIds, @AuthTicket String ticket) {
-        Map<Integer, String> result = new HashMap<>();
-        List<Integer> uncachedVmIds = new ArrayList<>();
-        
-        // Check cache first
-        for (Integer vmId : vmIds) {
-            String cachedNode = vmLocationCache.get(vmId);
-            if (cachedNode != null) {
-                result.put(vmId, cachedNode);
-            } else {
-                uncachedVmIds.add(vmId);
-            }
+    public Optional<VMResponse> findVM(int vmId, @AuthTicket String ticket) {
+        try {
+            return vmService.listVMs(ticket).stream()
+                .filter(vm -> vm.vmid() == vmId)
+                .findFirst();
+        } catch (Exception e) {
+            LOG.error("Error finding VM {}: {}", vmId, e.getMessage());
+            return Optional.empty();
         }
-        
-        // Search for uncached VMs
-        if (!uncachedVmIds.isEmpty()) {
-            Map<Integer, VMResponse> foundVms = findVMs(uncachedVmIds, ticket);
-            for (Map.Entry<Integer, VMResponse> entry : foundVms.entrySet()) {
-                result.put(entry.getKey(), entry.getValue().node());
-            }
-        }
-        
-        return result;
     }
     
     /**
-     * Clear the VM location cache.
-     * Should be called after migrations or significant changes.
-     */
-    public void clearCache() {
-        log.info("Clearing VM location cache");
-        vmLocationCache.clear();
-    }
-    
-    /**
-     * Remove specific VM from cache.
+     * Check if a VM exists in the cluster.
      * 
-     * @param vmId VM ID to remove from cache
+     * @param vmId The VM ID to check
+     * @param ticket Authentication ticket
+     * @return true if the VM exists, false otherwise
      */
-    public void evictFromCache(int vmId) {
-        vmLocationCache.remove(vmId);
+    public boolean vmExists(int vmId, @AuthTicket String ticket) {
+        return findNodeForVM(vmId, ticket).isPresent();
     }
     
     /**
-     * Update cache entry for a VM.
+     * Get VM details directly from a specific node.
+     * This is more efficient if you already know which node the VM is on.
      * 
-     * @param vmId VM ID
-     * @param node New node location
+     * @param node The node name
+     * @param vmId The VM ID
+     * @param ticket Authentication ticket
+     * @return The VM configuration from Proxmox
      */
-    public void updateCache(int vmId, String node) {
-        if (node != null) {
-            vmLocationCache.put(vmId, node);
-        } else {
-            vmLocationCache.remove(vmId);
+    public Optional<JsonNode> getVMConfig(String node, int vmId, @AuthTicket String ticket) {
+        try {
+            var config = proxmoxClient.getVMConfig(
+                node,
+                vmId,
+                ticket,
+                ticketManager.getCsrfToken()
+            );
+            
+            if (config != null && config.has("data")) {
+                return Optional.of(config.get("data"));
+            }
+        } catch (Exception e) {
+            LOG.error("Error getting config for VM {} on node {}: {}", vmId, node, e.getMessage());
         }
+        return Optional.empty();
     }
 }

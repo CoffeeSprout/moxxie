@@ -2,46 +2,34 @@
 
 This document contains all the issues discovered during the comprehensive audit that require discussion or major changes before implementation.
 
-## Critical Issues
+## ✅ Completed Fixes (2025-07-21)
 
-### 1. Tag Format Inconsistency (CRITICAL)
-**Issue**: Documentation states tags cannot contain colons but all examples use colons.
+### 1. Tag Format Inconsistency ✅
+**Fixed**: All documentation and code examples now consistently use dashes instead of colons.
+- Updated all Java test files to use `env-prod`, `client-nixz` format
+- Fixed examples in documentation files
+- Updated OpenAPI schema examples
 
-**Current State**:
-- CLAUDE.md states: "Tags in Proxmox cannot contain colons. Always use dashes instead"
-- But examples use: `env:prod`, `client:acme`, etc.
-- README.md uses dashes correctly: `env-prod`, `client-nixz`
+### 2. Cloud-Init Image Source Validation ✅
+**Fixed**: Added custom validation to reject ISO paths with helpful error messages.
+- Created `@ValidImageSource` annotation and `ImageSourceValidator`
+- Applied to `CloudInitVMRequest` and `NodeTemplate`
+- Provides clear error message: "For cloud-init VMs, use the format 'storage:vmid/base-vmid-disk-N'"
+- Added comprehensive unit tests
 
-**Decision Required**: 
-- Which format should we use? Colons or dashes?
-- Need to update ALL documentation to be consistent
-- May need migration path if changing existing deployments
+### 3. VM Node Resolution Centralization ✅
+**Fixed**: Created `VMLocatorService` to eliminate code duplication.
+- Centralized VM node resolution logic
+- Updated `TagService` and `ConsoleService` to use the new service
+- Removed duplicate `getNodeForVM` and `findVM` methods
+- Improved error handling with Optional returns
 
-**Recommendation**: Use dashes as stated in documentation, update all examples.
+### 6. Authentication Migration ✅
+**Fixed**: TagService already uses @AutoAuthenticate (was incorrectly listed as needing migration).
+- Verified TagService is properly annotated with @AutoAuthenticate
+- All methods use @AuthTicket annotation for parameters
 
-### 2. Cloud-Init Image Source Documentation
-**Issue**: Critical requirement for imageSource format is buried in documentation.
-
-**Current State**:
-- Users must use `local-zfs:base-9002-disk-0` format, not ISO paths
-- This causes "unable to parse directory volume name" errors
-- Information is in a small note in API_EXAMPLES.md
-
-**Decision Required**:
-- Should we add validation to reject ISO paths with helpful error?
-- Move this to prominent location in docs?
-
-## Major Refactoring Needed
-
-### 3. Code Duplication - VM Node Resolution
-**Issue**: Multiple services implement their own way to find VM nodes.
-
-**Files Affected**:
-- TagService.java (getNodeForVM method)
-- ConsoleService.java (findVM method)
-- Several other services
-
-**Proposed Solution**: Create VMLocatorService to centralize this logic.
+## Major Refactoring Still Needed
 
 ### 4. Error Response Pattern Duplication
 **Issue**: 22+ Resource classes have identical error handling patterns.
@@ -61,15 +49,6 @@ This document contains all the issues discovered during the comprehensive audit 
 **Decision Required**: Establish clear service hierarchy.
 
 ## Configuration & Architecture Issues
-
-### 6. Authentication Migration Incomplete
-**Issue**: Some services still manually manage tickets instead of using @AutoAuthenticate.
-
-**Services to Migrate**:
-- TagService.java
-- SDNService.java
-
-**Decision Required**: Complete migration or document why these are exceptions?
 
 ### 7. Inconsistent Configuration Approach
 **Issue**: Mix of @ConfigProperty and @ConfigMapping usage.
@@ -175,37 +154,33 @@ This document contains all the issues discovered during the comprehensive audit 
 
 ## Questions for Team Discussion
 
-1. **Tag Format Decision**: Colons or dashes? Need immediate decision.
+1. **Service Architecture**: How to better structure services to avoid circular dependencies?
 
-2. **Service Architecture**: How to better structure services to avoid circular dependencies?
+2. **Error Handling Strategy**: Implement global exception handling now or wait?
 
-3. **Error Handling Strategy**: Implement global exception handling now or wait?
+3. **Authentication Timeline**: When should we add API authentication?
 
-4. **Authentication Timeline**: When should we add API authentication?
+4. **Logging Framework**: Standardize on SLF4J or JBoss Logger?
 
-5. **Logging Framework**: Standardize on SLF4J or JBoss Logger?
+5. **Performance Monitoring**: Basic timing now or wait for full metrics?
 
-6. **Performance Monitoring**: Basic timing now or wait for full metrics?
+6. **Test Safety**: Are current integration test safeguards sufficient?
 
-7. **Breaking Changes**: Can we fix tag format without breaking existing users?
+7. **Quarkus Features**: Which additional features to adopt first?
 
-8. **Test Safety**: Are current integration test safeguards sufficient?
-
-9. **Quarkus Features**: Which additional features to adopt first?
-
-10. **Documentation Priority**: Fix examples first or add missing docs?
+8. **Documentation Priority**: Add missing docs or focus on code?
 
 ## Proposed Implementation Order
 
-### Phase 1 (Immediate - Before Next Release)
-1. Fix tag format consistency in all documentation
-2. Add cloud-init imageSource validation with helpful error
-3. Complete @AutoAuthenticate migration
-4. Standardize logger usage
+### Phase 1 ✅ (Completed 2025-07-21)
+1. ✅ Fix tag format consistency in all documentation
+2. ✅ Add cloud-init imageSource validation with helpful error
+3. ✅ Complete @AutoAuthenticate verification
+4. ✅ Create VMLocatorService to reduce duplication
 
 ### Phase 2 (Next Sprint)
-1. Implement VMLocatorService to reduce duplication
-2. Add global exception handler
+1. Add global exception handler
+2. Standardize logger usage
 3. Add correlation IDs for request tracking
 4. Create development helper scripts
 
@@ -223,7 +198,7 @@ This document contains all the issues discovered during the comprehensive audit 
 
 ## Notes
 
-- All line numbers referenced are as of the audit date (2025-06-26)
-- Some issues may already be partially addressed
-- Priority should be given to user-facing issues (tag format, errors)
-- Consider creating GitHub issues for tracking each item
+- Original audit date: 2025-06-26
+- Phase 1 completed: 2025-07-21
+- Priority given to user-facing issues (tag format, errors)
+- Consider creating GitHub issues for tracking remaining items

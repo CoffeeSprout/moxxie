@@ -58,7 +58,7 @@ class CreateSnapshotTaskTest {
         // Add VM selector
         JobVMSelector selector = new JobVMSelector();
         selector.selectorType = JobVMSelector.SelectorType.TAG_EXPRESSION.getValue();
-        selector.selectorValue = "env:test";
+        selector.selectorValue = "env-test";
         job.vmSelectors.add(selector);
         
         // Create test context
@@ -80,11 +80,11 @@ class CreateSnapshotTaskTest {
         
         // Mock VM service
         VMResponse vm = new VMResponse(8200, "test-vm", "node1", "running", 1, 1024L, 
-            2048L, 3600L, "qemu", List.of("env:test"), null, 0);
+            2048L, 3600L, "qemu", List.of("env-test"), null, 0);
         when(vmService.listVMs(null)).thenReturn(List.of(vm));
         
         // Mock tag service
-        when(tagService.getVMTags(8200, null)).thenReturn(Set.of("env:test"));
+        when(tagService.getVMTags(8200, null)).thenReturn(Set.of("env-test"));
         
         // Mock snapshot service
         when(snapshotService.createSnapshot(eq(8200), any(CreateSnapshotRequest.class), isNull()))
@@ -117,11 +117,11 @@ class CreateSnapshotTaskTest {
         
         // Mock VM service
         VMResponse vm = new VMResponse(8200, "test-vm", "node1", "running", 1, 1024L, 
-            2048L, 3600L, "qemu", List.of("env:test"), null, 0);
+            2048L, 3600L, "qemu", List.of("env-test"), null, 0);
         when(vmService.listVMs(null)).thenReturn(List.of(vm));
         
         // Mock tag service
-        when(tagService.getVMTags(8200, null)).thenReturn(Set.of("env:test"));
+        when(tagService.getVMTags(8200, null)).thenReturn(Set.of("env-test"));
         
         // Mock existing snapshots
         List<SnapshotResponse> existingSnapshots = List.of(
@@ -154,11 +154,11 @@ class CreateSnapshotTaskTest {
     void testExecute_NoVmsMatchingTag() {
         // Mock VM service
         VMResponse vm = new VMResponse(8200, "test-vm", "node1", "running", 1, 1024L, 
-            2048L, 3600L, "qemu", List.of("env:test"), null, 0);
+            2048L, 3600L, "qemu", List.of("env-test"), null, 0);
         when(vmService.listVMs(null)).thenReturn(List.of(vm));
         
         // Mock tag service - VM doesn't have the required tag
-        when(tagService.getVMTags(8200, null)).thenReturn(Set.of("env:prod"));
+        when(tagService.getVMTags(8200, null)).thenReturn(Set.of("env-prod"));
         
         // Execute task
         TaskResult result = task.execute(context);
@@ -174,13 +174,13 @@ class CreateSnapshotTaskTest {
     void testExecute_PartialFailure() {
         // Mock VM service with multiple VMs
         VMResponse vm1 = new VMResponse(8200, "test-vm-1", "node1", "running", 1, 1024L, 
-            2048L, 3600L, "qemu", List.of("env:test"), null, 0);
+            2048L, 3600L, "qemu", List.of("env-test"), null, 0);
         VMResponse vm2 = new VMResponse(8201, "test-vm-2", "node1", "running", 1, 1024L, 
-            2048L, 3600L, "qemu", List.of("env:test"), null, 0);
+            2048L, 3600L, "qemu", List.of("env-test"), null, 0);
         when(vmService.listVMs(null)).thenReturn(List.of(vm1, vm2));
         
         // Mock tag service
-        when(tagService.getVMTags(anyInt(), isNull())).thenReturn(Set.of("env:test"));
+        when(tagService.getVMTags(anyInt(), isNull())).thenReturn(Set.of("env-test"));
         
         // Mock snapshot service - first succeeds, second fails
         when(snapshotService.createSnapshot(eq(8200), any(CreateSnapshotRequest.class), isNull()))
@@ -220,7 +220,7 @@ class CreateSnapshotTaskTest {
         context.addParameter("snapshotNamePattern", "custom-{vm}-{date}");
         
         VMResponse vm = new VMResponse(8200, "myvm", "node1", "running", 1, 1024L, 
-            2048L, 3600L, "qemu", List.of("env:test"), null, 0);
+            2048L, 3600L, "qemu", List.of("env-test"), null, 0);
         
         when(snapshotService.createSnapshot(eq(8200), any(CreateSnapshotRequest.class), isNull()))
             .thenReturn(new com.coffeesprout.api.dto.TaskResponse("TASK-123", "Creating snapshot"));

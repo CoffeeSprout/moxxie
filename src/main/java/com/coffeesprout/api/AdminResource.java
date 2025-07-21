@@ -178,7 +178,7 @@ public class AdminResource {
             String shape,
             
             @Schema(description = "Color mappings for tags", 
-                    example = "{\"moxxie\": \"#00aa00\", \"env:prod\": \"#0066cc\", \"always-on\": \"#cc0000\"}")
+                    example = "{\"moxxie\": \"#00aa00\", \"env-prod\": \"#0066cc\", \"always-on\": \"#cc0000\"}")
             Map<String, String> colorMap
         ) {}
     }

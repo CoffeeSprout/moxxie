@@ -75,8 +75,8 @@ class TagServiceTest {
         
         assertEquals(3, tags.size());
         assertTrue(tags.contains("moxxie"));
-        assertTrue(tags.contains("client:nixz"));
-        assertTrue(tags.contains("env:prod"));
+        assertTrue(tags.contains("client-nixz"));
+        assertTrue(tags.contains("env-prod"));
     }
     
     @Test
@@ -118,7 +118,7 @@ class TagServiceTest {
             .thenReturn(configResponse);
         
         // Test adding tag
-        tagService.addTag(101, "env:prod", null);
+        tagService.addTag(101, "env-prod", null);
         
         // Verify update was called with correct tags
         ArgumentCaptor<String> formDataCaptor = ArgumentCaptor.forClass(String.class);
@@ -128,7 +128,7 @@ class TagServiceTest {
         String formData = formDataCaptor.getValue();
         assertTrue(formData.contains("tags="));
         assertTrue(formData.contains("moxxie"));
-        assertTrue(formData.contains("env:prod"));
+        assertTrue(formData.contains("env-prod"));
     }
     
     @Test
@@ -157,7 +157,7 @@ class TagServiceTest {
             .thenReturn(configResponse);
         
         // Test removing tag
-        tagService.removeTag(101, "env:prod", null);
+        tagService.removeTag(101, "env-prod", null);
         
         // Verify update was called with correct tags
         ArgumentCaptor<String> formDataCaptor = ArgumentCaptor.forClass(String.class);
@@ -167,8 +167,8 @@ class TagServiceTest {
         String formData = formDataCaptor.getValue();
         assertTrue(formData.contains("tags="));
         assertTrue(formData.contains("moxxie"));
-        assertTrue(formData.contains("client:nixz"));
-        assertFalse(formData.contains("env:prod"));
+        assertTrue(formData.contains("client-nixz"));
+        assertFalse(formData.contains("env-prod"));
     }
     
     @Test
@@ -199,10 +199,10 @@ class TagServiceTest {
         
         assertEquals(5, allTags.size());
         assertTrue(allTags.contains("moxxie"));
-        assertTrue(allTags.contains("client:nixz"));
-        assertTrue(allTags.contains("client:acme"));
-        assertTrue(allTags.contains("env:prod"));
-        assertTrue(allTags.contains("env:dev"));
+        assertTrue(allTags.contains("client-nixz"));
+        assertTrue(allTags.contains("client-acme"));
+        assertTrue(allTags.contains("env-prod"));
+        assertTrue(allTags.contains("env-dev"));
     }
     
     @Test
@@ -230,13 +230,13 @@ class TagServiceTest {
             .thenReturn(clusterResponse);
         
         // Test finding VMs with client:nixz tag
-        List<Integer> nixzVMs = tagService.getVMsByTag("client:nixz", null);
+        List<Integer> nixzVMs = tagService.getVMsByTag("client-nixz", null);
         assertEquals(2, nixzVMs.size());
         assertTrue(nixzVMs.contains(101));
         assertTrue(nixzVMs.contains(103));
         
         // Test finding VMs with env:prod tag
-        List<Integer> prodVMs = tagService.getVMsByTag("env:prod", null);
+        List<Integer> prodVMs = tagService.getVMsByTag("env-prod", null);
         assertEquals(1, prodVMs.size());
         assertTrue(prodVMs.contains(102));
     }
@@ -248,7 +248,7 @@ class TagServiceTest {
         
         // Test bulk add
         List<Integer> vmIds = List.of(101, 102, 999); // 999 doesn't exist
-        Set<String> tagsToAdd = Set.of("env:test", "bulk-tag");
+        Set<String> tagsToAdd = Set.of("env-test", "bulk-tag");
         
         Map<Integer, String> results = tagService.bulkAddTags(vmIds, tagsToAdd, null);
         

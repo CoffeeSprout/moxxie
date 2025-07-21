@@ -256,9 +256,9 @@ job.parameters.clear();
 
 Examples:
 ```
-env:prod AND NOT always-on
-(client:nixz OR client:test) AND k8s-worker
-env:dev AND maint-ok
+env-prod AND NOT always-on
+(client-nixz OR client-test) AND k8s-worker
+env-dev AND maint-ok
 ```
 
 ## Testing Your Task

@@ -67,7 +67,7 @@ public record CreateVMRequestDTO(
     @Schema(description = "Project name for VNet naming", example = "web-app")
     String project,
     
-    @Schema(description = "Tags to apply to the VM (will be auto-tagged with moxxie and other tags based on name)", example = "[\"env:prod\", \"always-on\"]")
+    @Schema(description = "Tags to apply to the VM (will be auto-tagged with moxxie and other tags based on name)", example = "[\"env-prod\", \"always-on\"]")
     java.util.List<String> tags,
     
     @Schema(description = "Boot order configuration (e.g., 'order=scsi0;net0' for PXE boot fallback)", example = "order=net0;scsi0")

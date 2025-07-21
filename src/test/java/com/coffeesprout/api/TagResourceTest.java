@@ -36,7 +36,7 @@ class TagResourceTest {
     
     @Test
     void testGetAllTags() {
-        Set<String> mockTags = Set.of("moxxie", "client:nixz", "env:prod", "always-on");
+        Set<String> mockTags = Set.of("moxxie", "client-nixz", "env-prod", "always-on");
         when(tagService.getAllUniqueTags(any())).thenReturn(mockTags);
         
         given()
@@ -46,34 +46,34 @@ class TagResourceTest {
             .statusCode(200)
             .body("count", is(4))
             .body("tags", hasSize(4))
-            .body("tags", hasItems("moxxie", "client:nixz", "env:prod", "always-on"));
+            .body("tags", hasItems("moxxie", "client-nixz", "env-prod", "always-on"));
     }
     
     @Test
     void testGetVMsByTag() {
         // Mock tag service returning VM IDs
-        when(tagService.getVMsByTag(eq("client:nixz"), any())).thenReturn(List.of(101, 102));
+        when(tagService.getVMsByTag(eq("client-nixz"), any())).thenReturn(List.of(101, 102));
         
         // Mock VM service returning full VM info
         List<VMResponse> mockVMs = List.of(
             new VMResponse(101, "nixz-web-01", "pve1", "running", 4, 8192L, 100L, 3600L, "qemu", 
-                List.of("moxxie", "client:nixz"), null, 0),
+                List.of("moxxie", "client-nixz"), null, 0),
             new VMResponse(102, "nixz-db-01", "pve1", "running", 8, 16384L, 200L, 7200L, "qemu", 
-                List.of("moxxie", "client:nixz", "env:prod"), null, 0)
+                List.of("moxxie", "client-nixz", "env-prod"), null, 0)
         );
         when(vmService.listVMs(null)).thenReturn(mockVMs);
         
         given()
             .when()
-            .get("/tags/client:nixz/vms")
+            .get("/tags/client-nixz/vms")
             .then()
             .statusCode(200)
             .body("$", hasSize(2))
             .body("[0].vmid", is(101))
             .body("[0].name", is("nixz-web-01"))
-            .body("[0].tags", hasItems("client:nixz"))
+            .body("[0].tags", hasItems("client-nixz"))
             .body("[1].vmid", is(102))
-            .body("[1].tags", hasItems("client:nixz", "env:prod"));
+            .body("[1].tags", hasItems("client-nixz", "env-prod"));
     }
     
     @Test

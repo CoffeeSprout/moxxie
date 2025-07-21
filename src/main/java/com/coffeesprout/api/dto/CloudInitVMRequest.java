@@ -2,6 +2,7 @@ package com.coffeesprout.api.dto;
 
 import jakarta.validation.constraints.*;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import com.coffeesprout.validation.ValidImageSource;
 import java.util.List;
 
 /**
@@ -39,10 +40,9 @@ public record CloudInitVMRequest(
     @Max(value = 1048576, message = "Cannot exceed 1TB of memory")
     Integer memoryMB,
     
-    @Schema(description = "Cloud image source", example = "util-iso:iso/debian-12-generic-amd64.qcow2", required = true)
+    @Schema(description = "Cloud image source (must reference a template VM disk)", example = "local-zfs:9002/base-9002-disk-0.raw", required = true)
     @NotBlank(message = "Image source is required")
-    @Pattern(regexp = "^[a-zA-Z0-9-]+:((iso|vztmpl|images|\\d+)/)?[a-zA-Z0-9._-]+$", 
-             message = "Image source must be in format storage:content-type/filename, storage:vmid/filename, or storage:base-vmid-disk-N")
+    @ValidImageSource
     String imageSource,
     
     @Schema(description = "Target storage for the VM disk", example = "local-zfs", required = true)

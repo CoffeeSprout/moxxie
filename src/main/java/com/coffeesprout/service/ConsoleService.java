@@ -1,5 +1,8 @@
 package com.coffeesprout.service;
 
+import com.coffeesprout.service.AuthTicket;
+import com.coffeesprout.service.AutoAuthenticate;
+import com.coffeesprout.service.SafeMode;
 import com.coffeesprout.client.*;
 import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.config.MoxxieConfig;
@@ -32,6 +35,9 @@ public class ConsoleService {
     VMService vmService;
     
     @Inject
+    VMLocatorService vmLocatorService;
+    
+    @Inject
     MoxxieConfig config;
     
     @SafeMode(value = false)  // Read operation
@@ -39,10 +45,8 @@ public class ConsoleService {
         log.info("Creating console access for VM {} with type {}", vmId, request.getType());
         
         // First, get VM details to find the node
-        VMResponse vm = findVM(vmId, ticket);
-        if (vm == null) {
-            throw new IllegalArgumentException("VM with ID " + vmId + " not found");
-        }
+        VMResponse vm = vmLocatorService.findVM(vmId, ticket)
+            .orElseThrow(() -> new IllegalArgumentException("VM with ID " + vmId + " not found"));
         
         String node = request.getNode() != null ? request.getNode() : vm.node();
         
@@ -75,10 +79,8 @@ public class ConsoleService {
     public ConsoleWebSocketResponse getWebSocketDetails(int vmId, String consoleTicket, @AuthTicket String ticket) {
         log.debug("Getting WebSocket details for VM {} with console ticket", vmId);
         
-        VMResponse vm = findVM(vmId, ticket);
-        if (vm == null) {
-            throw new IllegalArgumentException("VM with ID " + vmId + " not found");
-        }
+        VMResponse vm = vmLocatorService.findVM(vmId, ticket)
+            .orElseThrow(() -> new IllegalArgumentException("VM with ID " + vmId + " not found"));
         
         String baseUrl = config.proxmox().url();
         String wsUrl = baseUrl.replace("https://", "wss://").replace("http://", "ws://");
@@ -101,10 +103,8 @@ public class ConsoleService {
     public SpiceConnectionFile generateSpiceFile(int vmId, String consoleTicket, @AuthTicket String ticket) {
         log.info("Generating SPICE connection file for VM {}", vmId);
         
-        VMResponse vm = findVM(vmId, ticket);
-        if (vm == null) {
-            throw new IllegalArgumentException("VM with ID " + vmId + " not found");
-        }
+        VMResponse vm = vmLocatorService.findVM(vmId, ticket)
+            .orElseThrow(() -> new IllegalArgumentException("VM with ID " + vmId + " not found"));
         
         // Create SPICE proxy first to get connection details
         ProxmoxConsoleResponse spiceResponse = proxmoxClient.createSPICEProxy(
@@ -136,12 +136,6 @@ public class ConsoleService {
         return file;
     }
     
-    private VMResponse findVM(int vmId, String ticket) {
-        return vmService.listVMs(ticket).stream()
-            .filter(vm -> vm.vmid() == vmId)
-            .findFirst()
-            .orElse(null);
-    }
     
     private ConsoleResponse buildConsoleResponse(ConsoleType type, ProxmoxConsoleResponse proxmoxResponse, String node, int vmId) {
         ConsoleResponse response = new ConsoleResponse();
