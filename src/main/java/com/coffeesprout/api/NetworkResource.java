@@ -1,6 +1,7 @@
 package com.coffeesprout.api;
 
 import com.coffeesprout.api.dto.ErrorResponse;
+import com.coffeesprout.api.exception.ProxmoxException;
 import com.coffeesprout.api.dto.NetworkInterfaceResponse;
 import com.coffeesprout.client.NetworkInterface;
 import com.coffeesprout.service.NetworkService;
@@ -52,52 +53,45 @@ public class NetworkResource {
             @QueryParam("type") String type,
             @Parameter(description = "Filter only active interfaces")
             @QueryParam("active") Boolean active) {
-        try {
-            List<NetworkInterface> networks;
-            
-            if (node != null && !node.isEmpty()) {
-                networks = networkService.getNodeNetworks(node, null);
-            } else {
-                networks = networkService.getAllNetworks(null);
-            }
-            
-            // Apply filters
-            var filteredNetworks = networks.stream();
-            
-            if (type != null && !type.isEmpty()) {
-                filteredNetworks = filteredNetworks.filter(net -> type.equals(net.getType()));
-            }
-            
-            if (active != null) {
-                int activeValue = active ? 1 : 0;
-                filteredNetworks = filteredNetworks.filter(net -> 
-                    net.getActive() != null && net.getActive() == activeValue);
-            }
-            
-            List<NetworkInterfaceResponse> responses = filteredNetworks
-                .map(net -> new NetworkInterfaceResponse(
-                    net.getIface(),
-                    net.getType(),
-                    net.getMethod(),
-                    net.getAddress(),
-                    net.getNetmask(),
-                    net.getGateway(),
-                    net.getBridge_ports(),
-                    net.getBridge_vlan_aware() != null && net.getBridge_vlan_aware() == 1,
-                    net.getCidr(),
-                    net.getComments(),
-                    net.getActive() != null && net.getActive() == 1,
-                    net.getAutostart() != null && net.getAutostart() == 1,
-                    node // Add node info if querying specific node
-                ))
-                .collect(Collectors.toList());
-            
-            return Response.ok(responses).build();
-        } catch (Exception e) {
-            log.error("Failed to list networks", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to list networks: " + e.getMessage()))
-                    .build();
+        List<NetworkInterface> networks;
+        
+        if (node != null && !node.isEmpty()) {
+            networks = networkService.getNodeNetworks(node, null);
+        } else {
+            networks = networkService.getAllNetworks(null);
         }
+        
+        // Apply filters
+        var filteredNetworks = networks.stream();
+        
+        if (type != null && !type.isEmpty()) {
+            filteredNetworks = filteredNetworks.filter(net -> type.equals(net.getType()));
+        }
+        
+        if (active != null) {
+            int activeValue = active ? 1 : 0;
+            filteredNetworks = filteredNetworks.filter(net -> 
+                net.getActive() != null && net.getActive() == activeValue);
+        }
+        
+        List<NetworkInterfaceResponse> responses = filteredNetworks
+            .map(net -> new NetworkInterfaceResponse(
+                net.getIface(),
+                net.getType(),
+                net.getMethod(),
+                net.getAddress(),
+                net.getNetmask(),
+                net.getGateway(),
+                net.getBridge_ports(),
+                net.getBridge_vlan_aware() != null && net.getBridge_vlan_aware() == 1,
+                net.getCidr(),
+                net.getComments(),
+                net.getActive() != null && net.getActive() == 1,
+                net.getAutostart() != null && net.getAutostart() == 1,
+                node // Add node info if querying specific node
+            ))
+            .collect(Collectors.toList());
+        
+        return Response.ok(responses).build();
     }
 }

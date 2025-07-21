@@ -8,6 +8,7 @@ import com.coffeesprout.api.dto.CreateVMRequestDTO;
 import com.coffeesprout.api.dto.DiskConfig;
 import com.coffeesprout.api.dto.DiskInfo;
 import com.coffeesprout.api.dto.ErrorResponse;
+import com.coffeesprout.api.exception.ProxmoxException;
 import com.coffeesprout.api.dto.RestoreRequest;
 import com.coffeesprout.api.dto.SetSSHKeysRequest;
 import com.coffeesprout.api.dto.SnapshotResponse;
@@ -131,52 +132,45 @@ public class VMResource {
             @DefaultValue("100") @QueryParam("limit") int limit,
             @Parameter(description = "Pagination offset")
             @DefaultValue("0") @QueryParam("offset") int offset) {
-        try {
-            // Parse tag filter
-            List<String> tagFilter = null;
-            if (tags != null && !tags.isEmpty()) {
-                tagFilter = List.of(tags.split(","));
-            }
-            
-            // Get filtered VMs from service
-            List<VMResponse> vms = vmService.listVMsWithFilters(tagFilter, client, node, status, null);
-            
-            // Apply additional filters for vmIds
-            if (vmIds != null && !vmIds.isEmpty()) {
-                Set<Integer> vmIdSet = new HashSet<>();
-                for (String id : vmIds.split(",")) {
-                    try {
-                        vmIdSet.add(Integer.parseInt(id.trim()));
-                    } catch (NumberFormatException e) {
-                        // Skip invalid IDs
-                    }
-                }
-                vms = vms.stream()
-                    .filter(vm -> vmIdSet.contains(vm.vmid()))
-                    .collect(Collectors.toList());
-            }
-            
-            // Apply name pattern filter
-            if (namePattern != null && !namePattern.isEmpty()) {
-                Pattern pattern = Pattern.compile(namePattern.replace("*", ".*"));
-                vms = vms.stream()
-                    .filter(vm -> pattern.matcher(vm.name()).matches())
-                    .collect(Collectors.toList());
-            }
-            
-            // Apply pagination
-            List<VMResponse> paginatedVMs = vms.stream()
-                .skip(offset)
-                .limit(limit)
-                .collect(Collectors.toList());
-            
-            return Response.ok(paginatedVMs).build();
-        } catch (Exception e) {
-            log.error("Failed to list VMs", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to list VMs: " + e.getMessage()))
-                    .build();
+        // Parse tag filter
+        List<String> tagFilter = null;
+        if (tags != null && !tags.isEmpty()) {
+            tagFilter = List.of(tags.split(","));
         }
+        
+        // Get filtered VMs from service
+        List<VMResponse> vms = vmService.listVMsWithFilters(tagFilter, client, node, status, null);
+        
+        // Apply additional filters for vmIds
+        if (vmIds != null && !vmIds.isEmpty()) {
+            Set<Integer> vmIdSet = new HashSet<>();
+            for (String id : vmIds.split(",")) {
+                try {
+                    vmIdSet.add(Integer.parseInt(id.trim()));
+                } catch (NumberFormatException e) {
+                    // Skip invalid IDs
+                }
+            }
+            vms = vms.stream()
+                .filter(vm -> vmIdSet.contains(vm.vmid()))
+                .collect(Collectors.toList());
+        }
+        
+        // Apply name pattern filter
+        if (namePattern != null && !namePattern.isEmpty()) {
+            Pattern pattern = Pattern.compile(namePattern.replace("*", ".*"));
+            vms = vms.stream()
+                .filter(vm -> pattern.matcher(vm.name()).matches())
+                .collect(Collectors.toList());
+        }
+        
+        // Apply pagination
+        List<VMResponse> paginatedVMs = vms.stream()
+            .skip(offset)
+            .limit(limit)
+            .collect(Collectors.toList());
+        
+        return Response.ok(paginatedVMs).build();
     }
 
     @GET
@@ -196,16 +190,8 @@ public class VMResource {
     public Response getVM(
             @Parameter(description = "VM ID", required = true)
             @PathParam("vmId") int vmId) {
-        try {
-            VMResponse response = findVmById(vmId);
-            
-            return Response.ok(response).build();
-        } catch (Exception e) {
-            log.error("Failed to get VM: " + vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to get VM: " + e.getMessage()))
-                    .build();
-        }
+        VMResponse response = findVmById(vmId);
+        return Response.ok(response).build();
     }
 
     @GET
@@ -224,33 +210,24 @@ public class VMResource {
     public Response debugVM(
             @Parameter(description = "VM ID", required = true)
             @PathParam("vmId") int vmId) {
-        try {
-            // Get ticket and CSRF token
-            String ticket = ticketManager.getTicket();
-            String csrfToken = ticketManager.getCsrfToken();
-            
-            // Call Proxmox cluster resources directly
-            JsonNode clusterResources = proxmoxClient.getClusterResources(ticket, csrfToken, "vm");
-            
-            // Find the specific VM in the results
-            if (clusterResources != null && clusterResources.has("data") && clusterResources.get("data").isArray()) {
-                for (JsonNode resource : clusterResources.get("data")) {
-                    if (resource.has("vmid") && resource.get("vmid").asInt() == vmId) {
-                        // Return the raw JSON for this VM
-                        return Response.ok(resource).build();
-                    }
+        // Get ticket and CSRF token
+        String ticket = ticketManager.getTicket();
+        String csrfToken = ticketManager.getCsrfToken();
+        
+        // Call Proxmox cluster resources directly
+        JsonNode clusterResources = proxmoxClient.getClusterResources(ticket, csrfToken, "vm");
+        
+        // Find the specific VM in the results
+        if (clusterResources != null && clusterResources.has("data") && clusterResources.get("data").isArray()) {
+            for (JsonNode resource : clusterResources.get("data")) {
+                if (resource.has("vmid") && resource.get("vmid").asInt() == vmId) {
+                    // Return the raw JSON for this VM
+                    return Response.ok(resource).build();
                 }
             }
-            
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(new ErrorResponse("VM not found in cluster resources: " + vmId))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to get debug info for VM: " + vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to get debug info: " + e.getMessage()))
-                    .build();
         }
+        
+        throw ProxmoxException.notFound("VM", String.valueOf(vmId));
     }
 
     @POST
@@ -452,29 +429,19 @@ public class VMResource {
             @RequestBody(description = "Cloud-init VM creation request", required = true,
                 content = @Content(schema = @Schema(implementation = CloudInitVMRequest.class)))
             @Valid CloudInitVMRequest request) {
-        try {
-            log.info("Creating cloud-init VM {} from image {}", request.name(), request.imageSource());
-            
-            // Delegate to VMService which handles VMID allocation, creation, and migration
-            CreateVMResponse response = vmService.createCloudInitVM(request, null);
-            
-            // Build location URI
-            URI location = uriInfo.getAbsolutePathBuilder()
-                    .replacePath("/api/v1/vms/{vmId}")
-                    .build(response.getVmid());
-            
-            return Response.created(location)
-                    .entity(response)
-                    .build();
-            
-        } catch (WebApplicationException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Failed to create cloud-init VM", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to create VM: " + e.getMessage()))
-                    .build();
-        }
+        log.info("Creating cloud-init VM {} from image {}", request.name(), request.imageSource());
+        
+        // Delegate to VMService which handles VMID allocation, creation, and migration
+        CreateVMResponse response = vmService.createCloudInitVM(request, null);
+        
+        // Build location URI
+        URI location = uriInfo.getAbsolutePathBuilder()
+                .replacePath("/api/v1/vms/{vmId}")
+                .build(response.getVmid());
+        
+        return Response.created(location)
+                .entity(response)
+                .build();
     }
 
     @DELETE
@@ -497,19 +464,12 @@ public class VMResource {
             @PathParam("vmId") int vmId,
             @Parameter(description = "Force delete even if not managed by Moxxie")
             @QueryParam("force") boolean force) {
-        try {
-            VMResponse vm = findVmById(vmId);
-            
-            // Delete the VM
-            vmService.deleteVM(vm.node(), vmId, null);
-            
-            return Response.noContent().build();
-        } catch (Exception e) {
-            log.error("Failed to delete VM: " + vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to delete VM: " + e.getMessage()))
-                    .build();
-        }
+        VMResponse vm = findVmById(vmId);
+        
+        // Delete the VM
+        vmService.deleteVM(vm.node(), vmId, null);
+        
+        return Response.noContent().build();
     }
     
     @GET
@@ -527,47 +487,40 @@ public class VMResource {
     public Response getVMDetail(
             @Parameter(description = "VM ID", required = true)
             @PathParam("vmId") int vmId) {
-        try {
-            VMResponse vm = findVmById(vmId);
-            
-            // Get detailed VM configuration
-            log.debug("Getting config for VM {} on node '{}'", vmId, vm.node());
-            Map<String, Object> config = vmService.getVMConfig(vm.node(), vmId, null);
-            
-            // Parse network interfaces from config
-            List<VMDetailResponse.NetworkInterfaceInfo> networkInterfaces = parseNetworkInterfaces(config);
-            
-            // Parse disk information from config
-            List<DiskInfo> disks = parseDiskInfo(config);
-            long totalDiskSize = calculateTotalDiskSize(disks);
-            
-            // Get VM tags
-            List<String> tags = new ArrayList<>(tagService.getVMTags(vmId, null));
-            
-            VMDetailResponse response = new VMDetailResponse(
-                vm.vmid(),
-                vm.name() != null ? vm.name() : "VM-" + vm.vmid(),
-                vm.node(),
-                vm.status(),
-                vm.cpus(),
-                vm.maxmem(),
-                vm.maxdisk(),
-                totalDiskSize,
-                disks,
-                vm.uptime(),
-                vm.type(),
-                networkInterfaces,
-                tags,
-                config
-            );
-            
-            return Response.ok(response).build();
-        } catch (Exception e) {
-            log.error("Failed to get VM details: " + vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to get VM details: " + e.getMessage()))
-                    .build();
-        }
+        VMResponse vm = findVmById(vmId);
+        
+        // Get detailed VM configuration
+        log.debug("Getting config for VM {} on node '{}'", vmId, vm.node());
+        Map<String, Object> config = vmService.getVMConfig(vm.node(), vmId, null);
+        
+        // Parse network interfaces from config
+        List<VMDetailResponse.NetworkInterfaceInfo> networkInterfaces = parseNetworkInterfaces(config);
+        
+        // Parse disk information from config
+        List<DiskInfo> disks = parseDiskInfo(config);
+        long totalDiskSize = calculateTotalDiskSize(disks);
+        
+        // Get VM tags
+        List<String> tags = new ArrayList<>(tagService.getVMTags(vmId, null));
+        
+        VMDetailResponse response = new VMDetailResponse(
+            vm.vmid(),
+            vm.name() != null ? vm.name() : "VM-" + vm.vmid(),
+            vm.node(),
+            vm.status(),
+            vm.cpus(),
+            vm.maxmem(),
+            vm.maxdisk(),
+            totalDiskSize,
+            disks,
+            vm.uptime(),
+            vm.type(),
+            networkInterfaces,
+            tags,
+            config
+        );
+        
+        return Response.ok(response).build();
     }
     
     private List<VMDetailResponse.NetworkInterfaceInfo> parseNetworkInterfaces(Map<String, Object> config) {
@@ -649,11 +602,7 @@ public class VMResource {
         return vms.stream()
             .filter(v -> v.vmid() == vmId)
             .findFirst()
-            .orElseThrow(() -> new WebApplicationException(
-                Response.status(Response.Status.NOT_FOUND)
-                    .entity(new ErrorResponse("VM with ID " + vmId + " not found"))
-                    .build()
-            ));
+            .orElseThrow(() -> ProxmoxException.notFound("VM", String.valueOf(vmId)));
     }
     
     @GET
@@ -673,59 +622,41 @@ public class VMResource {
     public Response getVMStatus(
             @Parameter(description = "VM ID", required = true)
             @PathParam("vmId") int vmId) {
-        try {
-            // First, find the VM to get its node
-            List<VMResponse> vms = vmService.listVMs(null);
-            
-            VMResponse vm = vms.stream()
-                .filter(v -> v.vmid() == vmId)
-                .findFirst()
-                .orElse(null);
-            
-            if (vm == null) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(new ErrorResponse("VM not found: " + vmId))
-                        .build();
-            }
-            
-            // Get detailed status
-            VMStatusResponse status = vmService.getVMStatus(vm.node(), vmId, null);
-            VMStatusResponse.VMStatusData data = status.getData();
-            
-            // Calculate memory percentage
-            double memoryPercent = data.getMaxmem() > 0 ? 
-                (double) data.getMem() / data.getMaxmem() * 100 : 0;
-            
-            VMStatusDetailResponse response = new VMStatusDetailResponse(
-                data.getVmid(),
-                data.getName(),
-                data.getStatus(),
-                data.getQmpstatus(),
-                data.getCpu() * 100, // Convert to percentage
-                data.getCpus(),
-                data.getMem(),
-                data.getMaxmem(),
-                memoryPercent,
-                data.getDiskread(),
-                data.getDiskwrite(),
-                data.getDisk(),
-                data.getMaxdisk(),
-                data.getNetin(),
-                data.getNetout(),
-                data.getUptime(),
-                data.getPid(),
-                "running".equals(data.getStatus()),
-                data.getLock(),
-                data.getAgentStatus()
-            );
-            
-            return Response.ok(response).build();
-        } catch (Exception e) {
-            log.error("Failed to get VM status: " + vmId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(new ErrorResponse("Failed to get VM status: " + e.getMessage()))
-                    .build();
-        }
+        // First, find the VM to get its node
+        VMResponse vm = findVmById(vmId);
+        
+        // Get detailed status
+        VMStatusResponse status = vmService.getVMStatus(vm.node(), vmId, null);
+        VMStatusResponse.VMStatusData data = status.getData();
+        
+        // Calculate memory percentage
+        double memoryPercent = data.getMaxmem() > 0 ? 
+            (double) data.getMem() / data.getMaxmem() * 100 : 0;
+        
+        VMStatusDetailResponse response = new VMStatusDetailResponse(
+            data.getVmid(),
+            data.getName(),
+            data.getStatus(),
+            data.getQmpstatus(),
+            data.getCpu() * 100, // Convert to percentage
+            data.getCpus(),
+            data.getMem(),
+            data.getMaxmem(),
+            memoryPercent,
+            data.getDiskread(),
+            data.getDiskwrite(),
+            data.getDisk(),
+            data.getMaxdisk(),
+            data.getNetin(),
+            data.getNetout(),
+            data.getUptime(),
+            data.getPid(),
+            "running".equals(data.getStatus()),
+            data.getLock(),
+            data.getAgentStatus()
+        );
+        
+        return Response.ok(response).build();
     }
     
     @POST
