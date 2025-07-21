@@ -1,0 +1,42 @@
+{
+  "name": "test-cluster",
+  "type": "GENERIC",
+  "nodeGroups": [
+    {
+      "name": "nodes",
+      "role": "WORKER",
+      "count": 2,
+      "template": {
+        "cores": 2,
+        "memoryMB": 4096,
+        "disks": [
+          {
+            "diskInterface": "SCSI",
+            "slot": 0,
+            "storage": "local-zfs",
+            "sizeGB": 20
+          }
+        ],
+        "networks": [
+          {
+            "model": "virtio",
+            "bridge": "vmbr0"
+          }
+        ],
+        "imageSource": "util-iso:iso/debian-12-generic-amd64.qcow2",
+        "cloudInit": {
+          "user": "debian",
+          "password": "debian",
+          "sshKeys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGLmQqfp8X5DUVxLruBsCmJ7m4mDGcr5V7e2BXMkNPDp user@example",
+          "ipConfigPatterns": ["ip=dhcp"]
+        }
+      },
+      "tags": ["test", "debian"]
+    }
+  ],
+  "options": {
+    "startAfterCreation": true,
+    "parallelProvisioning": true,
+    "rollbackStrategy": "FULL"
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "name": "talos-test-01",
+  "type": "TALOS",
+  "nodeGroups": [
+    {
+      "name": "control-plane",
+      "role": "CONTROL_PLANE",
+      "count": 3,
+      "template": {
+        "cores": 4,
+        "memoryMB": 8192,
+        "disks": [
+          {
+            "diskInterface": "SCSI",
+            "slot": 0,
+            "storage": "local-zfs",
+            "sizeGB": 50,
+            "ssd": true,
+            "iothread": true
+          }
+        ],
+        "networks": [
+          {
+            "model": "virtio",
+            "bridge": "vmbr0",
+            "vlanTag": 100
+          }
+        ],
+        "imageSource": "util-iso:iso/talos-v1.6.0-amd64.qcow2",
+        "cloudInit": {
+          "user": "talos",
+          "sshKeys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGLmQqfp8X5DUVxLruBsCmJ7m4mDGcr5V7e2BXMkNPDp admin@talos",
+          "ipConfigPatterns": ["ip=10.0.100.{10+index}/24,gw=10.0.100.1"]
+        }
+      },
+      "placement": {
+        "antiAffinity": "HARD"
+      },
+      "tags": ["talos", "control-plane", "k8s"],
+      "metadata": {
+        "kubernetes-role": "master"
+      }
+    },
+    {
+      "name": "worker",
+      "role": "WORKER",
+      "count": 3,
+      "template": {
+        "cores": 8,
+        "memoryMB": 16384,
+        "disks": [
+          {
+            "diskInterface": "SCSI",
+            "slot": 0,
+            "storage": "local-zfs",
+            "sizeGB": 100,
+            "ssd": true,
+            "iothread": true
+          }
+        ],
+        "networks": [
+          {
+            "model": "virtio",
+            "bridge": "vmbr0",
+            "vlanTag": 100
+          }
+        ],
+        "imageSource": "util-iso:iso/talos-v1.6.0-amd64.qcow2",
+        "cloudInit": {
+          "user": "talos",
+          "sshKeys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGLmQqfp8X5DUVxLruBsCmJ7m4mDGcr5V7e2BXMkNPDp admin@talos",
+          "ipConfigPatterns": ["ip=10.0.100.{20+index}/24,gw=10.0.100.1"]
+        }
+      },
+      "placement": {
+        "antiAffinity": "SOFT"
+      },
+      "tags": ["talos", "worker", "k8s"],
+      "metadata": {
+        "kubernetes-role": "worker"
+      }
+    }
+  ],
+  "networkTopology": {
+    "primaryBridge": "vmbr0",
+    "clusterVlan": 100
+  },
+  "globalCloudInit": {
+    "nameservers": "1.1.1.1,8.8.8.8",
+    "searchDomain": "cluster.local",
+    "timezone": "UTC"
+  },
+  "metadata": {
+    "environment": "test",
+    "owner": "platform-team"
+  },
+  "options": {
+    "startAfterCreation": false,
+    "parallelProvisioning": true,
+    "maxParallelOperations": 3,
+    "rollbackStrategy": "FULL"
+  }
+}
