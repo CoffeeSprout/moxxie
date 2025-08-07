@@ -1,6 +1,7 @@
 package com.coffeesprout.service;
 
 import com.coffeesprout.api.dto.CloudInitVMRequest;
+import com.coffeesprout.api.dto.CloudInitVMRequestBuilder;
 import com.coffeesprout.api.dto.DiskConfig;
 import com.coffeesprout.api.dto.MigrationRequest;
 import com.coffeesprout.api.dto.NetworkConfig;
@@ -260,64 +261,30 @@ public class ClusterProvisioningService {
         }
         nodeState.setVmId(vmId);
         
-        // Create VM request - different handling for FCOS vs regular VMs
+        // Create VM request using builder pattern
         CloudInitVMRequest vmRequest;
         if (isFCOS) {
             // For FCOS nodes, create minimal VM without cloud-init
             log.info("Creating FCOS VM {} without cloud-init for OKD cluster", nodeName);
-            vmRequest = new CloudInitVMRequest(
-                vmId,
-                nodeName,
-                targetHost,        // Target node where VM should end up
-                "storage01",       // Template node where templates are located
-                template.cores(),
-                template.memoryMB(),
-                template.imageSource(),
-                template.disks().get(0).storage(), // Primary disk storage
-                template.disks().get(0).sizeGB(),
-                null,  // No cloud-init user
-                null,  // No password
-                null,  // No SSH keys (handled by ignition)
-                networks,
-                ipConfigs,
-                null, // deprecated network
-                null, // deprecated ipConfig
-                null, // No search domain
-                null, // No nameservers
-                template.cpuType(),
-                template.qemuAgent(),
-                false, // Don't start FCOS nodes automatically
-                buildNodeDescription(spec, group, index),
-                String.join(",", tags),
-                null  // diskOptions
-            );
+            vmRequest = CloudInitVMRequestBuilder.forFCOS(vmId, nodeName, targetHost, template)
+                .networks(networks)
+                .ipConfigs(ipConfigs)
+                .description(buildNodeDescription(spec, group, index))
+                .tags(String.join(",", tags))
+                .build();
         } else {
-            vmRequest = new CloudInitVMRequest(
-                vmId,
-                nodeName,
-                targetHost,        // Target node where VM should end up
-                "storage01",       // Template node where templates are located
-                template.cores(),
-                template.memoryMB(),
-                template.imageSource(),
-                template.disks().get(0).storage(), // Primary disk storage
-                template.disks().get(0).sizeGB(),
-                cloudInit.user(),
-                cloudInit.password(),
-                cloudInit.sshKeys(),
-                networks,
-                ipConfigs,
-                null, // deprecated network
-                null, // deprecated ipConfig
-                cloudInit.searchDomain(),
-                cloudInit.nameservers(),
-                template.cpuType(),
-                template.qemuAgent(),
-                spec.options().startAfterCreation(),
-                buildNodeDescription(spec, group, index),
-                String.join(",", tags),
-                null  // diskOptions - could be enhanced
-            );
+            vmRequest = CloudInitVMRequestBuilder.forCloudInit(vmId, nodeName, targetHost, template)
+                .cloudInitUser(cloudInit.user())
+                .cloudInitPassword(cloudInit.password())
+                .sshKeys(cloudInit.sshKeys())
+                .searchDomain(cloudInit.searchDomain())
+                .nameservers(cloudInit.nameservers())
+                .networks(networks)
+                .ipConfigs(ipConfigs)
+                .start(spec.options().startAfterCreation())
+                .description(buildNodeDescription(spec, group, index))
+                .tags(String.join(",", tags))
+                .build();
         }
         
         nodeState.setStatus(ClusterProvisioningState.NodeProvisioningState.NodeStatus.CONFIGURING);
