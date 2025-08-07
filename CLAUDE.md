@@ -240,6 +240,95 @@ curl -X POST http://localhost:8080/api/v1/vms/8200/snapshots \
 
 The TTL is appended to the description as "(TTL: 4h)" and can be parsed by the `snapshot_delete` scheduled task when `checkDescription` is enabled.
 
+## Code Patterns and Best Practices
+
+### Builder Pattern for Complex Objects
+
+To avoid error-prone constructors with many parameters, we use the Builder pattern for complex DTOs. This pattern is especially important for objects with 10+ parameters or many optional fields.
+
+#### Example: CloudInitVMRequest
+
+**Problem**: Constructor with 24 parameters, many nullable
+```java
+// DON'T DO THIS - Error prone and hard to read
+new CloudInitVMRequest(vmId, name, node, null, cores, memory, 
+    null, null, null, networks, ipConfigs, null, null, 
+    searchDomain, nameservers, cpuType, null, false, 
+    description, tags, null);
+```
+
+**Solution**: Use CloudInitVMRequestBuilder
+```java
+// DO THIS - Clear, safe, and maintainable
+CloudInitVMRequest request = CloudInitVMRequestBuilder
+    .forCloudInit(vmId, name, targetHost, template)
+    .sshKeys(sshKeys)
+    .searchDomain(domain)
+    .networks(networks)
+    .description(description)
+    .tags(tags)
+    .build();
+
+// For FCOS nodes (no cloud-init)
+CloudInitVMRequest request = CloudInitVMRequestBuilder
+    .forFCOS(vmId, name, targetHost, template)
+    .networks(networks)
+    .description(description)
+    .build();
+```
+
+#### When to Use Builder Pattern
+
+Use builders when you have:
+- More than 5-6 constructor parameters
+- Many optional parameters
+- Parameters of the same type (easy to mix up order)
+- Need for different construction patterns (FCOS vs cloud-init)
+
+#### Creating New Builders
+
+When creating a new builder:
+1. Create a separate `*Builder` class
+2. Provide static factory methods for common cases
+3. Include validation in the `build()` method
+4. Keep the original constructor but consider making it package-private
+
+Example template:
+```java
+public class MyRequestBuilder {
+    // Required fields
+    private String required1;
+    private Integer required2;
+    
+    // Optional fields with defaults
+    private String optional1 = "default";
+    private Boolean optional2 = false;
+    
+    private MyRequestBuilder() {} // Private constructor
+    
+    public static MyRequestBuilder builder() {
+        return new MyRequestBuilder();
+    }
+    
+    public static MyRequestBuilder forCommonCase(String req1, Integer req2) {
+        return builder()
+            .required1(req1)
+            .required2(req2)
+            .optional1("common-value");
+    }
+    
+    // Builder methods...
+    
+    public MyRequest build() {
+        // Validation
+        if (required1 == null) {
+            throw new IllegalStateException("required1 is required");
+        }
+        return new MyRequest(required1, required2, optional1, optional2);
+    }
+}
+```
+
 ## Common Issues and Solutions
 
 ### SSH Key Double Encoding Solution
@@ -338,6 +427,71 @@ quarkus.log.category."com.coffeesprout.client.ProxmoxClientLoggingFilter".level=
 - Large response bodies are truncated to the configured limit
 - Sensitive data like passwords in form parameters are visible in logs - be cautious in production
 - Use `grep "Proxmox API"` to filter all Proxmox interactions in logs
+
+## OKD/OpenShift Cluster Support
+
+Moxxie supports provisioning OKD (OpenShift Kubernetes Distribution) clusters on Proxmox. OKD uses Fedora CoreOS (FCOS) which requires special handling as it uses ignition files instead of cloud-init.
+
+### Key Differences for OKD
+
+1. **FCOS nodes don't use cloud-init** - Moxxie automatically detects FCOS templates and skips cloud-init disk creation
+2. **Ignition files are configured manually** - After VM creation, configure ignition on each node before starting
+3. **Special node roles** - OKD uses BOOTSTRAP (temporary) and BASTION (installer) nodes
+4. **No auto-start** - FCOS nodes are never started automatically
+
+### OKD Provisioning Workflow
+
+1. **Create FCOS template** (VM ID 10799 on storage01):
+```bash
+# Download Fedora CoreOS
+wget https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/latest/x86_64/fedora-coreos-*-qemu.x86_64.qcow2.xz
+xz -d fedora-coreos-*.qcow2.xz
+
+# Create template
+qm create 10799 --name fcos-template --memory 4096 --cores 2 --net0 virtio,bridge=sdbdev
+qm importdisk 10799 fedora-coreos-*.qcow2 local-zfs
+qm set 10799 --scsi0 local-zfs:vm-10799-disk-0
+qm set 10799 --boot c --bootdisk scsi0
+qm set 10799 --serial0 socket --vga serial0
+qm template 10799
+```
+
+2. **Provision cluster with Moxxie**:
+```bash
+curl -X POST http://localhost:8080/api/v1/clusters/provision \
+  -H "Content-Type: application/json" \
+  -d @examples/cluster-provision-okd.json
+```
+
+3. **Configure bastion and generate ignition**:
+```bash
+ssh admin@10.1.107.5  # Bastion host
+./openshift-install create ignition-configs --dir=.
+python3 -m http.server 8080  # Serve ignition files
+```
+
+4. **Apply ignition to each FCOS VM**:
+```bash
+# For each FCOS node (bootstrap, masters)
+qm set <vmid> --args "-fw_cfg name=opt/com.coreos/config,string='{\"ignition\":{\"config\":{\"replace\":{\"source\":\"http://10.1.107.5:8080/bootstrap.ign\"}}}}'"
+```
+
+5. **Start nodes in sequence**:
+```bash
+qm start <bootstrap-vmid>
+./openshift-install wait-for bootstrap-complete
+qm start <master-vmids>
+./openshift-install wait-for install-complete
+qm destroy <bootstrap-vmid>  # Bootstrap is temporary
+```
+
+### Configuration Example
+
+See `examples/cluster-provision-okd.json` for a complete OKD cluster configuration using:
+- VLAN 107 (sdbdev) for cluster network
+- VM IDs 10700-10799 range
+- Bastion with dual-homed networking (public + private)
+- Bootstrap and master nodes on private network only
 
 ## Tagging System
 
