@@ -14,7 +14,13 @@ public record ProvisioningOptions(
     Integer maxParallelOperations,
     
     @Schema(description = "Rollback strategy on failure", defaultValue = "FULL")
-    RollbackStrategy rollbackStrategy
+    RollbackStrategy rollbackStrategy,
+    
+    @Schema(description = "Starting VM ID for range allocation", example = "10700")
+    Integer vmIdRangeStart,
+    
+    @Schema(description = "Dry run mode - validate without creating VMs", defaultValue = "false")
+    Boolean dryRun
 ) {
     public ProvisioningOptions {
         if (startAfterCreation == null) {
@@ -28,6 +34,9 @@ public record ProvisioningOptions(
         }
         if (rollbackStrategy == null) {
             rollbackStrategy = RollbackStrategy.FULL;
+        }
+        if (dryRun == null) {
+            dryRun = false;
         }
     }
     

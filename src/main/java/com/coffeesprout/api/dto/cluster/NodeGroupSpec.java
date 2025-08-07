@@ -70,6 +70,12 @@ public record NodeGroupSpec(
         GATEWAY,
         
         @Schema(description = "Storage node")
-        STORAGE
+        STORAGE,
+        
+        @Schema(description = "Bootstrap node (temporary, for OKD/OpenShift)")
+        BOOTSTRAP,
+        
+        @Schema(description = "Bastion/installer host")
+        BASTION
     }
 }
