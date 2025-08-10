@@ -11,7 +11,7 @@ import com.coffeesprout.service.SnapshotService;
 import com.coffeesprout.service.TagService;
 import com.coffeesprout.service.VMService;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.mockito.InjectMock;
+import io.quarkus.test.InjectMock;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
