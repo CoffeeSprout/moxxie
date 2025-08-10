@@ -1,7 +1,6 @@
 package com.coffeesprout.api;
 
 import com.coffeesprout.api.dto.ErrorResponse;
-import com.coffeesprout.api.exception.ProxmoxException;
 import com.coffeesprout.api.dto.NetworkInterfaceResponse;
 import com.coffeesprout.client.NetworkInterface;
 import com.coffeesprout.service.NetworkService;

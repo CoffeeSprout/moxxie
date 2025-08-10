@@ -3,6 +3,7 @@ package com.coffeesprout.api;
 import com.coffeesprout.api.dto.BulkSnapshotRequest;
 import com.coffeesprout.api.dto.BulkSnapshotResponse;
 import com.coffeesprout.api.dto.ErrorResponse;
+import com.coffeesprout.constants.VMConstants;
 import com.coffeesprout.service.SafeMode;
 import com.coffeesprout.service.SnapshotService;
 import io.smallrye.common.annotation.RunOnVirtualThread;
@@ -85,12 +86,18 @@ public class BulkSnapshotResource {
     
     private boolean isValidSnapshotNamePattern(String pattern) {
         // Basic validation - ensure pattern isn't too long after expansion
-        // Assuming worst case: {vm} = 20 chars, {date} = 8 chars, {time} = 6 chars
-        String expanded = pattern
-            .replace("{vm}", "x".repeat(20))
-            .replace("{date}", "x".repeat(8))
-            .replace("{time}", "x".repeat(6));
+        // Placeholder length estimates for pattern expansion
+        final int VM_NAME_PLACEHOLDER_LENGTH = 20;  // Typical VM name length
+        final int DATE_PLACEHOLDER_LENGTH = 8;      // YYYYMMDD format
+        final int TIME_PLACEHOLDER_LENGTH = 6;      // HHMMSS format
         
-        return expanded.length() <= 60; // Proxmox snapshot name limit
+        String expanded = pattern
+            .replace("{vm}", "x".repeat(VM_NAME_PLACEHOLDER_LENGTH))
+            .replace("{date}", "x".repeat(DATE_PLACEHOLDER_LENGTH))
+            .replace("{time}", "x".repeat(TIME_PLACEHOLDER_LENGTH));
+        
+        // Use a higher limit than VMConstants.Snapshot.MAX_NAME_LENGTH to account for Proxmox's actual limit
+        final int PROXMOX_SNAPSHOT_NAME_LIMIT = 60;
+        return expanded.length() <= PROXMOX_SNAPSHOT_NAME_LIMIT;
     }
 }

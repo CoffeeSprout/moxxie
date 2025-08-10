@@ -1,6 +1,7 @@
 package com.coffeesprout.api;
 
 import com.coffeesprout.api.dto.ErrorResponse;
+import com.coffeesprout.api.exception.ProxmoxException;
 import com.coffeesprout.federation.ClusterResources;
 import com.coffeesprout.federation.PlacementRecommendation;
 import com.coffeesprout.federation.ResourceRequirements;
@@ -45,6 +46,12 @@ public class FederationResource {
     
     private static final Logger LOG = LoggerFactory.getLogger(FederationResource.class);
     
+    // Byte conversion constants
+    private static final double BYTES_TO_GB = 1024.0 * 1024.0 * 1024.0;
+    private static final double CPU_RESERVE_RATIO = 0.1;    // 10% reserved
+    private static final double MEMORY_RESERVE_RATIO = 0.15; // 15% reserved
+    private static final double STORAGE_RESERVE_RATIO = 0.1; // 10% reserved
+    
     @Inject
     ProxmoxResourceProvider resourceProvider;
     
@@ -71,7 +78,7 @@ public class FederationResource {
                     try {
                         return resourceProvider.getClusterResources().get();
                     } catch (Exception e) {
-                        throw new RuntimeException(e);
+                        throw ProxmoxException.internalError("get cluster resources", e);
                     }
                 }
             );
@@ -94,21 +101,21 @@ public class FederationResource {
             Map<String, Object> vcpus = new HashMap<>();
             vcpus.put("total", resources.getCpu().getTotalCores());
             vcpus.put("available", Math.round(resources.getCpu().getAvailableCores()));
-            vcpus.put("reserved", Math.round(resources.getCpu().getTotalCores() * 0.1)); // 10% reserved
+            vcpus.put("reserved", Math.round(resources.getCpu().getTotalCores() * CPU_RESERVE_RATIO));
             capacity.put("vcpus", vcpus);
             
             // Memory capacity
             Map<String, Object> memory = new HashMap<>();
-            memory.put("total", Math.round(resources.getMemory().getTotalBytes() / (1024.0 * 1024 * 1024)));
-            memory.put("available", Math.round(resources.getMemory().getAvailableBytes() / (1024.0 * 1024 * 1024)));
-            memory.put("reserved", Math.round(resources.getMemory().getTotalBytes() * 0.15 / (1024.0 * 1024 * 1024))); // 15% reserved
+            memory.put("total", Math.round(resources.getMemory().getTotalBytes() / BYTES_TO_GB));
+            memory.put("available", Math.round(resources.getMemory().getAvailableBytes() / BYTES_TO_GB));
+            memory.put("reserved", Math.round(resources.getMemory().getTotalBytes() * MEMORY_RESERVE_RATIO / BYTES_TO_GB));
             capacity.put("memory_gb", memory);
             
             // Storage capacity (in GB)
             Map<String, Object> storage = new HashMap<>();
-            storage.put("total", Math.round(resources.getStorage().getTotalBytes() / (1024.0 * 1024 * 1024)));
-            storage.put("available", Math.round(resources.getStorage().getAvailableBytes() / (1024.0 * 1024 * 1024)));
-            storage.put("reserved", Math.round(resources.getStorage().getTotalBytes() * 0.1 / (1024.0 * 1024 * 1024))); // 10% reserved
+            storage.put("total", Math.round(resources.getStorage().getTotalBytes() / BYTES_TO_GB));
+            storage.put("available", Math.round(resources.getStorage().getAvailableBytes() / BYTES_TO_GB));
+            storage.put("reserved", Math.round(resources.getStorage().getTotalBytes() * STORAGE_RESERVE_RATIO / BYTES_TO_GB));
             capacity.put("storage_gb", storage);
             
             response.put("capacity", capacity);
@@ -152,7 +159,7 @@ public class FederationResource {
                     try {
                         return resourceProvider.getClusterResources().get();
                     } catch (Exception e) {
-                        throw new RuntimeException(e);
+                        throw ProxmoxException.internalError("get cluster resources", e);
                     }
                 }
             );
