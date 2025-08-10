@@ -30,14 +30,14 @@ import java.util.List;
 @Tag(name = "Pools", description = "Resource pool management endpoints")
 public class PoolResource {
     
-    private static final Logger log = LoggerFactory.getLogger(PoolResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PoolResource.class);
     
     @Inject
     PoolService poolService;
     
     @GET
     @Path("/resources")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Get resource summaries for all pools", 
                description = "Returns aggregated resource usage (vCPUs, memory, storage) for all VM pools")
     @APIResponses({
@@ -53,7 +53,7 @@ public class PoolResource {
             List<PoolResourceSummary> summaries = poolService.getPoolResourceSummaries(null);
             return Response.ok(summaries).build();
         } catch (Exception e) {
-            log.error("Failed to get pool resource summaries", e);
+            LOG.error("Failed to get pool resource summaries", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get pool resource summaries: " + e.getMessage()))
                     .build();
@@ -62,7 +62,7 @@ public class PoolResource {
     
     @GET
     @Path("/{poolName}/resources")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Get resource summary for a specific pool", 
                description = "Returns aggregated resource usage (vCPUs, memory, storage) for a specific VM pool")
     @APIResponses({
@@ -89,7 +89,7 @@ public class PoolResource {
             }
             throw e;
         } catch (Exception e) {
-            log.error("Failed to get pool resource summary for: " + poolName, e);
+            LOG.error("Failed to get pool resource summary for: " + poolName, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get pool resource summary: " + e.getMessage()))
                     .build();
@@ -99,7 +99,7 @@ public class PoolResource {
     @GET
     @Path("/resources/export/csv")
     @Produces("text/csv")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Export all pool resources to CSV", 
                description = "Export resource summaries for all pools in CSV format for Excel")
     @APIResponses({
@@ -155,7 +155,7 @@ public class PoolResource {
                     .header("Content-Disposition", "attachment; filename=\"pool-resources-export.csv\"")
                     .build();
         } catch (Exception e) {
-            log.error("Failed to export pool resources to CSV", e);
+            LOG.error("Failed to export pool resources to CSV", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to export pool resources: " + e.getMessage()))
                     .build();
@@ -165,7 +165,7 @@ public class PoolResource {
     @GET
     @Path("/{poolName}/resources/export/csv")
     @Produces("text/csv")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Export specific pool resources to CSV", 
                description = "Export resource summary for a specific pool in CSV format for Excel")
     @APIResponses({
@@ -223,7 +223,7 @@ public class PoolResource {
             }
             throw e;
         } catch (Exception e) {
-            log.error("Failed to export pool resources to CSV for: " + poolName, e);
+            LOG.error("Failed to export pool resources to CSV for: " + poolName, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to export pool resources: " + e.getMessage()))
                     .build();

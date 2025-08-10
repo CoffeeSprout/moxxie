@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 @AutoAuthenticate
 public class BackupAnalyticsService {
     
-    private static final Logger log = LoggerFactory.getLogger(BackupAnalyticsService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(BackupAnalyticsService.class);
     
     @Inject
     BackupService backupService;
@@ -32,7 +32,7 @@ public class BackupAnalyticsService {
      * Get storage usage per VM
      */
     public List<VMStorageUsage> getVMStorageUsage(@AuthTicket String ticket) {
-        log.debug("Calculating storage usage per VM");
+        LOG.debug("Calculating storage usage per VM");
         
         try {
             // Get all backups
@@ -103,7 +103,7 @@ public class BackupAnalyticsService {
             return usageList;
             
         } catch (Exception e) {
-            log.error("Failed to calculate VM storage usage: {}", e.getMessage());
+            LOG.error("Failed to calculate VM storage usage: {}", e.getMessage());
             throw new RuntimeException("Failed to calculate VM storage usage: " + e.getMessage(), e);
         }
     }
@@ -112,7 +112,7 @@ public class BackupAnalyticsService {
      * Get storage usage per client (based on tags)
      */
     public List<ClientStorageUsage> getClientStorageUsage(@AuthTicket String ticket) {
-        log.debug("Calculating storage usage per client");
+        LOG.debug("Calculating storage usage per client");
         
         try {
             // Get VM storage usage first
@@ -181,7 +181,7 @@ public class BackupAnalyticsService {
             return clientUsages;
             
         } catch (Exception e) {
-            log.error("Failed to calculate client storage usage: {}", e.getMessage());
+            LOG.error("Failed to calculate client storage usage: {}", e.getMessage());
             throw new RuntimeException("Failed to calculate client storage usage: " + e.getMessage(), e);
         }
     }
@@ -190,7 +190,7 @@ public class BackupAnalyticsService {
      * Get storage usage per storage location
      */
     public List<StorageLocationUsage> getStorageLocationUsage(@AuthTicket String ticket) {
-        log.debug("Calculating storage usage per location");
+        LOG.debug("Calculating storage usage per location");
         
         try {
             // Get all backups
@@ -231,7 +231,7 @@ public class BackupAnalyticsService {
             return storageUsages;
             
         } catch (Exception e) {
-            log.error("Failed to calculate storage location usage: {}", e.getMessage());
+            LOG.error("Failed to calculate storage location usage: {}", e.getMessage());
             throw new RuntimeException("Failed to calculate storage location usage: " + e.getMessage(), e);
         }
     }
@@ -242,7 +242,7 @@ public class BackupAnalyticsService {
      * In a production system, this would track historical data
      */
     public StorageTrend getStorageTrends(String period, @AuthTicket String ticket) {
-        log.debug("Calculating storage trends for period: {}", period);
+        LOG.debug("Calculating storage trends for period: {}", period);
         
         try {
             // Get all backups
@@ -317,7 +317,7 @@ public class BackupAnalyticsService {
             return new StorageTrend(period, dataPoints);
             
         } catch (Exception e) {
-            log.error("Failed to calculate storage trends: {}", e.getMessage());
+            LOG.error("Failed to calculate storage trends: {}", e.getMessage());
             throw new RuntimeException("Failed to calculate storage trends: " + e.getMessage(), e);
         }
     }
@@ -326,7 +326,7 @@ public class BackupAnalyticsService {
      * Get overall backup health status
      */
     public BackupHealth getBackupHealth(int coverageThresholdDays, int overdueThresholdDays, @AuthTicket String ticket) {
-        log.debug("Calculating backup health with coverage threshold: {} days, overdue threshold: {} days", 
+        LOG.debug("Calculating backup health with coverage threshold: {} days, overdue threshold: {} days", 
                  coverageThresholdDays, overdueThresholdDays);
         
         try {
@@ -439,7 +439,7 @@ public class BackupAnalyticsService {
             );
             
         } catch (Exception e) {
-            log.error("Failed to calculate backup health: {}", e.getMessage());
+            LOG.error("Failed to calculate backup health: {}", e.getMessage());
             throw new RuntimeException("Failed to calculate backup health: " + e.getMessage(), e);
         }
     }

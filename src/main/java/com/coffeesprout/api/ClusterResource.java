@@ -2,6 +2,7 @@ package com.coffeesprout.api;
 
 import com.coffeesprout.api.dto.cluster.*;
 import com.coffeesprout.api.dto.ErrorResponse;
+import com.coffeesprout.api.exception.ProxmoxException;
 import com.coffeesprout.service.ClusterProvisioningService;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -33,7 +34,7 @@ import java.util.Collection;
 @Tag(name = "Clusters", description = "Cluster provisioning and management endpoints")
 public class ClusterResource {
     
-    private static final Logger log = LoggerFactory.getLogger(ClusterResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ClusterResource.class);
     
     @Inject
     ClusterProvisioningService clusterProvisioningService;
@@ -62,31 +63,23 @@ public class ClusterResource {
                 content = @Content(schema = @Schema(implementation = ClusterSpec.class)))
             @Valid ClusterSpec spec) {
         
-        log.info("=== CLUSTER PROVISION ENDPOINT CALLED ===");
-        log.info("Received cluster provisioning request for '{}'", spec != null ? spec.name() : "null spec");
+        LOG.info("=== CLUSTER PROVISION ENDPOINT CALLED ===");
+        LOG.info("Received cluster provisioning request for '{}'", spec != null ? spec.name() : "null spec");
         
-        try {
-            String baseUrl = uriInfo.getBaseUri().toString().replaceAll("/$", "");
-            
-            // Call the service synchronously (it will start async provisioning internally)
-            ClusterProvisioningResponse response = clusterProvisioningService.provisionCluster(spec, baseUrl)
-                .await().indefinitely();
-            
-            URI operationUri = uriInfo.getAbsolutePathBuilder()
-                .replacePath("/api/v1/clusters/operations/{operationId}")
-                .build(response.operationId());
-            
-            return Response.status(Response.Status.ACCEPTED)
-                .entity(response)
-                .location(operationUri)
-                .build();
-                
-        } catch (Exception error) {
-            log.error("Failed to start cluster provisioning", error);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                .entity(new ErrorResponse("Failed to start cluster provisioning: " + error.getMessage()))
-                .build();
-        }
+        String baseUrl = uriInfo.getBaseUri().toString().replaceAll("/$", "");
+        
+        // Call the service synchronously (it will start async provisioning internally)
+        ClusterProvisioningResponse response = clusterProvisioningService.provisionCluster(spec, baseUrl)
+            .await().indefinitely();
+        
+        URI operationUri = uriInfo.getAbsolutePathBuilder()
+            .replacePath("/api/v1/clusters/operations/{operationId}")
+            .build(response.operationId());
+        
+        return Response.status(Response.Status.ACCEPTED)
+            .entity(response)
+            .location(operationUri)
+            .build();
     }
     
     @GET
@@ -106,9 +99,7 @@ public class ClusterResource {
         ClusterProvisioningState state = clusterProvisioningService.getOperationState(operationId);
         
         if (state == null) {
-            return Response.status(Response.Status.NOT_FOUND)
-                .entity(new ErrorResponse("Operation not found: " + operationId))
-                .build();
+            throw ProxmoxException.notFound("Operation", operationId);
         }
         
         String baseUrl = uriInfo.getBaseUri().toString().replaceAll("/$", "");
@@ -155,9 +146,7 @@ public class ClusterResource {
         ClusterProvisioningState state = clusterProvisioningService.getOperationState(operationId);
         
         if (state == null) {
-            return Response.status(Response.Status.NOT_FOUND)
-                .entity(new ErrorResponse("Operation not found: " + operationId))
-                .build();
+            throw ProxmoxException.notFound("Operation", operationId);
         }
         
         boolean cancelled = clusterProvisioningService.cancelOperation(operationId);
@@ -165,9 +154,7 @@ public class ClusterResource {
         if (cancelled) {
             return Response.ok(new MessageResponse("Operation cancelled successfully")).build();
         } else {
-            return Response.status(Response.Status.CONFLICT)
-                .entity(new ErrorResponse("Operation cannot be cancelled in current state: " + state.getStatus()))
-                .build();
+            throw ProxmoxException.conflict("Operation", "Cannot be cancelled in current state: " + state.getStatus());
         }
     }
     

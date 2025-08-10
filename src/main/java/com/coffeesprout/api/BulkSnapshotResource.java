@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
 @Tag(name = "Bulk Snapshots", description = "Bulk snapshot management endpoints")
 public class BulkSnapshotResource {
     
-    private static final Logger log = LoggerFactory.getLogger(BulkSnapshotResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(BulkSnapshotResource.class);
     
     @Inject
     SnapshotService snapshotService;
@@ -57,7 +57,7 @@ public class BulkSnapshotResource {
                 content = @Content(schema = @Schema(implementation = BulkSnapshotRequest.class)))
             @Valid BulkSnapshotRequest request) {
         try {
-            log.info("Starting bulk snapshot creation with selectors: {}", request.vmSelectors());
+            LOG.info("Starting bulk snapshot creation with selectors: {}", request.vmSelectors());
             
             // Validate snapshot name pattern
             if (!isValidSnapshotNamePattern(request.snapshotName())) {
@@ -71,12 +71,12 @@ public class BulkSnapshotResource {
             
             return Response.ok(response).build();
         } catch (IllegalArgumentException e) {
-            log.error("Invalid request for bulk snapshot creation", e);
+            LOG.error("Invalid request for bulk snapshot creation", e);
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(new ErrorResponse("Invalid request: " + e.getMessage()))
                     .build();
         } catch (Exception e) {
-            log.error("Failed to create bulk snapshots", e);
+            LOG.error("Failed to create bulk snapshots", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to create snapshots: " + e.getMessage()))
                     .build();

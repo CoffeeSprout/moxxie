@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
 @AutoAuthenticate
 public class SnapshotService {
     
-    private static final Logger log = LoggerFactory.getLogger(SnapshotService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SnapshotService.class);
     
     @Inject
     @RestClient
@@ -52,7 +52,7 @@ public class SnapshotService {
      * List all snapshots for a VM
      */
     public List<SnapshotResponse> listSnapshots(int vmId, @AuthTicket String ticket) {
-        log.debug("Listing snapshots for VM {}", vmId);
+        LOG.debug("Listing snapshots for VM {}", vmId);
         
         try {
             // Get VM info to find its node
@@ -76,7 +76,7 @@ public class SnapshotService {
                     .toList();
                     
         } catch (Exception e) {
-            log.error("Failed to list snapshots for VM {}: {}", vmId, e.getMessage());
+            LOG.error("Failed to list snapshots for VM {}: {}", vmId, e.getMessage());
             throw new RuntimeException("Failed to list snapshots: " + e.getMessage(), e);
         }
     }
@@ -85,7 +85,7 @@ public class SnapshotService {
      * Create a new snapshot
      */
     public TaskResponse createSnapshot(int vmId, CreateSnapshotRequest request, @AuthTicket String ticket) {
-        log.info("Creating snapshot '{}' for VM {}", request.name(), vmId);
+        LOG.info("Creating snapshot '{}' for VM {}", request.name(), vmId);
         
         try {
             // Get VM info to find its node
@@ -125,12 +125,12 @@ public class SnapshotService {
                 throw new RuntimeException("No task ID returned from Proxmox");
             }
             
-            log.info("Snapshot creation task started: {}", response.getData());
+            LOG.info("Snapshot creation task started: {}", response.getData());
             return new TaskResponse(response.getData(), 
                     "Snapshot '" + request.name() + "' creation started for VM " + vmId);
                     
         } catch (Exception e) {
-            log.error("Failed to create snapshot for VM {}: {}", vmId, e.getMessage());
+            LOG.error("Failed to create snapshot for VM {}: {}", vmId, e.getMessage());
             throw new RuntimeException("Failed to create snapshot: " + e.getMessage(), e);
         }
     }
@@ -139,7 +139,7 @@ public class SnapshotService {
      * Delete a snapshot
      */
     public TaskResponse deleteSnapshot(int vmId, String snapshotName, @AuthTicket String ticket) {
-        log.info("Deleting snapshot '{}' for VM {}", snapshotName, vmId);
+        LOG.info("Deleting snapshot '{}' for VM {}", snapshotName, vmId);
         
         try {
             // Get VM info to find its node
@@ -171,12 +171,12 @@ public class SnapshotService {
                 throw new RuntimeException("No task ID returned from Proxmox");
             }
             
-            log.info("Snapshot deletion task started: {}", response.getData());
+            LOG.info("Snapshot deletion task started: {}", response.getData());
             return new TaskResponse(response.getData(), 
                     "Snapshot '" + snapshotName + "' deletion started for VM " + vmId);
                     
         } catch (Exception e) {
-            log.error("Failed to delete snapshot for VM {}: {}", vmId, e.getMessage());
+            LOG.error("Failed to delete snapshot for VM {}: {}", vmId, e.getMessage());
             throw new RuntimeException("Failed to delete snapshot: " + e.getMessage(), e);
         }
     }
@@ -185,7 +185,7 @@ public class SnapshotService {
      * Rollback VM to a snapshot
      */
     public TaskResponse rollbackSnapshot(int vmId, String snapshotName, @AuthTicket String ticket) {
-        log.info("Rolling back VM {} to snapshot '{}'", vmId, snapshotName);
+        LOG.info("Rolling back VM {} to snapshot '{}'", vmId, snapshotName);
         
         try {
             // Get VM info to find its node
@@ -203,7 +203,7 @@ public class SnapshotService {
             
             // VM should be stopped for rollback (best practice)
             if ("running".equals(vm.status())) {
-                log.warn("VM {} is running. Rollback works best with stopped VMs", vmId);
+                LOG.warn("VM {} is running. Rollback works best with stopped VMs", vmId);
             }
             
             // Get CSRF token
@@ -222,12 +222,12 @@ public class SnapshotService {
                 throw new RuntimeException("No task ID returned from Proxmox");
             }
             
-            log.info("Snapshot rollback task started: {}", response.getData());
+            LOG.info("Snapshot rollback task started: {}", response.getData());
             return new TaskResponse(response.getData(), 
                     "Rollback to snapshot '" + snapshotName + "' started for VM " + vmId);
                     
         } catch (Exception e) {
-            log.error("Failed to rollback snapshot for VM {}: {}", vmId, e.getMessage());
+            LOG.error("Failed to rollback snapshot for VM {}: {}", vmId, e.getMessage());
             throw new RuntimeException("Failed to rollback snapshot: " + e.getMessage(), e);
         }
     }
@@ -247,7 +247,7 @@ public class SnapshotService {
      * Create snapshots for multiple VMs based on selectors
      */
     public BulkSnapshotResponse bulkCreateSnapshots(BulkSnapshotRequest request, @AuthTicket String ticket) {
-        log.info("Starting bulk snapshot creation with {} selectors", request.vmSelectors().size());
+        LOG.info("Starting bulk snapshot creation with {} selectors", request.vmSelectors().size());
         
         // Get all VMs that match the selectors
         List<VMResponse> targetVMs = new ArrayList<>();
@@ -256,7 +256,7 @@ public class SnapshotService {
                 List<VMResponse> vms = vmSelectorService.selectVMs(selector, ticket);
                 targetVMs.addAll(vms);
             } catch (Exception e) {
-                log.error("Failed to select VMs with selector {}: {}", selector, e.getMessage());
+                LOG.error("Failed to select VMs with selector {}: {}", selector, e.getMessage());
                 throw new RuntimeException("Failed to select VMs: " + e.getMessage(), e);
             }
         }
@@ -268,7 +268,7 @@ public class SnapshotService {
         }
         targetVMs = new ArrayList<>(uniqueVMs.values());
         
-        log.info("Found {} unique VMs matching selectors", targetVMs.size());
+        LOG.info("Found {} unique VMs matching selectors", targetVMs.size());
         
         if (targetVMs.isEmpty()) {
             return new BulkSnapshotResponse(
@@ -322,10 +322,10 @@ public class SnapshotService {
                         task.taskId(), snapshotName, vm.name()
                     ));
                     
-                    log.info("Successfully created snapshot '{}' for VM {} ({})", 
+                    LOG.info("Successfully created snapshot '{}' for VM {} ({})", 
                         snapshotName, vm.vmid(), vm.name());
                 } catch (Exception e) {
-                    log.error("Failed to create snapshot for VM {} ({}): {}", 
+                    LOG.error("Failed to create snapshot for VM {} ({}): {}", 
                         vm.vmid(), vm.name(), e.getMessage());
                     results.put(vm.vmid(), BulkSnapshotResponse.SnapshotResult.error(
                         e.getMessage(), vm.name()
@@ -342,7 +342,7 @@ public class SnapshotService {
             executor.shutdown();
             executor.awaitTermination(5, TimeUnit.MINUTES);
         } catch (Exception e) {
-            log.error("Error waiting for bulk snapshot completion: {}", e.getMessage());
+            LOG.error("Error waiting for bulk snapshot completion: {}", e.getMessage());
             executor.shutdownNow();
         }
         

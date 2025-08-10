@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
 @Consumes(MediaType.APPLICATION_JSON)
 public class ConsoleResource {
 
-    private static final Logger log = LoggerFactory.getLogger(ConsoleResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ConsoleResource.class);
 
     @Inject
     ConsoleService consoleService;
@@ -55,18 +55,18 @@ public class ConsoleResource {
             @Parameter(description = "VM ID", required = true) @PathParam("vmId") int vmId,
             @RequestBody(description = "Console request details", required = true) @Valid ConsoleRequest request) {
         
-        log.info("Creating console access for VM {} with type {}", vmId, request.getType());
+        LOG.info("Creating console access for VM {} with type {}", vmId, request.getType());
         
         try {
             ConsoleResponse response = consoleService.createConsoleAccess(vmId, request, null);
             return Response.ok(response).build();
         } catch (IllegalArgumentException e) {
-            log.error("Invalid request for VM {}: {}", vmId, e.getMessage());
+            LOG.error("Invalid request for VM {}: {}", vmId, e.getMessage());
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(new ErrorResponse(e.getMessage()))
                     .build();
         } catch (Exception e) {
-            log.error("Failed to create console access for VM {}: {}", vmId, e.getMessage(), e);
+            LOG.error("Failed to create console access for VM {}: {}", vmId, e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to create console access"))
                     .build();
@@ -106,12 +106,12 @@ public class ConsoleResource {
             ConsoleWebSocketResponse response = consoleService.getWebSocketDetails(vmId, consoleTicket, null);
             return Response.ok(response).build();
         } catch (IllegalArgumentException e) {
-            log.error("Invalid request for VM {}: {}", vmId, e.getMessage());
+            LOG.error("Invalid request for VM {}: {}", vmId, e.getMessage());
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(new ErrorResponse(e.getMessage()))
                     .build();
         } catch (Exception e) {
-            log.error("Failed to get WebSocket details for VM {}: {}", vmId, e.getMessage(), e);
+            LOG.error("Failed to get WebSocket details for VM {}: {}", vmId, e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get WebSocket details"))
                     .build();
@@ -157,12 +157,12 @@ public class ConsoleResource {
                     .build();
                     
         } catch (IllegalArgumentException e) {
-            log.error("Invalid request for VM {}: {}", vmId, e.getMessage());
+            LOG.error("Invalid request for VM {}: {}", vmId, e.getMessage());
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(new ErrorResponse(e.getMessage()))
                     .build();
         } catch (Exception e) {
-            log.error("Failed to generate SPICE file for VM {}: {}", vmId, e.getMessage(), e);
+            LOG.error("Failed to generate SPICE file for VM {}: {}", vmId, e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to generate SPICE connection file"))
                     .build();

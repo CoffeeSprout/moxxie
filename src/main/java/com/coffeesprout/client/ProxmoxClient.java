@@ -173,7 +173,7 @@ public interface ProxmoxClient {
     @POST
     @Path("/nodes/{node}/qemu/{vmid}/status/start")
     @Produces(MediaType.APPLICATION_JSON)
-    StatusResponse startVM(@PathParam("node") String node,
+    TaskStatusResponse startVM(@PathParam("node") String node,
                            @PathParam("vmid") int vmid,
                            @CookieParam("PVEAuthCookie") String ticket,
                            @HeaderParam("CSRFPreventionToken") String csrfToken);
@@ -182,7 +182,7 @@ public interface ProxmoxClient {
     @POST
     @Path("/nodes/{node}/qemu/{vmid}/status/stop")
     @Produces(MediaType.APPLICATION_JSON)
-    StatusResponse stopVM(@PathParam("node") String node,
+    TaskStatusResponse stopVM(@PathParam("node") String node,
                           @PathParam("vmid") int vmid,
                           @CookieParam("PVEAuthCookie") String ticket,
                           @HeaderParam("CSRFPreventionToken") String csrfToken);
@@ -215,7 +215,7 @@ public interface ProxmoxClient {
     @POST
     @Path("/nodes/{node}/qemu/{vmid}/status/reboot")
     @Produces(MediaType.APPLICATION_JSON)
-    StatusResponse rebootVM(@PathParam("node") String node,
+    TaskStatusResponse rebootVM(@PathParam("node") String node,
                             @PathParam("vmid") int vmid,
                             @CookieParam("PVEAuthCookie") String ticket,
                             @HeaderParam("CSRFPreventionToken") String csrfToken);
@@ -224,7 +224,7 @@ public interface ProxmoxClient {
     @POST
     @Path("/nodes/{node}/qemu/{vmid}/status/suspend")
     @Produces(MediaType.APPLICATION_JSON)
-    StatusResponse suspendVM(@PathParam("node") String node,
+    TaskStatusResponse suspendVM(@PathParam("node") String node,
                              @PathParam("vmid") int vmid,
                              @CookieParam("PVEAuthCookie") String ticket,
                              @HeaderParam("CSRFPreventionToken") String csrfToken);
@@ -233,7 +233,7 @@ public interface ProxmoxClient {
     @POST
     @Path("/nodes/{node}/qemu/{vmid}/status/resume")
     @Produces(MediaType.APPLICATION_JSON)
-    StatusResponse resumeVM(@PathParam("node") String node,
+    TaskStatusResponse resumeVM(@PathParam("node") String node,
                             @PathParam("vmid") int vmid,
                             @CookieParam("PVEAuthCookie") String ticket,
                             @HeaderParam("CSRFPreventionToken") String csrfToken);
@@ -242,7 +242,7 @@ public interface ProxmoxClient {
     @POST
     @Path("/nodes/{node}/qemu/{vmid}/status/shutdown")
     @Produces(MediaType.APPLICATION_JSON)
-    StatusResponse shutdownVM(@PathParam("node") String node,
+    TaskStatusResponse shutdownVM(@PathParam("node") String node,
                               @PathParam("vmid") int vmid,
                               @CookieParam("PVEAuthCookie") String ticket,
                               @HeaderParam("CSRFPreventionToken") String csrfToken);

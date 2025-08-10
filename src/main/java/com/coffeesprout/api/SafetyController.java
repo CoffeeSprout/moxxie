@@ -32,7 +32,7 @@ import java.util.Map;
 @Tag(name = "Safety", description = "Safe Mode status and audit endpoints")
 public class SafetyController {
     
-    private static final Logger log = LoggerFactory.getLogger(SafetyController.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SafetyController.class);
     
     @Inject
     SafetyConfig safetyConfig;
@@ -66,7 +66,7 @@ public class SafetyController {
             
             return Response.ok(response).build();
         } catch (Exception e) {
-            log.error("Failed to get safety status", e);
+            LOG.error("Failed to get safety status", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get safety status: " + e.getMessage()))
                     .build();
@@ -127,7 +127,7 @@ public class SafetyController {
             
             return Response.ok(response).build();
         } catch (Exception e) {
-            log.error("Failed to get audit log", e);
+            LOG.error("Failed to get audit log", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get audit log: " + e.getMessage()))
                     .build();
@@ -156,7 +156,7 @@ public class SafetyController {
             
             return Response.ok(response).build();
         } catch (Exception e) {
-            log.error("Failed to get safety config", e);
+            LOG.error("Failed to get safety config", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get safety config: " + e.getMessage()))
                     .build();

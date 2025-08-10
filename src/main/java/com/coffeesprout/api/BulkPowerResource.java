@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
 @Tag(name = "Bulk Power", description = "Bulk VM power management endpoints")
 public class BulkPowerResource {
     
-    private static final Logger log = LoggerFactory.getLogger(BulkPowerResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(BulkPowerResource.class);
     
     @Inject
     PowerService powerService;
@@ -57,7 +57,7 @@ public class BulkPowerResource {
                 content = @Content(schema = @Schema(implementation = BulkPowerRequest.class)))
             @Valid BulkPowerRequest request) {
         try {
-            log.info("Starting bulk {} operation with selectors: {}", 
+            LOG.info("Starting bulk {} operation with selectors: {}", 
                     request.operation(), request.vmSelectors());
             
             // Validate operation
@@ -72,12 +72,12 @@ public class BulkPowerResource {
             
             return Response.ok(response).build();
         } catch (IllegalArgumentException e) {
-            log.error("Invalid request for bulk power operation", e);
+            LOG.error("Invalid request for bulk power operation", e);
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(new ErrorResponse("Invalid request: " + e.getMessage()))
                     .build();
         } catch (Exception e) {
-            log.error("Failed to perform bulk power operation", e);
+            LOG.error("Failed to perform bulk power operation", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to perform operation: " + e.getMessage()))
                     .build();

@@ -29,7 +29,7 @@ import java.util.List;
 @Tag(name = "Backup Health", description = "Backup health monitoring and compliance endpoints")
 public class BackupHealthResource {
     
-    private static final Logger log = LoggerFactory.getLogger(BackupHealthResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(BackupHealthResource.class);
     
     @Inject
     BackupAnalyticsService analyticsService;
@@ -41,7 +41,7 @@ public class BackupHealthResource {
     int defaultOverdueThresholdDays;
     
     @GET
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Get overall backup health", 
                description = "Get comprehensive backup health status including coverage and compliance metrics")
     @APIResponses({
@@ -62,7 +62,7 @@ public class BackupHealthResource {
             BackupHealth health = analyticsService.getBackupHealth(coverage, overdue, null);
             return Response.ok(health).build();
         } catch (Exception e) {
-            log.error("Failed to calculate backup health", e);
+            LOG.error("Failed to calculate backup health", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to calculate backup health: " + e.getMessage()))
                     .build();
@@ -71,7 +71,7 @@ public class BackupHealthResource {
     
     @GET
     @Path("/coverage")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Get backup coverage details", 
                description = "Get detailed backup coverage information for all VMs")
     @APIResponses({
@@ -96,7 +96,7 @@ public class BackupHealthResource {
                 return Response.ok(health.coverage()).build();
             }
         } catch (Exception e) {
-            log.error("Failed to get backup coverage", e);
+            LOG.error("Failed to get backup coverage", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get backup coverage: " + e.getMessage()))
                     .build();

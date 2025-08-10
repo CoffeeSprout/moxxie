@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
 @Tag(name = "Tags", description = "Tag management endpoints")
 public class TagResource {
     
-    private static final Logger log = LoggerFactory.getLogger(TagResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TagResource.class);
     
     @Inject
     TagService tagService;
@@ -50,7 +50,7 @@ public class TagResource {
     VMService vmService;
     
     @GET
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Get all unique tags", description = "Get all unique tags in use across all VMs")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Tags retrieved successfully",
@@ -63,7 +63,7 @@ public class TagResource {
             Set<String> tags = tagService.getAllUniqueTags(null);
             return Response.ok(new TagsListResponse(tags, tags.size())).build();
         } catch (Exception e) {
-            log.error("Failed to get all tags", e);
+            LOG.error("Failed to get all tags", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get tags: " + e.getMessage()))
                     .build();
@@ -72,7 +72,7 @@ public class TagResource {
     
     @GET
     @Path("/{tag}/vms")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Get VMs by tag", description = "Get all VMs that have a specific tag")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "VMs retrieved successfully",
@@ -103,7 +103,7 @@ public class TagResource {
             
             return Response.ok(taggedVMs).build();
         } catch (Exception e) {
-            log.error("Failed to get VMs by tag: " + tag, e);
+            LOG.error("Failed to get VMs by tag: " + tag, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get VMs: " + e.getMessage()))
                     .build();
@@ -203,7 +203,7 @@ public class TagResource {
             
             return Response.ok(new BulkTagResponse(results, message)).build();
         } catch (Exception e) {
-            log.error("Failed to perform bulk tag operation", e);
+            LOG.error("Failed to perform bulk tag operation", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to perform bulk operation: " + e.getMessage()))
                     .build();

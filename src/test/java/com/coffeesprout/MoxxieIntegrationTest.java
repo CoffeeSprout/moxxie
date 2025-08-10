@@ -41,7 +41,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class MoxxieIntegrationTest {
     
-    private static final Logger log = LoggerFactory.getLogger(MoxxieIntegrationTest.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MoxxieIntegrationTest.class);
     
     // Test resource prefix to ensure we only touch our own resources
     private static final String TEST_PREFIX = "moxxie-test-";
@@ -64,13 +64,13 @@ public class MoxxieIntegrationTest {
     @BeforeAll
     void setup() {
         if (!TESTS_ENABLED) {
-            log.warn("Integration tests are disabled. Set MOXXIE_TEST_ENABLED=true to run.");
+            LOG.warn("Integration tests are disabled. Set MOXXIE_TEST_ENABLED=true to run.");
             return;
         }
         
         // Generate unique test run ID
         testRunId = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
-        log.info("Starting integration test run: {}", testRunId);
+        LOG.info("Starting integration test run: {}", testRunId);
         
         // Determine which node to use
         if (!TEST_NODE.isEmpty()) {
@@ -90,7 +90,7 @@ public class MoxxieIntegrationTest {
             selectedNode = (String) nodes.get(0).get("node");
         }
         
-        log.info("Using node {} for testing", selectedNode);
+        LOG.info("Using node {} for testing", selectedNode);
         
         // Clean up any leftover test resources from previous runs
         cleanupTestResources();
@@ -116,7 +116,7 @@ public class MoxxieIntegrationTest {
                         .then()
                         .statusCode(anyOf(is(200), is(202), is(404)));
                 } catch (Exception e) {
-                    log.warn("Failed to delete snapshot {} for VM {}: {}", snapshotName, vmId, e.getMessage());
+                    LOG.warn("Failed to delete snapshot {} for VM {}: {}", snapshotName, vmId, e.getMessage());
                 }
             }
         }
@@ -128,7 +128,7 @@ public class MoxxieIntegrationTest {
                 deleteVMSafely(vmId);
                 createdVMs.remove(vmId);
             } catch (Exception e) {
-                log.warn("Failed to delete VM {}: {}", vmId, e.getMessage());
+                LOG.warn("Failed to delete VM {}: {}", vmId, e.getMessage());
             }
         }
     }
@@ -137,12 +137,12 @@ public class MoxxieIntegrationTest {
     void finalCleanup() {
         if (!TESTS_ENABLED) return;
         
-        log.info("Final cleanup for test run: {}", testRunId);
+        LOG.info("Final cleanup for test run: {}", testRunId);
         
         // Final sweep to ensure all test resources are removed
         cleanupTestResources();
         
-        log.info("Integration test run completed: {}", testRunId);
+        LOG.info("Integration test run completed: {}", testRunId);
     }
     
     @Test
@@ -205,7 +205,7 @@ public class MoxxieIntegrationTest {
         assertNotNull(vmId);
         createdVMs.add(vmId);
         
-        log.info("Created VM {} with ID {}", vmName, vmId);
+        LOG.info("Created VM {} with ID {}", vmName, vmId);
         
         // Wait for VM creation to complete
         waitForTask(response.jsonPath().getString("task"));
@@ -389,7 +389,7 @@ public class MoxxieIntegrationTest {
             .statusCode(200)
             .body("name", hasItem(snapshotName));
         
-        log.info("Created snapshot {} for VM {}", snapshotName, vmId);
+        LOG.info("Created snapshot {} for VM {}", snapshotName, vmId);
     }
     
     @Test
@@ -463,7 +463,7 @@ public class MoxxieIntegrationTest {
             .then()
             .statusCode(404);
         
-        log.info("Successfully deleted VM {}", vmId);
+        LOG.info("Successfully deleted VM {}", vmId);
     }
     
     // Helper methods
@@ -591,7 +591,7 @@ public class MoxxieIntegrationTest {
             // Stop VM first
             stopVMIfRunning(vmId);
         } catch (Exception e) {
-            log.debug("VM {} might already be stopped", vmId);
+            LOG.debug("VM {} might already be stopped", vmId);
         }
         
         // Delete VM
@@ -636,7 +636,7 @@ public class MoxxieIntegrationTest {
     }
     
     private void cleanupTestResources() {
-        log.info("Cleaning up test resources with prefix: {}", TEST_PREFIX);
+        LOG.info("Cleaning up test resources with prefix: {}", TEST_PREFIX);
         
         // Get all VMs with our test tag
         try {
@@ -655,16 +655,16 @@ public class MoxxieIntegrationTest {
                 String name = (String) vm.get("name");
                 
                 if (name != null && name.startsWith(TEST_PREFIX)) {
-                    log.info("Cleaning up test VM: {} ({})", name, vmId);
+                    LOG.info("Cleaning up test VM: {} ({})", name, vmId);
                     try {
                         deleteVMSafely(vmId);
                     } catch (Exception e) {
-                        log.warn("Failed to cleanup VM {}: {}", vmId, e.getMessage());
+                        LOG.warn("Failed to cleanup VM {}: {}", vmId, e.getMessage());
                     }
                 }
             }
         } catch (Exception e) {
-            log.warn("Failed to query VMs for cleanup: {}", e.getMessage());
+            LOG.warn("Failed to query VMs for cleanup: {}", e.getMessage());
         }
     }
     

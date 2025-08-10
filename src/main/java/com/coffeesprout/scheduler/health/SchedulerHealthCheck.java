@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 @Readiness
 public class SchedulerHealthCheck implements HealthCheck {
     
-    private static final Logger log = LoggerFactory.getLogger(SchedulerHealthCheck.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SchedulerHealthCheck.class);
     
     @Inject
     Scheduler scheduler;
@@ -61,7 +61,7 @@ public class SchedulerHealthCheck implements HealthCheck {
             return response;
             
         } catch (Exception e) {
-            log.error("Scheduler health check failed", e);
+            LOG.error("Scheduler health check failed", e);
             return HealthCheckResponse.named("scheduler")
                 .down()
                 .withData("error", e.getMessage())

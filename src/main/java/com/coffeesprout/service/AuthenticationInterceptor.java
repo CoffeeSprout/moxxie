@@ -22,7 +22,7 @@ import java.lang.reflect.Parameter;
 @Priority(Interceptor.Priority.APPLICATION)
 public class AuthenticationInterceptor {
     
-    private static final Logger log = LoggerFactory.getLogger(AuthenticationInterceptor.class);
+    private static final Logger LOG = LoggerFactory.getLogger(AuthenticationInterceptor.class);
     
     @Inject
     TicketManager ticketManager;
@@ -53,7 +53,7 @@ public class AuthenticationInterceptor {
         
         // Fall back to position-based convention for backward compatibility
         if (ticketIndex == -1) {
-            log.debug("No @AuthTicket annotation found on method {}.{}, falling back to position-based convention",
+            LOG.debug("No @AuthTicket annotation found on method {}.{}, falling back to position-based convention",
                      method.getDeclaringClass().getSimpleName(), method.getName());
             Class<?>[] parameterTypes = method.getParameterTypes();
             for (int i = parameters.length - 1; i >= 0; i--) {
@@ -69,7 +69,7 @@ public class AuthenticationInterceptor {
             String ticket = ticketManager.getTicket();
             parameters[ticketIndex] = ticket;
             context.setParameters(parameters);
-            log.trace("Injected authentication ticket into parameter at position {} for method {}.{}", 
+            LOG.trace("Injected authentication ticket into parameter at position {} for method {}.{}", 
                      ticketIndex, method.getDeclaringClass().getSimpleName(), method.getName());
         }
         
@@ -78,7 +78,7 @@ public class AuthenticationInterceptor {
         } catch (Exception e) {
             // If we get an authentication error, force refresh and retry once
             if (isAuthenticationError(e) && ticketIndex >= 0) {
-                log.debug("Authentication error detected, refreshing ticket and retrying");
+                LOG.debug("Authentication error detected, refreshing ticket and retrying");
                 ticketManager.forceRefresh();
                 
                 // Re-inject the new ticket

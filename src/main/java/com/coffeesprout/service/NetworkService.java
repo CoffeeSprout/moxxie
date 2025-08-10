@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 @AutoAuthenticate
 public class NetworkService {
     
-    private static final Logger log = LoggerFactory.getLogger(NetworkService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(NetworkService.class);
     
     @Inject
     @RestClient
@@ -32,7 +32,7 @@ public class NetworkService {
      * Get network interfaces for a specific node
      */
     public List<NetworkInterface> getNodeNetworks(String nodeName, @AuthTicket String ticket) {
-        log.debug("Getting network interfaces for node: {}", nodeName);
+        LOG.debug("Getting network interfaces for node: {}", nodeName);
         NetworkResponse response = proxmoxClient.getNodeNetworks(nodeName, ticket);
         return response.getData();
     }
@@ -41,7 +41,7 @@ public class NetworkService {
      * Get all network interfaces across all nodes
      */
     public List<NetworkInterface> getAllNetworks(@AuthTicket String ticket) {
-        log.debug("Getting network interfaces for all nodes");
+        LOG.debug("Getting network interfaces for all nodes");
         
         // Get all nodes
         List<Node> nodes = nodeService.listNodes(ticket);
@@ -52,7 +52,7 @@ public class NetworkService {
                 try {
                     return getNodeNetworks(node.getName(), ticket);
                 } catch (Exception e) {
-                    log.error("Failed to get networks for node {}: {}", node.getName(), e.getMessage());
+                    LOG.error("Failed to get networks for node {}: {}", node.getName(), e.getMessage());
                     return new ArrayList<NetworkInterface>();
                 }
             }))

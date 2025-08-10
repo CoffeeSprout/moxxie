@@ -19,7 +19,7 @@ import java.util.function.Supplier;
 @ApplicationScoped
 public class ResourceCacheService {
     
-    private static final Logger log = LoggerFactory.getLogger(ResourceCacheService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ResourceCacheService.class);
     
     // Default cache TTL of 5 minutes
     private static final Duration DEFAULT_TTL = Duration.ofMinutes(5);
@@ -38,13 +38,13 @@ public class ResourceCacheService {
         
         if (entry != null && !entry.isExpired()) {
             hits.incrementAndGet();
-            log.debug("Cache hit for key: {}", key);
+            LOG.debug("Cache hit for key: {}", key);
             return (T) entry.getValue();
         }
         
         // Miss or expired
         misses.incrementAndGet();
-        log.debug("Cache miss for key: {}", key);
+        LOG.debug("Cache miss for key: {}", key);
         
         // Remove expired entry
         if (entry != null) {
@@ -94,7 +94,7 @@ public class ResourceCacheService {
      */
     public <T> void put(String key, T value, Duration ttl) {
         cache.put(key, new CacheEntry<>(value, Instant.now().plus(ttl)));
-        log.debug("Cached value for key: {} with TTL: {}", key, ttl);
+        LOG.debug("Cached value for key: {} with TTL: {}", key, ttl);
     }
     
     /**
@@ -104,7 +104,7 @@ public class ResourceCacheService {
         CacheEntry<?> removed = cache.remove(key);
         if (removed != null) {
             evictions.incrementAndGet();
-            log.debug("Invalidated cache key: {}", key);
+            LOG.debug("Invalidated cache key: {}", key);
         }
     }
     
@@ -116,7 +116,7 @@ public class ResourceCacheService {
         cache.entrySet().removeIf(entry -> {
             if (entry.getKey().matches(regex)) {
                 evictions.incrementAndGet();
-                log.debug("Invalidated cache key: {}", entry.getKey());
+                LOG.debug("Invalidated cache key: {}", entry.getKey());
                 return true;
             }
             return false;
@@ -130,7 +130,7 @@ public class ResourceCacheService {
         int size = cache.size();
         cache.clear();
         evictions.addAndGet(size);
-        log.info("Cleared cache, removed {} entries", size);
+        LOG.info("Cleared cache, removed {} entries", size);
     }
     
     /**
@@ -158,7 +158,7 @@ public class ResourceCacheService {
         cache.entrySet().removeIf(entry -> {
             if (entry.getValue().isExpired()) {
                 evictions.incrementAndGet();
-                log.debug("Evicted expired cache key: {}", entry.getKey());
+                LOG.debug("Evicted expired cache key: {}", entry.getKey());
                 return true;
             }
             return false;

@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 @AutoAuthenticate
 public class BackupJobService {
     
-    private static final Logger log = LoggerFactory.getLogger(BackupJobService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(BackupJobService.class);
     
     @Inject
     @RestClient
@@ -35,7 +35,7 @@ public class BackupJobService {
      * List all backup jobs
      */
     public List<BackupJobResponse> listBackupJobs(@AuthTicket String ticket) {
-        log.debug("Listing all backup jobs");
+        LOG.debug("Listing all backup jobs");
         
         try {
             BackupJobsResponse response = proxmoxClient.listBackupJobs(ticket);
@@ -49,7 +49,7 @@ public class BackupJobService {
                     .collect(Collectors.toList());
             
         } catch (Exception e) {
-            log.error("Failed to list backup jobs: {}", e.getMessage());
+            LOG.error("Failed to list backup jobs: {}", e.getMessage());
             throw new RuntimeException("Failed to list backup jobs: " + e.getMessage(), e);
         }
     }
@@ -58,7 +58,7 @@ public class BackupJobService {
      * Get specific backup job details
      */
     public BackupJobResponse getBackupJob(String jobId, @AuthTicket String ticket) {
-        log.debug("Getting backup job: {}", jobId);
+        LOG.debug("Getting backup job: {}", jobId);
         
         try {
             BackupJobDetailResponse response = proxmoxClient.getBackupJob(jobId, ticket);
@@ -70,7 +70,7 @@ public class BackupJobService {
             return convertToBackupJobResponse(response.getData());
             
         } catch (Exception e) {
-            log.error("Failed to get backup job {}: {}", jobId, e.getMessage());
+            LOG.error("Failed to get backup job {}: {}", jobId, e.getMessage());
             throw new RuntimeException("Failed to get backup job: " + e.getMessage(), e);
         }
     }
@@ -90,11 +90,11 @@ public class BackupJobService {
                             try {
                                 vmIds.add(Integer.parseInt(id));
                             } catch (NumberFormatException e) {
-                                log.warn("Invalid VM ID in backup job: {}", id);
+                                LOG.warn("Invalid VM ID in backup job: {}", id);
                             }
                         });
             } catch (Exception e) {
-                log.warn("Failed to parse VM IDs: {}", data.getVmid());
+                LOG.warn("Failed to parse VM IDs: {}", data.getVmid());
             }
         }
         
@@ -184,7 +184,7 @@ public class BackupJobService {
                 LocalDateTime ldt = LocalDateTime.parse(timestamp, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
                 return ldt.atZone(ZoneId.systemDefault()).toInstant();
             } catch (DateTimeParseException e2) {
-                log.warn("Failed to parse timestamp: {}", timestamp);
+                LOG.warn("Failed to parse timestamp: {}", timestamp);
                 return null;
             }
         }

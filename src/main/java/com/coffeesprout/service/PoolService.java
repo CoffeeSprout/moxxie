@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 @AutoAuthenticate
 public class PoolService {
     
-    private static final Logger log = LoggerFactory.getLogger(PoolService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PoolService.class);
     
     @Inject
     VMService vmService;
@@ -26,7 +26,7 @@ public class PoolService {
     @RestClient
     ProxmoxClient proxmoxClient;
     
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     public List<PoolResourceSummary> getPoolResourceSummaries(@AuthTicket String ticket) {
         try {
             // Get all pools from Proxmox
@@ -60,7 +60,7 @@ public class PoolService {
                         summaries.add(summary);
                     }
                 } catch (Exception e) {
-                    log.warn("Failed to get details for pool: " + pool.getPoolid(), e);
+                    LOG.warn("Failed to get details for pool: " + pool.getPoolid(), e);
                 }
             }
             
@@ -69,12 +69,12 @@ public class PoolService {
             
             return summaries;
         } catch (Exception e) {
-            log.error("Failed to get pool resource summaries", e);
+            LOG.error("Failed to get pool resource summaries", e);
             throw new RuntimeException("Failed to get pool resource summaries: " + e.getMessage(), e);
         }
     }
     
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     public PoolResourceSummary getPoolResourceSummary(String poolName, @AuthTicket String ticket) {
         try {
             // Get pool details from Proxmox
@@ -101,7 +101,7 @@ public class PoolService {
             
             return createPoolSummary(poolName, poolVMs, ticket);
         } catch (Exception e) {
-            log.error("Failed to get pool resource summary for: " + poolName, e);
+            LOG.error("Failed to get pool resource summary for: " + poolName, e);
             throw new RuntimeException("Failed to get pool resource summary: " + e.getMessage(), e);
         }
     }
@@ -214,7 +214,7 @@ public class PoolService {
                 .mapToLong(disk -> disk.sizeBytes() != null ? disk.sizeBytes() : 0L)
                 .sum();
         } catch (Exception e) {
-            log.warn("Failed to get storage info for VM {}: {}", vm.vmid(), e.getMessage());
+            LOG.warn("Failed to get storage info for VM {}: {}", vm.vmid(), e.getMessage());
             return vm.maxdisk(); // Fallback to maxdisk if config fetch fails
         }
     }
@@ -278,7 +278,7 @@ public class PoolService {
                 diskSpec
             );
         } catch (Exception e) {
-            log.warn("Failed to parse disk info for {}: {}", diskInterface, diskSpec, e);
+            LOG.warn("Failed to parse disk info for {}: {}", diskInterface, diskSpec, e);
             return null;
         }
     }
@@ -301,7 +301,7 @@ public class PoolService {
                 return Long.parseLong(sizeStr);
             }
         } catch (Exception e) {
-            log.warn("Failed to parse disk size: {}", sizeStr, e);
+            LOG.warn("Failed to parse disk size: {}", sizeStr, e);
             return null;
         }
     }

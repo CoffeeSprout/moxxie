@@ -30,7 +30,7 @@ import java.util.Map;
 @Unremovable
 public class CreateSnapshotTask extends AbstractVMTask {
     
-    private static final Logger log = LoggerFactory.getLogger(CreateSnapshotTask.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CreateSnapshotTask.class);
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HHmmss");
     private static final DateTimeFormatter DATETIME_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
@@ -65,7 +65,7 @@ public class CreateSnapshotTask extends AbstractVMTask {
             snapshotTTL
         );
         
-        log.info("Creating snapshot '{}' for VM {} ({})", snapshotName, vm.vmid(), vm.name());
+        LOG.info("Creating snapshot '{}' for VM {} ({})", snapshotName, vm.vmid(), vm.name());
         
         // Create snapshot
         var taskResponse = snapshotService.createSnapshot(vm.vmid(), request, null);
@@ -151,17 +151,17 @@ public class CreateSnapshotTask extends AbstractVMTask {
                 for (int i = 0; i < toDelete && i < scheduledSnapshots.size(); i++) {
                     SnapshotResponse snapshot = scheduledSnapshots.get(i);
                     try {
-                        log.info("Deleting old snapshot '{}' for VM {} (rotation)", snapshot.name(), vmId);
+                        LOG.info("Deleting old snapshot '{}' for VM {} (rotation)", snapshot.name(), vmId);
                         snapshotService.deleteSnapshot(vmId, snapshot.name(), null);
                         deletedCount++;
                     } catch (Exception e) {
-                        log.warn("Failed to delete old snapshot '{}' for VM {}: {}", 
+                        LOG.warn("Failed to delete old snapshot '{}' for VM {}: {}", 
                                snapshot.name(), vmId, e.getMessage());
                     }
                 }
             }
         } catch (Exception e) {
-            log.warn("Failed to rotate snapshots for VM {}: {}", vmId, e.getMessage());
+            LOG.warn("Failed to rotate snapshots for VM {}: {}", vmId, e.getMessage());
         }
         
         return deletedCount;

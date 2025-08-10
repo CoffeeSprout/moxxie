@@ -10,7 +10,7 @@ public record MigrationRequest(
     String targetNode,
     
     Boolean allowOfflineMigration,  // Default false - fail if online migration not possible
-    Boolean withLocalDisks,         // Default false - migrate with local disks
+    Boolean withLocalDisks,         // Default null (auto-detect) - explicitly set true/false to override
     Boolean force,                  // Default false - force migration of VMs with local devices
     Integer bwlimit,               // Bandwidth limit in KiB/s
     String targetStorage,          // Storage mapping (single storage ID or mapping)
@@ -25,9 +25,11 @@ public record MigrationRequest(
         if (allowOfflineMigration == null) {
             allowOfflineMigration = false;
         }
-        if (withLocalDisks == null) {
-            withLocalDisks = false;
-        }
+        // Keep withLocalDisks as null to allow auto-detection in MigrationService
+        // Only set false if explicitly passed as false
+        // if (withLocalDisks == null) {
+        //     withLocalDisks = false;
+        // }
         if (force == null) {
             force = false;
         }

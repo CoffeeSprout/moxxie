@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 @AutoAuthenticate
 public class TaskService {
     
-    private static final Logger log = LoggerFactory.getLogger(TaskService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TaskService.class);
     
     @Inject
     @RestClient
@@ -36,7 +36,7 @@ public class TaskService {
      * Get detailed status of a specific task
      */
     public TaskStatusDetailResponse getTaskStatus(String upid, @AuthTicket String ticket) {
-        log.debug("Getting status for task: {}", upid);
+        LOG.debug("Getting status for task: {}", upid);
         
         try {
             // Parse UPID to extract node
@@ -93,7 +93,7 @@ public class TaskService {
             );
             
         } catch (Exception e) {
-            log.error("Failed to get task status for {}: {}", upid, e.getMessage());
+            LOG.error("Failed to get task status for {}: {}", upid, e.getMessage());
             throw new RuntimeException("Failed to get task status for UPID " + upid + ": " + e.getMessage(), e);
         }
     }
@@ -102,7 +102,7 @@ public class TaskService {
      * Get task execution logs
      */
     public TaskLogResponse getTaskLog(String upid, Integer start, Integer limit, @AuthTicket String ticket) {
-        log.debug("Getting logs for task: {} (start: {}, limit: {})", upid, start, limit);
+        LOG.debug("Getting logs for task: {} (start: {}, limit: {})", upid, start, limit);
         
         try {
             // Parse UPID to extract node
@@ -120,7 +120,7 @@ public class TaskService {
             // Get task log from Proxmox
             JsonNode response = proxmoxClient.getTaskLog(upidInfo.node, upid, start, limit, ticket);
             
-            log.debug("Retrieved log response for task {}: {}", upid, response);
+            LOG.debug("Retrieved log response for task {}: {}", upid, response);
             
             if (response == null || !response.has("data")) {
                 return TaskLogResponse.create(upid, 0, start, Collections.emptyList(), true);
@@ -155,7 +155,7 @@ public class TaskService {
             );
             
         } catch (Exception e) {
-            log.error("Failed to get task log for {}: {}", upid, e.getMessage());
+            LOG.error("Failed to get task log for {}: {}", upid, e.getMessage());
             throw new RuntimeException("Failed to get task log for UPID " + upid + ": " + e.getMessage(), e);
         }
     }
@@ -166,7 +166,7 @@ public class TaskService {
     public TaskListResponse listTasks(String node, String typeFilter, String statusFilter, 
                                      String userFilter, Integer vmid, Integer start, 
                                      Integer limit, String ticket) {
-        log.debug("Listing tasks with filters - node: {}, type: {}, status: {}", 
+        LOG.debug("Listing tasks with filters - node: {}, type: {}, status: {}", 
                  node, typeFilter, statusFilter);
         
         try {
@@ -214,7 +214,7 @@ public class TaskService {
                         }
                     }
                 } catch (Exception e) {
-                    log.warn("Failed to get tasks from node {}: {}", queryNode, e.getMessage());
+                    LOG.warn("Failed to get tasks from node {}: {}", queryNode, e.getMessage());
                 }
             }
             
@@ -236,7 +236,7 @@ public class TaskService {
             return new TaskListResponse(pagedTasks, totalTasks, pagedTasks.size());
             
         } catch (Exception e) {
-            log.error("Failed to list tasks: {}", e.getMessage());
+            LOG.error("Failed to list tasks: {}", e.getMessage());
             throw new RuntimeException("Failed to list tasks: " + e.getMessage(), e);
         }
     }
@@ -246,7 +246,7 @@ public class TaskService {
      * @return true if task completed successfully, false otherwise
      */
     public boolean waitForTask(String node, String upid, int timeoutSeconds, @AuthTicket String ticket) {
-        log.info("Waiting for task {} on node {} with timeout {}s", upid, node, timeoutSeconds);
+        LOG.info("Waiting for task {} on node {} with timeout {}s", upid, node, timeoutSeconds);
         
         long startTime = System.currentTimeMillis();
         long timeoutMs = timeoutSeconds * 1000L;
@@ -257,7 +257,7 @@ public class TaskService {
                 
                 if (status.finished()) {
                     boolean success = "OK".equals(status.exitstatus());
-                    log.info("Task {} finished with status: {}", upid, status.exitstatus());
+                    LOG.info("Task {} finished with status: {}", upid, status.exitstatus());
                     return success;
                 }
                 
@@ -265,15 +265,15 @@ public class TaskService {
                 Thread.sleep(2000);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                log.error("Interrupted while waiting for task", e);
+                LOG.error("Interrupted while waiting for task", e);
                 return false;
             } catch (Exception e) {
-                log.error("Error checking task status", e);
+                LOG.error("Error checking task status", e);
                 // Continue waiting - task might still be running
             }
         }
         
-        log.warn("Task {} timed out after {} seconds", upid, timeoutSeconds);
+        LOG.warn("Task {} timed out after {} seconds", upid, timeoutSeconds);
         return false;
     }
     
@@ -281,7 +281,7 @@ public class TaskService {
      * Stop a running task
      */
     public void stopTask(String upid, @AuthTicket String ticket) {
-        log.info("Stopping task: {}", upid);
+        LOG.info("Stopping task: {}", upid);
         
         try {
             // Parse UPID to extract node
@@ -299,11 +299,11 @@ public class TaskService {
             JsonNode response = proxmoxClient.stopTask(upidInfo.node, upid, ticket, csrfToken);
             
             if (response != null && response.has("data")) {
-                log.info("Task stop initiated: {}", response.get("data").asText());
+                LOG.info("Task stop initiated: {}", response.get("data").asText());
             }
             
         } catch (Exception e) {
-            log.error("Failed to stop task {}: {}", upid, e.getMessage());
+            LOG.error("Failed to stop task {}: {}", upid, e.getMessage());
             throw new RuntimeException("Failed to stop task " + upid + ": " + e.getMessage(), e);
         }
     }
@@ -314,14 +314,14 @@ public class TaskService {
      */
     private UPIDInfo parseUPID(String upid) {
         if (upid == null || !upid.startsWith("UPID:")) {
-            log.debug("Invalid UPID format - doesn't start with UPID: {}", upid);
+            LOG.debug("Invalid UPID format - doesn't start with UPID: {}", upid);
             return null;
         }
         
         // Split with -1 to include trailing empty strings
         String[] parts = upid.split(":", -1);
         if (parts.length < 8) {
-            log.debug("Invalid UPID format - not enough parts: {} (found {})", upid, parts.length);
+            LOG.debug("Invalid UPID format - not enough parts: {} (found {})", upid, parts.length);
             return null;
         }
         
@@ -340,7 +340,7 @@ public class TaskService {
                 parts.length > 7 && !parts[7].isEmpty() ? parts[7] : null // user
             );
         } catch (NumberFormatException e) {
-            log.error("Failed to parse UPID numbers: {} - Error: {}", upid, e.getMessage());
+            LOG.error("Failed to parse UPID numbers: {} - Error: {}", upid, e.getMessage());
             return null;
         }
     }

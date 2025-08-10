@@ -1,0 +1,184 @@
+{
+  "name": "okd-sdbdev",
+  "type": "OKD",
+  "nodeGroups": [
+    {
+      "name": "bastion",
+      "role": "BASTION",
+      "count": 1,
+      "template": {
+        "cores": 4,
+        "memoryMB": 8192,
+        "disks": [
+          {
+            "diskInterface": "SCSI",
+            "slot": 0,
+            "storage": "local-zfs",
+            "sizeGB": 100,
+            "ssd": true,
+            "iothread": true
+          }
+        ],
+        "networks": [
+          {
+            "model": "virtio",
+            "bridge": "vmbr0"
+          },
+          {
+            "model": "virtio",
+            "bridge": "sdbdev"
+          }
+        ],
+        "imageSource": "local-zfs:9001/debian-12-template",
+        "cloudInit": {
+          "user": "admin",
+          "sshKeys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGLmQqfp8X5DUVxLruBsCmJ7m4mDGcr5V7e2BXMkNPDp admin@okd",
+          "ipConfigPatterns": [
+            "ip=dhcp",
+            "ip=10.1.107.5/24,gw=10.1.107.1"
+          ],
+          "searchDomain": "sdbdev.coffeesprout.cloud",
+          "nameservers": "1.1.1.1,8.8.8.8",
+          "packages": ["wget", "python3", "haproxy", "bind9", "jq", "curl"],
+          "runCmd": [
+            "mkdir -p /opt/okd",
+            "cd /opt/okd",
+            "wget -q https://github.com/okd-project/okd/releases/latest/download/openshift-install-linux.tar.gz || true",
+            "wget -q https://github.com/okd-project/okd/releases/latest/download/openshift-client-linux.tar.gz || true",
+            "[ -f openshift-install-linux.tar.gz ] && tar -xf openshift-install-linux.tar.gz",
+            "[ -f openshift-client-linux.tar.gz ] && tar -xf openshift-client-linux.tar.gz",
+            "[ -f oc ] && mv oc kubectl /usr/local/bin/ && chmod +x /usr/local/bin/oc /usr/local/bin/kubectl",
+            "[ -f openshift-install ] && chmod +x openshift-install"
+          ]
+        }
+      },
+      "placement": {
+        "targetNodes": ["storage01"]
+      },
+      "tags": ["okd", "bastion", "sdbdev"],
+      "metadata": {
+        "role": "bastion"
+      }
+    },
+    {
+      "name": "bootstrap",
+      "role": "BOOTSTRAP",
+      "count": 1,
+      "template": {
+        "cores": 4,
+        "memoryMB": 16384,
+        "disks": [
+          {
+            "diskInterface": "SCSI",
+            "slot": 0,
+            "storage": "local-zfs",
+            "sizeGB": 100,
+            "ssd": true,
+            "iothread": true
+          }
+        ],
+        "networks": [
+          {
+            "model": "virtio",
+            "bridge": "sdbdev"
+          }
+        ],
+        "imageSource": "local-zfs:10799/fcos-template"
+      },
+      "placement": {
+        "targetNodes": ["storage01"]
+      },
+      "tags": ["okd", "bootstrap", "sdbdev"],
+      "metadata": {
+        "okd-role": "bootstrap",
+        "static-ip": "10.1.107.10",
+        "ignition-source": "http://10.1.107.5:8080/bootstrap.ign"
+      }
+    },
+    {
+      "name": "master",
+      "role": "CONTROL_PLANE",
+      "count": 3,
+      "template": {
+        "cores": 4,
+        "memoryMB": 16384,
+        "disks": [
+          {
+            "diskInterface": "SCSI",
+            "slot": 0,
+            "storage": "local-zfs",
+            "sizeGB": 100,
+            "ssd": true,
+            "iothread": true
+          }
+        ],
+        "networks": [
+          {
+            "model": "virtio",
+            "bridge": "sdbdev"
+          }
+        ],
+        "imageSource": "local-zfs:10799/fcos-template"
+      },
+      "placement": {
+        "antiAffinity": "SOFT"
+      },
+      "tags": ["okd", "control-plane", "master", "sdbdev"],
+      "metadata": {
+        "okd-role": "master",
+        "static-ip-base": "10.1.107.11",
+        "ignition-source": "http://10.1.107.5:8080/master.ign"
+      }
+    },
+    {
+      "name": "worker",
+      "role": "WORKER",
+      "count": 0,
+      "template": {
+        "cores": 4,
+        "memoryMB": 16384,
+        "disks": [
+          {
+            "diskInterface": "SCSI",
+            "slot": 0,
+            "storage": "local-zfs",
+            "sizeGB": 100,
+            "ssd": true,
+            "iothread": true
+          }
+        ],
+        "networks": [
+          {
+            "model": "virtio",
+            "bridge": "sdbdev"
+          }
+        ],
+        "imageSource": "local-zfs:10799/fcos-template"
+      },
+      "placement": {
+        "antiAffinity": "SOFT"
+      },
+      "tags": ["okd", "worker", "sdbdev"],
+      "metadata": {
+        "okd-role": "worker",
+        "static-ip-base": "10.1.107.20",
+        "ignition-source": "http://10.1.107.5:8080/worker.ign"
+      }
+    }
+  ],
+  "metadata": {
+    "okd-version": "4.16",
+    "baseDomain": "sdbdev.coffeesprout.cloud",
+    "clusterName": "okd",
+    "clusterNetwork": "10.128.0.0/14",
+    "serviceNetwork": "172.30.0.0/16"
+  },
+  "options": {
+    "startAfterCreation": false,
+    "parallelProvisioning": true,
+    "maxParallelOperations": 3,
+    "rollbackStrategy": "PARTIAL",
+    "vmIdRangeStart": 10700,
+    "dryRun": true
+  }
+}

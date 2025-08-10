@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 @ApplicationScoped
 public class AuthService {
 
-    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(AuthService.class);
 
     @Inject
     @RestClient
@@ -23,7 +23,7 @@ public class AuthService {
 
     public LoginResponse authenticate(String username, String password) {
         LoginResponse loginResponse = proxmoxClient.login(username, password);
-        log.debug("Successfully authenticated user: {}", username);
+        LOG.debug("Successfully authenticated user: {}", username);
         return loginResponse;
     }
 

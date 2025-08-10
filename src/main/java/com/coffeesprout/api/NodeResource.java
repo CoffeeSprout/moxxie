@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 @Tag(name = "Nodes", description = "Node management endpoints")
 public class NodeResource {
 
-    private static final Logger log = LoggerFactory.getLogger(NodeResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(NodeResource.class);
 
     @Inject
     NodeService nodeService;
@@ -68,7 +68,7 @@ public class NodeResource {
             
             return Response.ok(nodeResponses).build();
         } catch (Exception e) {
-            log.error("Failed to list nodes", e);
+            LOG.error("Failed to list nodes", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to list nodes: " + e.getMessage()))
                     .build();
@@ -130,7 +130,7 @@ public class NodeResource {
                         .entity(new ErrorResponse("Node not found: " + nodeName))
                         .build();
             }
-            log.error("Proxmox client error for node: " + nodeName, e);
+            LOG.error("Proxmox client error for node: " + nodeName, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get node status: " + e.getMessage()))
                     .build();
@@ -142,7 +142,7 @@ public class NodeResource {
             }
             throw e;
         } catch (Exception e) {
-            log.error("Failed to get node status for: " + nodeName, e);
+            LOG.error("Failed to get node status for: " + nodeName, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get node status: " + e.getMessage()))
                     .build();
@@ -208,7 +208,7 @@ public class NodeResource {
                         .entity(new ErrorResponse("Node not found: " + nodeName))
                         .build();
             }
-            log.error("Proxmox client error for node: " + nodeName, e);
+            LOG.error("Proxmox client error for node: " + nodeName, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get node status: " + e.getMessage()))
                     .build();
@@ -220,7 +220,7 @@ public class NodeResource {
             }
             throw e;
         } catch (Exception e) {
-            log.error("Failed to get node resources for: " + nodeName, e);
+            LOG.error("Failed to get node resources for: " + nodeName, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get node resources: " + e.getMessage()))
                     .build();

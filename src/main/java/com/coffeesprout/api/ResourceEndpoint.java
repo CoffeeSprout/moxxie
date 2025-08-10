@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
 @Tag(name = "Resources", description = "Federation-ready resource management endpoints")
 public class ResourceEndpoint {
     
-    private static final Logger log = LoggerFactory.getLogger(ResourceEndpoint.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ResourceEndpoint.class);
     
     @Inject
     ProxmoxResourceProvider resourceProvider;
@@ -77,7 +77,7 @@ public class ResourceEndpoint {
             
             return Response.ok(response).build();
         } catch (Exception e) {
-            log.error("Failed to get cluster resources", e);
+            LOG.error("Failed to get cluster resources", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get cluster resources: " + e.getMessage()))
                     .build();
@@ -132,7 +132,7 @@ public class ResourceEndpoint {
             
             return Response.ok(responses).build();
         } catch (Exception e) {
-            log.error("Failed to get node resources", e);
+            LOG.error("Failed to get node resources", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get node resources: " + e.getMessage()))
                     .build();
@@ -175,7 +175,7 @@ public class ResourceEndpoint {
             
             return Response.ok(convertToFederationNodeResourcesResponse(resources)).build();
         } catch (Exception e) {
-            log.error("Failed to get node resources for: " + nodeId, e);
+            LOG.error("Failed to get node resources for: " + nodeId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get node resources: " + e.getMessage()))
                     .build();
@@ -204,7 +204,7 @@ public class ResourceEndpoint {
             
             return Response.ok(convertToFederationVMCapacityResponse(capacity)).build();
         } catch (Exception e) {
-            log.error("Failed to calculate capacity", e);
+            LOG.error("Failed to calculate capacity", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to calculate capacity: " + e.getMessage()))
                     .build();
@@ -243,7 +243,7 @@ public class ResourceEndpoint {
             return Response.ok(convertToFederationPlacementRecommendationResponse(recommendation.get()))
                     .build();
         } catch (Exception e) {
-            log.error("Failed to find placement", e);
+            LOG.error("Failed to find placement", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to find placement: " + e.getMessage()))
                     .build();
@@ -284,7 +284,7 @@ public class ResourceEndpoint {
             
             return Response.ok(responses).build();
         } catch (Exception e) {
-            log.error("Failed to get storage pools", e);
+            LOG.error("Failed to get storage pools", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get storage pools: " + e.getMessage()))
                     .build();
@@ -318,7 +318,7 @@ public class ResourceEndpoint {
             
             return Response.ok(response).build();
         } catch (Exception e) {
-            log.error("Failed to get metrics", e);
+            LOG.error("Failed to get metrics", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get metrics: " + e.getMessage()))
                     .build();
@@ -351,7 +351,7 @@ public class ResourceEndpoint {
             
             return Response.ok().build();
         } catch (Exception e) {
-            log.error("Failed to invalidate cache", e);
+            LOG.error("Failed to invalidate cache", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to invalidate cache: " + e.getMessage()))
                     .build();
@@ -373,7 +373,7 @@ public class ResourceEndpoint {
             cacheService.clear();
             return Response.ok().build();
         } catch (Exception e) {
-            log.error("Failed to refresh resources", e);
+            LOG.error("Failed to refresh resources", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to refresh resources: " + e.getMessage()))
                     .build();

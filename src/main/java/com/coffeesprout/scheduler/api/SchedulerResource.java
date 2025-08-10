@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 @Tag(name = "Scheduler", description = "Manage scheduled jobs and executions")
 public class SchedulerResource {
     
-    private static final Logger log = LoggerFactory.getLogger(SchedulerResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SchedulerResource.class);
     
     @Inject
     SchedulerService schedulerService;
@@ -103,7 +103,7 @@ public class SchedulerResource {
             return Response.ok(result).build();
             
         } catch (Exception e) {
-            log.error("Failed to list jobs", e);
+            LOG.error("Failed to list jobs", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(Map.of("error", e.getMessage()))
                 .build();
@@ -200,7 +200,7 @@ public class SchedulerResource {
             jobCreatedEvent.fire(new JobCreatedEvent(job.id, job.name, job.enabled));
             
             if (job.enabled) {
-                log.info("Job {} created and will be scheduled after transaction commit", job.name);
+                LOG.info("Job {} created and will be scheduled after transaction commit", job.name);
             }
             
             return Response.status(Response.Status.CREATED)
@@ -208,7 +208,7 @@ public class SchedulerResource {
                 .build();
             
         } catch (Exception e) {
-            log.error("Failed to create job", e);
+            LOG.error("Failed to create job", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(Map.of("error", e.getMessage()))
                 .build();
@@ -311,7 +311,7 @@ public class SchedulerResource {
             return Response.ok(toResponse(job)).build();
             
         } catch (Exception e) {
-            log.error("Failed to update job", e);
+            LOG.error("Failed to update job", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(Map.of("error", e.getMessage()))
                 .build();
@@ -337,7 +337,7 @@ public class SchedulerResource {
             return Response.noContent().build();
             
         } catch (Exception e) {
-            log.error("Failed to delete job", e);
+            LOG.error("Failed to delete job", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(Map.of("error", e.getMessage()))
                 .build();
@@ -366,7 +366,7 @@ public class SchedulerResource {
             )).build();
             
         } catch (Exception e) {
-            log.error("Failed to trigger job", e);
+            LOG.error("Failed to trigger job", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(Map.of("error", e.getMessage()))
                 .build();
@@ -387,7 +387,7 @@ public class SchedulerResource {
                 .entity(Map.of("error", e.getMessage()))
                 .build();
         } catch (Exception e) {
-            log.error("Failed to enable job", e);
+            LOG.error("Failed to enable job", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(Map.of("error", e.getMessage()))
                 .build();
@@ -408,7 +408,7 @@ public class SchedulerResource {
                 .entity(Map.of("error", e.getMessage()))
                 .build();
         } catch (Exception e) {
-            log.error("Failed to disable job", e);
+            LOG.error("Failed to disable job", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(Map.of("error", e.getMessage()))
                 .build();
@@ -467,7 +467,7 @@ public class SchedulerResource {
             return Response.ok(result).build();
             
         } catch (Exception e) {
-            log.error("Failed to get job executions", e);
+            LOG.error("Failed to get job executions", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(Map.of("error", e.getMessage()))
                 .build();
@@ -521,7 +521,7 @@ public class SchedulerResource {
                 nextFireTime = schedulerService.getNextFireTime(job.name);
             }
         } catch (SchedulerException e) {
-            log.warn("Failed to get next fire time for job {}: {}", job.name, e.getMessage());
+            LOG.warn("Failed to get next fire time for job {}: {}", job.name, e.getMessage());
         }
         
         // Get last execution info

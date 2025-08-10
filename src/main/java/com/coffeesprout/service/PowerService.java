@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 @AutoAuthenticate
 public class PowerService {
     
-    private static final Logger log = LoggerFactory.getLogger(PowerService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PowerService.class);
     
     @Inject
     VMService vmService;
@@ -32,7 +32,7 @@ public class PowerService {
      * Perform bulk power operation on multiple VMs
      */
     public BulkPowerResponse bulkPowerOperation(BulkPowerRequest request, @AuthTicket String ticket) {
-        log.info("Starting bulk {} operation with {} selectors", 
+        LOG.info("Starting bulk {} operation with {} selectors", 
                 request.operation(), request.vmSelectors().size());
         
         // Get all VMs that match the selectors
@@ -42,7 +42,7 @@ public class PowerService {
                 List<VMResponse> vms = vmSelectorService.selectVMs(selector, ticket);
                 targetVMs.addAll(vms);
             } catch (Exception e) {
-                log.error("Failed to select VMs with selector {}: {}", selector, e.getMessage());
+                LOG.error("Failed to select VMs with selector {}: {}", selector, e.getMessage());
                 throw new RuntimeException("Failed to select VMs: " + e.getMessage(), e);
             }
         }
@@ -54,7 +54,7 @@ public class PowerService {
         }
         targetVMs = new ArrayList<>(uniqueVMs.values());
         
-        log.info("Found {} unique VMs matching selectors", targetVMs.size());
+        LOG.info("Found {} unique VMs matching selectors", targetVMs.size());
         
         if (targetVMs.isEmpty()) {
             return new BulkPowerResponse(
@@ -101,7 +101,7 @@ public class PowerService {
                         results.put(vm.vmid(), BulkPowerResponse.PowerResult.skipped(
                             vm.status(), "Already in desired state", vm.name()
                         ));
-                        log.info("Skipping VM {} ({}) - already {}", 
+                        LOG.info("Skipping VM {} ({}) - already {}", 
                             vm.vmid(), vm.name(), vm.status());
                         return;
                     }
@@ -111,7 +111,7 @@ public class PowerService {
                     String previousState = vm.status();
                     
                     // Perform the operation
-                    log.info("Performing {} on VM {} ({}) on node {}", 
+                    LOG.info("Performing {} on VM {} ({}) on node {}", 
                         request.operation(), vm.vmid(), vm.name(), node);
                     
                     switch (request.operation()) {
@@ -142,11 +142,11 @@ public class PowerService {
                         "task-" + vm.vmid(), vm.name()
                     ));
                     
-                    log.info("Successfully performed {} on VM {} ({})", 
+                    LOG.info("Successfully performed {} on VM {} ({})", 
                         request.operation(), vm.vmid(), vm.name());
                     
                 } catch (Exception e) {
-                    log.error("Failed to perform {} on VM {} ({}): {}", 
+                    LOG.error("Failed to perform {} on VM {} ({}): {}", 
                         request.operation(), vm.vmid(), vm.name(), e.getMessage());
                     results.put(vm.vmid(), BulkPowerResponse.PowerResult.error(
                         vm.status(), e.getMessage(), vm.name()
@@ -163,7 +163,7 @@ public class PowerService {
             executor.shutdown();
             executor.awaitTermination(request.timeoutSeconds(), TimeUnit.SECONDS);
         } catch (Exception e) {
-            log.error("Error waiting for bulk power operation completion: {}", e.getMessage());
+            LOG.error("Error waiting for bulk power operation completion: {}", e.getMessage());
             executor.shutdownNow();
         }
         

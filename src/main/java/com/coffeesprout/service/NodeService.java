@@ -21,7 +21,7 @@ import java.util.List;
 @AutoAuthenticate
 public class NodeService {
 
-    private static final Logger log = LoggerFactory.getLogger(NodeService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(NodeService.class);
 
     @Inject
     @RestClient
