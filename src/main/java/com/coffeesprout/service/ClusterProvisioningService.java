@@ -1,6 +1,7 @@
 package com.coffeesprout.service;
 
 import com.coffeesprout.api.dto.CloudInitVMRequest;
+import com.coffeesprout.api.dto.CloudInitVMRequestBuilder;
 import com.coffeesprout.api.dto.DiskConfig;
 import com.coffeesprout.api.dto.MigrationRequest;
 import com.coffeesprout.api.dto.NetworkConfig;
@@ -51,6 +52,19 @@ public class ClusterProvisioningService {
         provisioningStates.put(operationId, state);
         
         log.info("Starting cluster provisioning for '{}' with operation ID: {}", spec.name(), operationId);
+        
+        // Check for dry run mode
+        if (spec.options() != null && Boolean.TRUE.equals(spec.options().dryRun())) {
+            log.info("DRY RUN mode - validating configuration without creating VMs");
+            return validateClusterSpec(state)
+                .onItem().transform(s -> {
+                    s.setStatus(ClusterProvisioningState.ClusterStatus.COMPLETED);
+                    s.setCurrentOperation("Dry run completed - no VMs created");
+                    s.setProgressPercentage(100);
+                    s.setEndTime(Instant.now());
+                    return ClusterProvisioningResponse.fromState(s, baseUrl);
+                });
+        }
         
         // Start async provisioning
         provisionClusterAsync(state)
@@ -208,15 +222,20 @@ public class ClusterProvisioningService {
         log.info("Provisioning node '{}' on host '{}'", nodeName, targetHost);
         nodeState.setStatus(ClusterProvisioningState.NodeProvisioningState.NodeStatus.CREATING_VM);
         
-        // Build cloud-init VM request
-        CloudInitConfig cloudInit = mergeCloudInit(spec.globalCloudInit(), template.cloudInit());
+        // Check if this is an FCOS node (for OKD)
+        boolean isFCOS = isNodeFCOS(spec, group, template);
+        
+        // Build cloud-init VM request (skip for FCOS)
+        CloudInitConfig cloudInit = isFCOS ? null : mergeCloudInit(spec.globalCloudInit(), template.cloudInit());
         
         // Generate hostname
-        String hostname = cloudInit.generateHostname(spec.name(), group.role().name().toLowerCase(), index);
+        String hostname = cloudInit != null ? 
+            cloudInit.generateHostname(spec.name(), group.role().name().toLowerCase(), index) :
+            String.format("%s-%s-%02d", spec.name(), group.name(), index + 1);
         
         // Build network configurations
         List<NetworkConfig> networks = buildNodeNetworks(spec, group, template, index);
-        List<String> ipConfigs = buildNodeIpConfigs(cloudInit, index);
+        List<String> ipConfigs = cloudInit != null ? buildNodeIpConfigs(cloudInit, index) : List.of();
         
         // Prepare tags
         Set<String> tags = new HashSet<>(group.tags());
@@ -224,37 +243,49 @@ public class ClusterProvisioningService {
         tags.add("cluster-" + spec.name());
         tags.add("role-" + group.role().name().toLowerCase().replace("_", "-"));
         
-        // Get next available VM ID
-        Integer vmId = vmIdService.getNextAvailableVmId(null);
+        // Get next available VM ID - use range if specified
+        Integer vmId;
+        if (spec.options() != null && spec.options().vmIdRangeStart() != null) {
+            // Calculate VM ID from range start
+            int nodeIndex = 0;
+            for (NodeGroupSpec g : spec.nodeGroups()) {
+                if (g == group) {
+                    break;
+                }
+                nodeIndex += g.count();
+            }
+            vmId = spec.options().vmIdRangeStart() + nodeIndex + index;
+            log.debug("Using VM ID {} from specified range starting at {}", vmId, spec.options().vmIdRangeStart());
+        } else {
+            vmId = vmIdService.getNextAvailableVmId(null);
+        }
         nodeState.setVmId(vmId);
         
-        // Create VM request with target node and template node
-        CloudInitVMRequest vmRequest = new CloudInitVMRequest(
-            vmId,
-            nodeName,
-            targetHost,        // Target node where VM should end up
-            "storage01",       // Template node where templates are located
-            template.cores(),
-            template.memoryMB(),
-            template.imageSource(),
-            template.disks().get(0).storage(), // Primary disk storage
-            template.disks().get(0).sizeGB(),
-            cloudInit.user(),
-            cloudInit.password(),
-            cloudInit.sshKeys(),
-            networks,
-            ipConfigs,
-            null, // deprecated network
-            null, // deprecated ipConfig
-            cloudInit.searchDomain(),
-            cloudInit.nameservers(),
-            template.cpuType(),
-            template.qemuAgent(),
-            spec.options().startAfterCreation(),
-            buildNodeDescription(spec, group, index),
-            String.join(",", tags),
-            null  // diskOptions - could be enhanced
-        );
+        // Create VM request using builder pattern
+        CloudInitVMRequest vmRequest;
+        if (isFCOS) {
+            // For FCOS nodes, create minimal VM without cloud-init
+            log.info("Creating FCOS VM {} without cloud-init for OKD cluster", nodeName);
+            vmRequest = CloudInitVMRequestBuilder.forFCOS(vmId, nodeName, targetHost, template)
+                .networks(networks)
+                .ipConfigs(ipConfigs)
+                .description(buildNodeDescription(spec, group, index))
+                .tags(String.join(",", tags))
+                .build();
+        } else {
+            vmRequest = CloudInitVMRequestBuilder.forCloudInit(vmId, nodeName, targetHost, template)
+                .cloudInitUser(cloudInit.user())
+                .cloudInitPassword(cloudInit.password())
+                .sshKeys(cloudInit.sshKeys())
+                .searchDomain(cloudInit.searchDomain())
+                .nameservers(cloudInit.nameservers())
+                .networks(networks)
+                .ipConfigs(ipConfigs)
+                .start(spec.options().startAfterCreation())
+                .description(buildNodeDescription(spec, group, index))
+                .tags(String.join(",", tags))
+                .build();
+        }
         
         nodeState.setStatus(ClusterProvisioningState.NodeProvisioningState.NodeStatus.CONFIGURING);
         
@@ -451,6 +482,23 @@ public class ClusterProvisioningService {
             // TODO: Implement actual cancellation logic
             return true;
         }
+        return false;
+    }
+    
+    // Helper method to detect FCOS nodes
+    private boolean isNodeFCOS(ClusterSpec spec, NodeGroupSpec group, NodeTemplate template) {
+        // Check if this is an OKD cluster and not a bastion node
+        if (spec.type() == ClusterSpec.ClusterType.OKD && 
+            group.role() != NodeGroupSpec.NodeRole.BASTION) {
+            return true;
+        }
+        
+        // Also check if the template source contains "fcos" or template ID is the FCOS template
+        if (template.imageSource() != null) {
+            String source = template.imageSource().toLowerCase();
+            return source.contains("fcos") || source.contains("10799");
+        }
+        
         return false;
     }
     

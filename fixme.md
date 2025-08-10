@@ -31,13 +31,15 @@ This document contains all the issues discovered during the comprehensive audit 
 
 ## Major Refactoring Still Needed
 
-### 4. Error Response Pattern Duplication
+### 4. Error Response Pattern Duplication ✅ (Infrastructure exists, needs adoption)
 **Issue**: 22+ Resource classes have identical error handling patterns.
 
-**Proposed Solution**: 
-- Create global ExceptionMapper
-- Standardize error response format
-- Parse Proxmox errors for better messages
+**Status**: GlobalExceptionMapper and ProxmoxException already exist but aren't being used.
+
+**Remaining Work**: 
+- Remove try-catch blocks from Resource classes
+- Use ProxmoxException factory methods instead
+- Let GlobalExceptionMapper handle all error responses
 
 ### 5. Service Layer Circular Dependencies
 **Issue**: Services inject each other creating circular dependency risks.

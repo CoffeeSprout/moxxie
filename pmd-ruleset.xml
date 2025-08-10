@@ -1,0 +1,253 @@
+<?xml version="1.0"?>
+<ruleset name="Moxxie Custom PMD Ruleset"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 
+                             https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+    
+    <description>
+        Custom PMD ruleset for Moxxie project - focusing on code quality, best practices, and common Java pitfalls.
+        Configured for Java 21 and Quarkus framework patterns.
+    </description>
+    
+    <!-- Best Practices -->
+    <rule ref="category/java/bestpractices.xml">
+        <!-- Exclude some rules that conflict with Quarkus patterns -->
+        <exclude name="GuardLogStatement"/> <!-- Quarkus uses JBoss logging which handles this -->
+    </rule>
+    
+    <!-- Code Style -->
+    <rule ref="category/java/codestyle.xml">
+        <!-- Customize based on project conventions -->
+        <exclude name="OnlyOneReturn"/> <!-- Multiple returns can be cleaner -->
+        <exclude name="AtLeastOneConstructor"/> <!-- Not needed for CDI beans -->
+        <exclude name="LocalVariableCouldBeFinal"/> <!-- Too verbose -->
+        <exclude name="MethodArgumentCouldBeFinal"/> <!-- Too verbose -->
+        <exclude name="ShortClassName"/> <!-- Some short names are fine -->
+        <exclude name="ShortVariable"/> <!-- Sometimes i, j, k are appropriate -->
+        <exclude name="LongVariable"/> <!-- Descriptive names are good -->
+        <exclude name="CommentDefaultAccessModifier"/> <!-- Not always needed -->
+        <exclude name="TooManyStaticImports"/> <!-- Static imports can improve readability -->
+        <exclude name="PrematureDeclaration"/> <!-- Sometimes clearer to declare early -->
+        <exclude name="UselessParentheses"/> <!-- Sometimes improves readability -->
+    </rule>
+    
+    <!-- Configure specific rules -->
+    <rule ref="category/java/codestyle.xml/ClassNamingConventions">
+        <properties>
+            <property name="utilityClassPattern" value="[A-Z][a-zA-Z0-9]*"/>
+        </properties>
+    </rule>
+    
+    <rule ref="category/java/codestyle.xml/MethodNamingConventions">
+        <properties>
+            <property name="methodPattern" value="[a-z][a-zA-Z0-9]*"/>
+            <property name="staticPattern" value="[a-z][a-zA-Z0-9]*"/>
+        </properties>
+    </rule>
+    
+    <rule ref="category/java/codestyle.xml/FieldNamingConventions">
+        <properties>
+            <property name="constantPattern" value="[A-Z][A-Z_0-9]*"/>
+            <property name="enumConstantPattern" value="[A-Z][A-Z_0-9]*"/>
+            <property name="finalFieldPattern" value="[a-z][a-zA-Z0-9]*"/>
+            <property name="staticFieldPattern" value="[a-z][a-zA-Z0-9]*"/>
+            <property name="defaultFieldPattern" value="[a-z][a-zA-Z0-9]*"/>
+        </properties>
+    </rule>
+    
+    <!-- Design -->
+    <rule ref="category/java/design.xml">
+        <!-- Adjusted for REST endpoints and CDI beans -->
+        <exclude name="LawOfDemeter"/> <!-- REST endpoints often chain calls -->
+        <exclude name="LoosePackageCoupling"/> <!-- Microservice patterns differ -->
+        <exclude name="TooManyMethods"/> <!-- Resource classes can have many endpoints -->
+        <exclude name="ExcessiveImports"/> <!-- Complex services need many imports -->
+        <exclude name="CouplingBetweenObjects"/> <!-- CDI encourages injection -->
+        <exclude name="DataClass"/> <!-- DTOs are data classes by design -->
+        <exclude name="AvoidCatchingGenericException"/> <!-- Sometimes necessary in interceptors -->
+        <exclude name="SignatureDeclareThrowsException"/> <!-- Sometimes needed for generic handlers -->
+        <exclude name="UseObjectForClearerAPI"/> <!-- Sometimes primitives are clearer -->
+        <!-- Exclude rules that will be configured separately -->
+        <exclude name="CyclomaticComplexity"/>
+        <exclude name="NPathComplexity"/>
+        <exclude name="ExcessiveParameterList"/>
+        <exclude name="ExcessivePublicCount"/>
+        <exclude name="TooManyFields"/>
+    </rule>
+    
+    <!-- Configure complexity thresholds separately -->
+    <rule ref="category/java/design.xml/CyclomaticComplexity">
+        <properties>
+            <property name="classReportLevel" value="80"/>
+            <property name="methodReportLevel" value="10"/>
+        </properties>
+    </rule>
+    
+    <rule ref="category/java/design.xml/NPathComplexity">
+        <properties>
+            <property name="reportLevel" value="200"/>
+        </properties>
+    </rule>
+    
+    
+    <rule ref="category/java/design.xml/ExcessiveParameterList">
+        <properties>
+            <property name="minimum" value="8"/>
+        </properties>
+    </rule>
+    
+    <rule ref="category/java/design.xml/ExcessivePublicCount">
+        <properties>
+            <property name="minimum" value="45"/>
+        </properties>
+    </rule>
+    
+    <rule ref="category/java/design.xml/TooManyFields">
+        <properties>
+            <property name="maxfields" value="20"/>
+        </properties>
+    </rule>
+    
+    <!-- Error Prone -->
+    <rule ref="category/java/errorprone.xml">
+        <!-- Exclude rules that don't apply to our patterns -->
+        <exclude name="AvoidLiteralsInIfCondition"/> <!-- Sometimes clearer with literals -->
+        <exclude name="AvoidFieldNameMatchingMethodName"/> <!-- Common pattern in builders -->
+        <exclude name="NullAssignment"/> <!-- Sometimes needed for cleanup -->
+        <exclude name="MissingSerialVersionUID"/> <!-- Not needed for non-serializable classes -->
+        <exclude name="UseProperClassLoader"/> <!-- Quarkus handles classloading -->
+    </rule>
+    
+    <!-- Configure specific error prone rules -->
+    <rule ref="category/java/errorprone.xml/AvoidDuplicateLiterals">
+        <properties>
+            <property name="maxDuplicateLiterals" value="4"/>
+            <property name="minimumLength" value="3"/>
+            <property name="skipAnnotations" value="true"/>
+        </properties>
+    </rule>
+    
+    <!-- Multithreading -->
+    <rule ref="category/java/multithreading.xml">
+        <!-- Quarkus manages threads, so some rules don't apply -->
+        <exclude name="DoNotUseThreads"/> <!-- Sometimes needed for async operations -->
+        <exclude name="AvoidUsingVolatile"/> <!-- Sometimes necessary -->
+        <exclude name="UseConcurrentHashMap"/> <!-- Not always needed -->
+    </rule>
+    
+    <!-- Performance -->
+    <rule ref="category/java/performance.xml">
+        <exclude name="AvoidInstantiatingObjectsInLoops"/> <!-- Sometimes necessary -->
+        <exclude name="AvoidFileStream"/> <!-- Legacy APIs might need them -->
+    </rule>
+    
+    <!-- Security -->
+    <rule ref="category/java/security.xml">
+        <!-- All security rules are important -->
+    </rule>
+    
+    <!-- Documentation -->
+    <!-- CommentRequired rule disabled as all comment types are set to Ignored -->
+    <!-- Uncomment and configure if you want to enforce documentation
+    <rule ref="category/java/documentation.xml/CommentRequired">
+        <properties>
+            <property name="methodWithOverrideCommentRequirement" value="Required"/>
+            <property name="accessorCommentRequirement" value="Ignored"/>
+            <property name="classCommentRequirement" value="Required"/>
+            <property name="fieldCommentRequirement" value="Ignored"/>
+            <property name="publicMethodCommentRequirement" value="Required"/>
+            <property name="protectedMethodCommentRequirement" value="Required"/>
+            <property name="enumCommentRequirement" value="Required"/>
+            <property name="serialVersionUIDCommentRequired" value="Ignored"/>
+        </properties>
+    </rule>
+    -->
+    
+    <rule ref="category/java/documentation.xml/CommentSize">
+        <properties>
+            <property name="maxLines" value="20"/>
+            <property name="maxLineLength" value="120"/>
+        </properties>
+    </rule>
+    
+    <!-- Custom XPath rules for project-specific patterns -->
+    
+    <!-- Ensure ProxmoxException is used instead of generic exceptions -->
+    <rule name="UseProxmoxExceptionInsteadOfRuntimeException"
+          language="java"
+          message="Use ProxmoxException factory methods instead of throwing RuntimeException directly"
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            RuntimeException should not be thrown directly in API/Service layers. 
+            Use ProxmoxException factory methods for better error handling.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value>
+<![CDATA[
+//ThrowStatement[
+    .//ClassOrInterfaceType[@SimpleName='RuntimeException']
+    and not(ancestor::ClassOrInterfaceDeclaration[@SimpleName='ProxmoxException'])
+    and not(ancestor::MethodDeclaration[@Name='main'])
+]
+]]>
+                </value>
+            </property>
+        </properties>
+    </rule>
+    
+    <!-- Ensure constants are used instead of magic numbers -->
+    <rule name="AvoidMagicNumbersUseConstants"
+          language="java"
+          message="Use constants from VMConstants or ProxmoxConstants instead of magic numbers"
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            Magic numbers should be defined as constants in VMConstants or ProxmoxConstants classes.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value>
+<![CDATA[
+//NumericLiteral[
+    @IntLiteral = true() 
+    and not(@Image = '0' or @Image = '1' or @Image = '-1' or @Image = '2')
+    and not(ancestor::FieldDeclaration)
+    and not(ancestor::VariableInitializer[ancestor::ClassOrInterfaceDeclaration[@SimpleName='VMConstants' or @SimpleName='ProxmoxConstants']])
+    and not(ancestor::Annotation)
+]
+]]>
+                </value>
+            </property>
+        </properties>
+    </rule>
+    
+    <!-- Ensure @AuthTicket is used for authentication parameters -->
+    <rule name="UseAuthTicketAnnotation"
+          language="java"
+          message="String parameters named 'ticket' should be annotated with @AuthTicket in @AutoAuthenticate services"
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            In services annotated with @AutoAuthenticate, String parameters that represent authentication 
+            tickets should be annotated with @AuthTicket for clarity.
+        </description>
+        <priority>2</priority>
+        <properties>
+            <property name="xpath">
+                <value>
+<![CDATA[
+//FormalParameter[
+    .//ClassOrInterfaceType[@SimpleName='String']
+    and .//VariableDeclaratorId[@Name='ticket']
+    and ancestor::ClassOrInterfaceDeclaration[.//Annotation[@SimpleName='AutoAuthenticate']]
+    and not(.//Annotation[@SimpleName='AuthTicket'])
+]
+]]>
+                </value>
+            </property>
+        </properties>
+    </rule>
+    
+</ruleset>

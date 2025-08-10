@@ -4,6 +4,7 @@ import com.coffeesprout.client.*;
 import com.coffeesprout.api.dto.CloudInitVMRequest;
 import com.coffeesprout.api.dto.DiskConfig;
 import com.coffeesprout.api.dto.VMResponse;
+import com.coffeesprout.api.exception.ProxmoxException;
 import com.coffeesprout.util.TagUtils;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -145,6 +146,37 @@ public class VMService {
         }
     }
 
+    /**
+     * Find a VM by its ID across all nodes in the cluster.
+     * This method eliminates the repeated pattern of listing all VMs and filtering by ID.
+     * 
+     * @param vmId The VM ID to search for
+     * @param ticket Authentication ticket
+     * @return VMResponse if found, null otherwise
+     */
+    public VMResponse findVmById(int vmId, @AuthTicket String ticket) {
+        return listVMs(ticket).stream()
+            .filter(vm -> vm.vmid() == vmId)
+            .findFirst()
+            .orElse(null);
+    }
+    
+    /**
+     * Find a VM by its ID and throw exception if not found.
+     * 
+     * @param vmId The VM ID to search for
+     * @param ticket Authentication ticket
+     * @return VMResponse if found
+     * @throws RuntimeException if VM not found
+     */
+    public VMResponse findVmByIdOrThrow(int vmId, @AuthTicket String ticket) {
+        VMResponse vm = findVmById(vmId, ticket);
+        if (vm == null) {
+            throw ProxmoxException.notFound("VM", String.valueOf(vmId));
+        }
+        return vm;
+    }
+    
     @SafeMode(operation = SafeMode.Operation.WRITE)
     public void resizeDisk(String node, int vmId, String disk, String size, @AuthTicket String ticket) {
         try {
@@ -167,6 +199,13 @@ public class VMService {
     public CreateVMResponse createVM(String node, CreateVMRequest request, @AuthTicket String ticket) {
         // Create the VM
         CreateVMResponse response = proxmoxClient.createVM(node, ticket, ticketManager.getCsrfToken(), request);
+        
+        // Set the VM ID and status in the response
+        // Proxmox returns a task UPID in the data field, not the VM details
+        if (response != null) {
+            response.setVmid(request.getVmid());
+            response.setStatus("created");
+        }
         
         // Auto-tag the VM if it was created successfully
         if (response != null && request.getVmid() != 0 && request.getName() != null) {
@@ -207,13 +246,19 @@ public class VMService {
     @SafeMode(operation = SafeMode.Operation.WRITE)
     public void startVM(String node, int vmid, @AuthTicket String ticket) {
         log.info("Starting VM {} on node {}", vmid, node);
-        proxmoxClient.startVM(node, vmid, ticket, ticketManager.getCsrfToken());
+        TaskStatusResponse response = proxmoxClient.startVM(node, vmid, ticket, ticketManager.getCsrfToken());
+        if (response != null && response.getData() != null) {
+            log.debug("VM start task initiated: {}", response.getData());
+        }
     }
 
     @SafeMode(operation = SafeMode.Operation.WRITE)
     public void stopVM(String node, int vmid, @AuthTicket String ticket) {
         log.info("Stopping VM {} on node {}", vmid, node);
-        proxmoxClient.stopVM(node, vmid, ticket, ticketManager.getCsrfToken());
+        TaskStatusResponse response = proxmoxClient.stopVM(node, vmid, ticket, ticketManager.getCsrfToken());
+        if (response != null && response.getData() != null) {
+            log.debug("VM stop task initiated: {}", response.getData());
+        }
     }
 
     @SafeMode(operation = SafeMode.Operation.DELETE)
@@ -225,25 +270,37 @@ public class VMService {
     @SafeMode(operation = SafeMode.Operation.WRITE)
     public void rebootVM(String node, int vmid, @AuthTicket String ticket) {
         log.info("Rebooting VM {} on node {}", vmid, node);
-        proxmoxClient.rebootVM(node, vmid, ticket, ticketManager.getCsrfToken());
+        TaskStatusResponse response = proxmoxClient.rebootVM(node, vmid, ticket, ticketManager.getCsrfToken());
+        if (response != null && response.getData() != null) {
+            log.debug("VM reboot task initiated: {}", response.getData());
+        }
     }
     
     @SafeMode(operation = SafeMode.Operation.WRITE)
     public void suspendVM(String node, int vmid, @AuthTicket String ticket) {
         log.info("Suspending VM {} on node {}", vmid, node);
-        proxmoxClient.suspendVM(node, vmid, ticket, ticketManager.getCsrfToken());
+        TaskStatusResponse response = proxmoxClient.suspendVM(node, vmid, ticket, ticketManager.getCsrfToken());
+        if (response != null && response.getData() != null) {
+            log.debug("VM suspend task initiated: {}", response.getData());
+        }
     }
     
     @SafeMode(operation = SafeMode.Operation.WRITE)
     public void resumeVM(String node, int vmid, @AuthTicket String ticket) {
         log.info("Resuming VM {} on node {}", vmid, node);
-        proxmoxClient.resumeVM(node, vmid, ticket, ticketManager.getCsrfToken());
+        TaskStatusResponse response = proxmoxClient.resumeVM(node, vmid, ticket, ticketManager.getCsrfToken());
+        if (response != null && response.getData() != null) {
+            log.debug("VM resume task initiated: {}", response.getData());
+        }
     }
     
     @SafeMode(operation = SafeMode.Operation.WRITE)
     public void shutdownVM(String node, int vmid, @AuthTicket String ticket) {
         log.info("Shutting down VM {} on node {}", vmid, node);
-        proxmoxClient.shutdownVM(node, vmid, ticket, ticketManager.getCsrfToken());
+        TaskStatusResponse response = proxmoxClient.shutdownVM(node, vmid, ticket, ticketManager.getCsrfToken());
+        if (response != null && response.getData() != null) {
+            log.debug("VM shutdown task initiated: {}", response.getData());
+        }
     }
     
     @SafeMode(value = false)  // Read operation
@@ -466,21 +523,14 @@ public class VMService {
                  request.name(), vmId, request.imageSource(), creationNode);
         
         // Build CreateVMRequest WITHOUT main disk (following Ansible pattern)
-        CreateVMRequest clientRequest = new CreateVMRequest();
-        clientRequest.setVmid(vmId);
-        clientRequest.setName(request.name());
-        clientRequest.setCores(request.cores());
-        clientRequest.setMemory(request.memoryMB());
-        
-        // Set CPU type (use request value or default)
-        if (request.cpuType() != null && !request.cpuType().isEmpty()) {
-            clientRequest.setCpu(request.cpuType());
-        } else {
-            clientRequest.setCpu("x86-64-v2-AES");
-        }
-        
-        // Set VGA to std (for Talos and other headless systems)
-        clientRequest.setVga("std");
+        CreateVMRequestBuilder builder = CreateVMRequestBuilder.builder()
+            .vmid(vmId)
+            .name(request.name())
+            .cores(request.cores())
+            .memory(request.memoryMB())
+            .cpu(request.cpuType() != null && !request.cpuType().isEmpty() ? 
+                 request.cpuType() : "x86-64-v2-AES")
+            .vga("std");
         
         // Handle multiple networks
         List<com.coffeesprout.api.dto.NetworkConfig> networks = request.networks();
@@ -498,41 +548,33 @@ public class VMService {
         
         // Set up networks
         if (networks != null) {
-            for (int i = 0; i < Math.min(networks.size(), 8); i++) {
-                com.coffeesprout.api.dto.NetworkConfig net = networks.get(i);
-                String netString = net.toProxmoxString();
-                
-                switch (i) {
-                    case 0 -> clientRequest.setNet0(netString);
-                    case 1 -> clientRequest.setNet1(netString);
-                    case 2 -> clientRequest.setNet2(netString);
-                    case 3 -> clientRequest.setNet3(netString);
-                    case 4 -> clientRequest.setNet4(netString);
-                    case 5 -> clientRequest.setNet5(netString);
-                    case 6 -> clientRequest.setNet6(netString);
-                    case 7 -> clientRequest.setNet7(netString);
-                }
+            for (com.coffeesprout.api.dto.NetworkConfig net : networks) {
+                String model = net.model() != null ? net.model() : "virtio";
+                Integer vlan = net.vlan();
+                String tag = net.toProxmoxString().replaceFirst("^[^,]+,bridge=[^,]+", "")
+                    .replaceFirst("^,", "");
+                builder.addNetwork(model, net.bridge(), vlan, tag.isEmpty() ? null : tag);
             }
         }
         
         // QEMU agent
         if (request.qemuAgent() != null && request.qemuAgent()) {
-            clientRequest.setAgent("1");
+            builder.agent(true);
         }
         
         // Description
         if (request.description() != null) {
-            clientRequest.setDescription(request.description());
+            builder.description(request.description());
         }
         
         // Tags
         if (request.tags() != null) {
-            clientRequest.setTags(request.tags());
+            builder.tags(request.tags());
         }
         
         // Set cloud-init parameters during VM creation
         if (request.cloudInitUser() != null) {
-            clientRequest.setCiuser(request.cloudInitUser());
+            builder.ciuser(request.cloudInitUser());
         }
         
         // Handle IP configurations
@@ -545,35 +587,27 @@ public class VMService {
         
         // Set up IP configurations
         if (ipConfigs != null) {
-            for (int i = 0; i < Math.min(ipConfigs.size(), 8); i++) {
-                String ipConfig = ipConfigs.get(i);
-                
-                switch (i) {
-                    case 0 -> clientRequest.setIpconfig0(ipConfig);
-                    case 1 -> clientRequest.setIpconfig1(ipConfig);
-                    case 2 -> clientRequest.setIpconfig2(ipConfig);
-                    case 3 -> clientRequest.setIpconfig3(ipConfig);
-                    case 4 -> clientRequest.setIpconfig4(ipConfig);
-                    case 5 -> clientRequest.setIpconfig5(ipConfig);
-                    case 6 -> clientRequest.setIpconfig6(ipConfig);
-                    case 7 -> clientRequest.setIpconfig7(ipConfig);
-                }
+            for (String ipConfig : ipConfigs) {
+                builder.addIpConfig(ipConfig);
             }
         }
         
         if (request.nameservers() != null) {
-            clientRequest.setNameserver(request.nameservers());
+            builder.nameserver(request.nameservers());
         }
         
         if (request.searchDomain() != null) {
-            clientRequest.setSearchdomain(request.searchDomain());
+            builder.searchdomain(request.searchDomain());
         }
         
         if (request.sshKeys() != null) {
             // Pass SSH keys as-is - createVM will handle proper encoding
             log.info("Setting SSH keys during VM creation (length: {})", request.sshKeys().length());
-            clientRequest.setSshkeys(request.sshKeys());
+            builder.sshkeys(request.sshKeys());
         }
+        
+        // Build the final request
+        CreateVMRequest clientRequest = builder.build();
         
         // Create the VM without main disk
         log.info("Creating VM {} without main disk", vmId);
@@ -598,8 +632,11 @@ public class VMService {
             }
             
             // Update boot order to boot from scsi0
-            CreateVMRequest bootOrderUpdate = new CreateVMRequest();
-            bootOrderUpdate.setBoot("order=scsi0");
+            CreateVMRequest bootOrderUpdate = CreateVMRequestBuilder.builder()
+                .vmid(vmId)
+                .name("temp")
+                .boot("order=scsi0")
+                .build();
             updateVMConfig(creationNode, vmId, bootOrderUpdate, ticket);
             
         } catch (Exception e) {
@@ -617,8 +654,11 @@ public class VMService {
         // Only update password if it was provided (can't be set during creation)
         if (request.cloudInitPassword() != null) {
             log.info("Setting cloud-init password for VM {}", vmId);
-            CreateVMRequest passwordConfig = new CreateVMRequest();
-            passwordConfig.setCipassword(request.cloudInitPassword());
+            CreateVMRequest passwordConfig = CreateVMRequestBuilder.builder()
+                .vmid(vmId)
+                .name("temp")
+                .cipassword(request.cloudInitPassword())
+                .build();
             updateVMConfig(creationNode, vmId, passwordConfig, ticket);
         }
         

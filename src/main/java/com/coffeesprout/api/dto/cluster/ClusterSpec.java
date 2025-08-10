@@ -49,7 +49,7 @@ public record ClusterSpec(
             metadata = Map.of();
         }
         if (options == null) {
-            options = new ProvisioningOptions(null, null, null, null);
+            options = new ProvisioningOptions(null, null, null, null, null, null);
         }
     }
     
@@ -60,6 +60,9 @@ public record ClusterSpec(
         
         @Schema(description = "K3s lightweight Kubernetes")
         K3S,
+        
+        @Schema(description = "OKD (OpenShift) Kubernetes cluster")
+        OKD,
         
         @Schema(description = "Generic VM cluster")
         GENERIC

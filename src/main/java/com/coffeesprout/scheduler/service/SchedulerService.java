@@ -2,6 +2,7 @@ package com.coffeesprout.scheduler.service;
 
 import com.coffeesprout.scheduler.entity.JobExecution;
 import com.coffeesprout.scheduler.entity.ScheduledJob;
+import com.coffeesprout.scheduler.entity.ScheduledJobBuilder;
 import com.coffeesprout.scheduler.entity.TaskType;
 import com.coffeesprout.scheduler.job.MoxxieScheduledJob;
 import io.quarkus.runtime.Startup;
@@ -244,14 +245,15 @@ public class SchedulerService {
             throw new IllegalArgumentException("Invalid cron expression: " + cronExpression);
         }
         
-        // Create job entity
-        ScheduledJob job = new ScheduledJob();
-        job.name = name;
-        job.description = description;
-        job.taskType = taskType;
-        job.cronExpression = cronExpression;
-        job.createdBy = createdBy;
-        job.updatedBy = createdBy;
+        // Create job entity using builder
+        ScheduledJob job = ScheduledJobBuilder.builder()
+            .name(name)
+            .description(description)
+            .taskType(taskType)
+            .cronExpression(cronExpression)
+            .createdBy(createdBy)
+            .updatedBy(createdBy)
+            .build();
         job.persist();
         
         // NOTE: Scheduling is now handled by JobCreatedEvent to avoid transaction conflicts
