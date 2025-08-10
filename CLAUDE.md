@@ -12,6 +12,27 @@ Moxxie is a Quarkus-based CLI application for managing Proxmox virtual environme
 
 ## Key Commands
 
+### Code Quality Commands
+
+```bash
+# Run PMD analysis (advisory only, doesn't block build)
+./mvnw pmd:pmd
+
+# Generate PMD HTML report for easier viewing
+./mvnw pmd:pmd -Dformat=html
+# Report will be at: target/pmd.html
+
+# Run PMD with text output
+./mvnw pmd:pmd -Dformat=text
+
+# Use convenience scripts for PMD
+./scripts/pmd-check.sh    # Full analysis with interactive report viewing
+./scripts/pmd-quick.sh    # Quick analysis of changed files only
+
+# Build with all checks (including PMD analysis)
+./mvnw clean verify
+```
+
 ### Development and Build Commands
 
 ```bash
@@ -240,6 +261,71 @@ curl -X POST http://localhost:8080/api/v1/vms/8200/snapshots \
 
 The TTL is appended to the description as "(TTL: 4h)" and can be parsed by the `snapshot_delete` scheduled task when `checkDescription` is enabled.
 
+## Code Quality and Analysis
+
+### PMD Static Analysis
+
+The project uses PMD for static code analysis to identify potential bugs, code smells, and maintain code quality standards. PMD is configured to be **advisory only** - it will not block builds but provides valuable feedback.
+
+#### Configuration
+
+- **PMD Version**: 7.16.0 (latest stable as of August 2025)
+- **Maven Plugin Version**: 3.27.0
+- **Ruleset**: `pmd-ruleset.xml` - Custom rules tailored for Quarkus and our coding standards
+- **Java Version**: Configured for Java 21
+- **Execution**: Runs during `verify` phase but doesn't fail the build
+- **Cache**: PMD uses analysis cache for faster incremental analysis
+
+#### Key Rules Categories
+
+1. **Best Practices** - Common Java best practices
+2. **Code Style** - Naming conventions, formatting
+3. **Design** - Complexity metrics, coupling, cohesion
+4. **Error Prone** - Common bugs and mistakes
+5. **Performance** - Performance anti-patterns
+6. **Security** - Security vulnerabilities
+7. **Custom Rules** - Project-specific patterns:
+   - Use ProxmoxException instead of RuntimeException
+   - Use constants instead of magic numbers
+   - Use @AuthTicket annotation for authentication parameters
+
+#### Excluded Rules
+
+Some PMD rules are disabled as they conflict with Quarkus patterns or our architecture:
+- `GuardLogStatement` - Quarkus/JBoss logging handles this
+- `LawOfDemeter` - REST endpoints often chain calls
+- `DataClass` - DTOs are data classes by design
+- `TooManyMethods` - Resource classes can have many endpoints
+
+#### Running PMD
+
+```bash
+# Quick check during development (generates XML report)
+./mvnw pmd:pmd
+
+# Use convenience scripts
+./scripts/pmd-check.sh  # Full analysis with report
+./scripts/pmd-quick.sh  # Check only changed files
+
+# PMD runs automatically during build
+./mvnw clean verify
+```
+
+#### Addressing PMD Findings
+
+When PMD reports issues:
+1. **Review the finding** - Understand why PMD flagged it
+2. **Fix if valid** - Most findings indicate real improvements
+3. **Suppress if false positive** - Use `@SuppressWarnings("PMD.RuleName")` with justification comment
+4. **Update ruleset** - If a rule consistently gives false positives, consider adjusting it in `pmd-ruleset.xml`
+
+Example suppression:
+```java
+@SuppressWarnings("PMD.AvoidDuplicateLiterals")  // These are distinct API endpoints
+private static final String VM_PATH = "/api/v1/vms";
+private static final String SNAPSHOT_PATH = "/api/v1/vms";
+```
+
 ## Code Patterns and Best Practices
 
 ### Builder Pattern for Complex Objects
@@ -325,6 +411,134 @@ public class MyRequestBuilder {
             throw new IllegalStateException("required1 is required");
         }
         return new MyRequest(required1, required2, optional1, optional2);
+    }
+}
+```
+
+### Code Quality Utilities and Patterns
+
+#### Constants Classes
+
+All magic numbers and strings should be defined in the appropriate constants class:
+
+**VMConstants**: VM-related constants organized by category
+```java
+import com.coffeesprout.constants.VMConstants;
+
+// Use constants instead of magic numbers
+if (vmId < VMConstants.Resources.MIN_VM_ID) { // Not: if (vmId < 100)
+    throw new IllegalArgumentException("VM ID too low");
+}
+
+// Status checks
+if (VMConstants.Status.RUNNING.equals(vm.status())) { // Not: if ("running".equals(vm.status()))
+    // VM is running
+}
+
+// Disk limits
+if (slot >= VMConstants.Disk.MAX_SCSI_DEVICES) { // Not: if (slot >= 31)
+    throw new IllegalArgumentException("SCSI slot out of range");
+}
+```
+
+**ProxmoxConstants**: Proxmox API-specific constants
+```java
+import com.coffeesprout.constants.ProxmoxConstants;
+
+// Form fields
+formData.append(ProxmoxConstants.FormFields.CORES, "4"); // Not: formData.append("cores", "4")
+
+// Headers
+headers.put(ProxmoxConstants.Headers.CONTENT_TYPE, 
+           ProxmoxConstants.Headers.APPLICATION_JSON);
+```
+
+#### ResourceHelperService
+
+Use ResourceHelperService for common VM operations instead of duplicating code:
+
+```java
+@Inject
+ResourceHelperService resourceHelper;
+
+// Finding VMs - DON'T duplicate this pattern
+// BAD:
+VMResponse vm = vmService.listVMs(ticket).stream()
+    .filter(v -> v.vmid() == vmId)
+    .findFirst()
+    .orElseThrow(() -> new RuntimeException("VM not found"));
+
+// GOOD: Use ResourceHelperService
+VMResponse vm = resourceHelper.findVMByIdOrThrow(vmId, ticket);
+
+// Validate VM status before operations
+resourceHelper.validateVMStatus(vm, VMConstants.Status.STOPPED, "clone");
+
+// Check if VM is Moxxie-managed (for safe mode)
+if (resourceHelper.isMoxxieManaged(vm)) {
+    // Perform Moxxie-specific operations
+}
+
+// Find VMs by pattern
+List<VMResponse> clientVMs = resourceHelper.findVMsByNamePattern("client-*", ticket);
+```
+
+#### Enhanced Exception Messages
+
+Use ProxmoxException factory methods for consistent, helpful error messages:
+
+```java
+// BAD: Generic exceptions with poor context
+throw new RuntimeException("VM not found: " + vmId);
+
+// GOOD: Specific exceptions with context and suggestions
+throw ProxmoxException.notFound("VM", String.valueOf(vmId), 
+    "Available VMs: " + availableIds);
+
+// VM operation failures with full context
+throw ProxmoxException.vmOperationFailed("start", vmId, vm.name(),
+    "VM is locked by another operation", 
+    "Wait for the current operation to complete or use --force");
+
+// Configuration errors with guidance
+throw ProxmoxException.invalidConfiguration("network", 
+    "VLAN ID 5000 is out of range",
+    "VLAN IDs must be between 1 and 4094");
+
+// Resource limits with details
+throw ProxmoxException.resourceLimitExceeded("CPU cores", 
+    requested, VMConstants.Resources.MAX_CORES);
+```
+
+#### Test Base Classes
+
+When writing tests, extend the appropriate base class:
+
+```java
+// For REST Resource tests
+public class VMResourceTest extends BaseResourceTest {
+    @Override
+    protected void setupMocks() {
+        // Your additional mock setup
+        List<VMResponse> vms = createMockVMList(5);
+        when(vmService.listVMs(anyString())).thenReturn(vms);
+    }
+    
+    @Test
+    void testListVMs() {
+        // Use helper methods from base class
+        mockSuccessfulTask("UPID:test:123");
+        // Test implementation
+    }
+}
+
+// For Service tests
+public class BackupServiceTest extends BaseServiceTest {
+    @Override
+    protected void setupMocks() {
+        // Use storage mock helpers
+        StorageResponse storage = createMockStorageResponse(true, true);
+        when(proxmoxClient.getStorage(anyString())).thenReturn(storage);
     }
 }
 ```

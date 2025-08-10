@@ -17,6 +17,7 @@ import com.coffeesprout.api.dto.VMDetailResponse;
 import com.coffeesprout.api.dto.VMStatusDetailResponse;
 import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.client.CreateVMRequest;
+import com.coffeesprout.client.CreateVMRequestBuilder;
 import com.coffeesprout.client.CreateVMResponse;
 import com.coffeesprout.client.VM;
 import com.coffeesprout.client.VMStatusResponse;
@@ -255,15 +256,15 @@ public class VMResource {
             throw ProxmoxException.validation("node", "null", "Required field");
         }
             
-            // Convert DTO to client request
-            CreateVMRequest clientRequest = new CreateVMRequest();
-            
+            // Convert DTO to client request using builder
             // Generate VM ID if not provided
             int vmId = request.vmId() != null ? request.vmId() : vmIdService.getNextAvailableVmId(null);
-            clientRequest.setVmid(vmId);
-            clientRequest.setName(request.name());
-            clientRequest.setCores(request.cores());
-            clientRequest.setMemory(request.memoryMB());
+            
+            CreateVMRequestBuilder builder = CreateVMRequestBuilder.builder()
+                .vmid(vmId)
+                .name(request.name())
+                .cores(request.cores())
+                .memory(request.memoryMB());
             
             // Handle multiple networks
             List<com.coffeesprout.api.dto.NetworkConfig> networks = request.networks();
@@ -281,60 +282,59 @@ public class VMResource {
             
             // Set up networks
             if (networks != null) {
-                for (int i = 0; i < Math.min(networks.size(), 8); i++) {
-                    com.coffeesprout.api.dto.NetworkConfig net = networks.get(i);
-                    String netString = net.toProxmoxString();
-                    
-                    switch (i) {
-                        case 0 -> clientRequest.setNet0(netString);
-                        case 1 -> clientRequest.setNet1(netString);
-                        case 2 -> clientRequest.setNet2(netString);
-                        case 3 -> clientRequest.setNet3(netString);
-                        case 4 -> clientRequest.setNet4(netString);
-                        case 5 -> clientRequest.setNet5(netString);
-                        case 6 -> clientRequest.setNet6(netString);
-                        case 7 -> clientRequest.setNet7(netString);
-                    }
+                for (com.coffeesprout.api.dto.NetworkConfig net : networks) {
+                    String model = net.model() != null ? net.model() : "virtio";
+                    Integer vlan = net.vlan();
+                    String tag = net.toProxmoxString().replaceFirst("^[^,]+,bridge=[^,]+", "")
+                        .replaceFirst("^,", "");
+                    builder.addNetwork(model, net.bridge(), vlan, tag.isEmpty() ? null : tag);
                 }
             }
             
             // Set start on boot
             if (request.startOnBoot() != null && request.startOnBoot()) {
-                clientRequest.setOnboot(1);
+                builder.onboot(true);
             }
             
             // Set pool if specified
             if (request.pool() != null && !request.pool().isEmpty()) {
-                clientRequest.setPool(request.pool());
+                builder.pool(request.pool());
             }
             
             // Set boot order if specified
             if (request.bootOrder() != null && !request.bootOrder().isEmpty()) {
-                clientRequest.setBoot(request.bootOrder());
+                builder.boot(request.bootOrder());
             }
             
             // Add tags from the request
             if (request.tags() != null && !request.tags().isEmpty()) {
-                clientRequest.setTags(String.join(",", request.tags()));
+                builder.tags(String.join(",", request.tags()));
             }
             
             // Set CPU type (use request value or default)
-            if (request.cpuType() != null && !request.cpuType().isEmpty()) {
-                clientRequest.setCpu(request.cpuType());
-            } else {
-                clientRequest.setCpu(config.proxmox().defaultCpuType());
-            }
+            builder.cpu(request.cpuType() != null && !request.cpuType().isEmpty() ? 
+                request.cpuType() : config.proxmox().defaultCpuType());
             
             // Set VGA type (use request value or default)
-            if (request.vgaType() != null && !request.vgaType().isEmpty()) {
-                clientRequest.setVga(request.vgaType());
-            } else {
-                clientRequest.setVga(config.proxmox().defaultVgaType());
-            }
+            builder.vga(request.vgaType() != null && !request.vgaType().isEmpty() ? 
+                request.vgaType() : config.proxmox().defaultVgaType());
             
             // Handle disk configurations
             if (request.disks() != null && !request.disks().isEmpty()) {
-                // Use the new disk configuration
+                // Use the new disk configuration - we'll need to build the request first
+                // then apply disks using the existing setters since the builder 
+                // doesn't have complex disk handling yet
+            } else if (request.diskGB() != null && request.diskGB() > 0) {
+                // Fallback to legacy disk configuration
+                // TODO: Make storage configurable - for now use local-zfs
+                builder.addDisk("local-zfs", request.diskGB());
+            }
+            
+            // Build the request
+            CreateVMRequest clientRequest = builder.build();
+            
+            // Apply complex disk configurations if present (after building)
+            if (request.disks() != null && !request.disks().isEmpty()) {
                 for (DiskConfig disk : request.disks()) {
                     String diskString = disk.toProxmoxString();
                     log.info("Setting disk {} with config: {}", disk.getParameterName(), diskString);
@@ -377,14 +377,15 @@ public class VMResource {
                             break;
                     }
                 }
-            } else if (request.diskGB() != null && request.diskGB() > 0) {
-                // Fallback to legacy disk configuration
-                // TODO: Make storage configurable - for now use local-zfs
-                clientRequest.setScsi0("local-zfs:" + request.diskGB());
             }
             
             // Create the VM
             CreateVMResponse response = vmService.createVM(request.node(), clientRequest, null);
+            
+            // Set the actual VM ID and status in the response
+            // Proxmox returns a task UPID, not the VM details, so we need to set these
+            response.setVmid(vmId);
+            response.setStatus("created");
             
             // Build location URI
             URI location = UriBuilder.fromResource(VMResource.class)
@@ -422,6 +423,13 @@ public class VMResource {
         
         // Delegate to VMService which handles VMID allocation, creation, and migration
         CreateVMResponse response = vmService.createCloudInitVM(request, null);
+        
+        // Ensure the response has the correct VM ID
+        // (This should already be set in VMService, but verify it's correct)
+        if (response.getVmid() == 0 && request.vmid() != null) {
+            response.setVmid(request.vmid());
+            response.setStatus("created");
+        }
         
         // Build location URI
         URI location = uriInfo.getAbsolutePathBuilder()

@@ -1020,14 +1020,71 @@ TTL is specified in hours (1-8760). When set, it's appended to descriptions as "
 
 ## VM Migration
 
-### Migrate Single VM
+### Auto-Detection of Local Disks
+Moxxie automatically detects if a VM has local (non-shared) storage and handles migration accordingly. This eliminates the need to manually specify `withLocalDisks` in most cases.
+
+#### How Auto-Detection Works
+1. **Storage API Query**: Checks the `shared` flag of storage pools (shared=1 means network storage, shared=0 means local)
+2. **Intelligent Fallback**: If API query fails, falls back to naming patterns (configurable)
+3. **Manual Override**: You can still explicitly set `withLocalDisks` to override auto-detection
+
+#### Configuration Options
+```properties
+# Enable/disable auto-detection (default: true)
+moxxie.migration.auto-detect-local-disks=true
+
+# Use naming fallback if storage query fails (default: true)
+moxxie.migration.use-naming-fallback=true
+
+# Patterns to identify local storage (default: local,local-lvm,local-zfs)
+moxxie.migration.local-storage-patterns=local,local-lvm,local-zfs,local-btrfs
+
+# Cache storage config for 60 seconds during bulk migrations
+moxxie.migration.storage-cache-seconds=60
+```
+
+### Migrate Single VM (Async - Recommended)
+
+Migrations can take up to an hour for VMs with large disks. The async API returns immediately with task info, avoiding HTTP timeouts.
+
 ```bash
-# Simple migration - will use online migration if VM is running
+# Start migration - returns immediately with task info
 curl -X POST http://localhost:8080/api/v1/vms/8200/migrate \
   -H "Content-Type: application/json" \
   -d '{
     "targetNode": "hv2"
   }' | jq .
+
+# Response (HTTP 202 Accepted):
+{
+  "migrationId": 123,
+  "taskUpid": "UPID:hv1:002EFF49:942C5BA9:68988C68:qmigrate:8200:moxxie@pve:",
+  "message": "Migration task started successfully",
+  "vmId": 8200,
+  "sourceNode": "hv1",
+  "targetNode": "hv2",
+  "statusUrl": "/api/v1/vms/8200/migrate/status/123"
+}
+
+# Poll migration status
+curl -X GET http://localhost:8080/api/v1/vms/8200/migrate/status/123 | jq .
+
+# Status response:
+{
+  "id": 123,
+  "vmId": 8200,
+  "vmName": "test-vm",
+  "sourceNode": "hv1",
+  "targetNode": "hv2",
+  "status": "running",  # or "completed", "failed"
+  "startedAt": "2024-06-21T10:30:00Z",
+  "completedAt": null,
+  "errorMessage": null,
+  "taskUpid": "UPID:...",
+  "migrationType": "online",
+  "preMigrationState": "running",
+  "postMigrationState": null
+}
 
 # Migration with offline fallback if online fails
 curl -X POST http://localhost:8080/api/v1/vms/8200/migrate \
@@ -1037,7 +1094,15 @@ curl -X POST http://localhost:8080/api/v1/vms/8200/migrate \
     "allowOfflineMigration": true
   }' | jq .
 
-# Migration with local disks and bandwidth limit
+# Explicitly disable local disk migration (override auto-detection)
+curl -X POST http://localhost:8080/api/v1/vms/8200/migrate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "targetNode": "hv2",
+    "withLocalDisks": false
+  }' | jq .
+
+# Explicitly enable local disk migration with bandwidth limit (override auto-detection)
 curl -X POST http://localhost:8080/api/v1/vms/8200/migrate \
   -H "Content-Type: application/json" \
   -d '{
@@ -1058,6 +1123,19 @@ curl -X POST http://localhost:8080/api/v1/vms/8200/migrate \
   }' | jq .
 ```
 
+### Synchronous Migration (Deprecated)
+
+⚠️ **Warning**: This endpoint can timeout on long migrations. Use only for small VMs or testing.
+
+```bash
+# Wait for migration to complete (may timeout)
+curl -X POST http://localhost:8080/api/v1/vms/8200/migrate/sync \
+  -H "Content-Type: application/json" \
+  -d '{
+    "targetNode": "hv2"
+  }' | jq .
+```
+
 ### Check Migration Preconditions
 ```bash
 # Check if VM can be migrated to a specific node
@@ -1073,10 +1151,16 @@ curl -X GET http://localhost:8080/api/v1/vms/8200/migrate/history | jq .
 ### Migration Options Reference
 - **targetNode**: Target node name (required)
 - **allowOfflineMigration**: Allow offline migration if online fails (default: false)
-- **withLocalDisks**: Migrate with local disks (default: false)
+- **withLocalDisks**: Migrate with local disks (default: null = auto-detect, true/false = explicit)
 - **force**: Force migration of VMs with local devices (default: false)
 - **bwlimit**: Bandwidth limit in KiB/s
 - **targetStorage**: Storage mapping (single ID or mapping string)
+
+### Auto-Detection Response Fields
+When auto-detection is used, the response includes additional fields:
+- **autoDetectedLocalDisks**: Whether local disks were auto-detected (null if explicitly set)
+- **localStoragePools**: List of detected local storage pools
+- **detectionMethod**: How detection was performed ("storage-api", "naming-fallback", "naming-fallback-error", "no-disks", "error-default")
 - **migrationType**: "secure" (default) or "insecure"
 - **migrationNetwork**: CIDR for migration network
 

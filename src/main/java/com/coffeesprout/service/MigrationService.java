@@ -1,9 +1,17 @@
 package com.coffeesprout.service;
 
 import com.coffeesprout.api.dto.*;
+import jakarta.enterprise.context.control.ActivateRequestContext;
+import io.quarkus.virtual.threads.VirtualThreads;
+import java.util.concurrent.ExecutorService;
+import io.quarkus.narayana.jta.runtime.TransactionConfiguration;
+import jakarta.transaction.Transactional;
 import com.coffeesprout.client.MigrationPreconditionsResponse;
 import com.coffeesprout.client.ProxmoxClient;
+import com.coffeesprout.client.StoragePool;
+import com.coffeesprout.client.StorageResponse;
 import com.coffeesprout.client.TaskStatusResponse;
+import com.coffeesprout.config.MigrationConfig;
 import com.coffeesprout.model.VmMigration;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -13,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,10 +46,431 @@ public class MigrationService {
     @Inject
     TaskService taskService;
     
+    @Inject
+    MigrationConfig migrationConfig;
+    
+    @Inject
+    StorageConfigCache storageCache;
+    
+    @Inject
+    @VirtualThreads
+    ExecutorService executorService;
+    
     /**
-     * Migrate a VM to a target node
+     * Check if a VM has local disks that need special migration handling
+     * by querying storage configuration to check the 'shared' flag
+     * 
+     * @return LocalDiskDetectionResult containing detection details
+     */
+    private LocalDiskDetectionResult detectLocalDisks(int vmId, String node, String ticket) {
+        if (!migrationConfig.autoDetectLocalDisks()) {
+            log.debug("Auto-detection disabled by configuration");
+            return new LocalDiskDetectionResult(false, null, null);
+        }
+        
+        try {
+            // Get VM configuration to find disk storages
+            Map<String, Object> vmConfig = vmService.getVMConfig(node, vmId, ticket);
+            List<String> diskStorages = extractDiskStorages(vmConfig);
+            
+            if (diskStorages.isEmpty()) {
+                log.debug("VM {} has no disks to check", vmId);
+                return new LocalDiskDetectionResult(false, List.of(), "no-disks");
+            }
+            
+            log.debug("VM {} has disks on storage pools: {}", vmId, diskStorages);
+            
+            // Try to get storage configuration from cache first
+            StorageResponse storageResponse = storageCache.getCached();
+            if (storageResponse == null) {
+                log.debug("Storage configuration not in cache, fetching from API");
+                storageResponse = fetchStorageConfigWithRetry(ticket);
+                if (storageResponse != null) {
+                    storageCache.updateCache(storageResponse);
+                }
+            } else {
+                log.debug("Using cached storage configuration");
+            }
+            
+            if (storageResponse == null || storageResponse.getData() == null) {
+                if (migrationConfig.useNamingFallback()) {
+                    log.warn("Could not get storage configuration for VM {}, falling back to name-based detection", vmId);
+                    List<String> localStorages = detectLocalByNaming(diskStorages);
+                    return new LocalDiskDetectionResult(!localStorages.isEmpty(), localStorages, "naming-fallback");
+                } else {
+                    log.error("Could not get storage configuration and naming fallback is disabled");
+                    throw new RuntimeException("Unable to determine storage type - storage query failed and fallback disabled");
+                }
+            }
+            
+            // Build a map of storage name to shared status
+            Map<String, Boolean> storageSharedMap = new HashMap<>();
+            List<String> localStorages = new ArrayList<>();
+            
+            for (StoragePool pool : storageResponse.getData()) {
+                boolean isShared = pool.getShared() == 1;
+                storageSharedMap.put(pool.getStorage(), isShared);
+                
+                // Log storage pool details at appropriate level
+                String logMsg = String.format("Storage pool '%s' type='%s' shared=%s", 
+                    pool.getStorage(), pool.getType(), isShared);
+                if ("INFO".equals(migrationConfig.autoDetectionLogLevel())) {
+                    log.info(logMsg);
+                } else {
+                    log.debug(logMsg);
+                }
+            }
+            
+            // Check if any disk is on non-shared (local) storage
+            for (String storageName : diskStorages) {
+                Boolean isShared = storageSharedMap.get(storageName);
+                if (isShared != null && !isShared) {
+                    localStorages.add(storageName);
+                    log.info("VM {} has local disk on non-shared storage: {}", vmId, storageName);
+                }
+            }
+            
+            if (localStorages.isEmpty()) {
+                log.info("VM {} has no local disks - all storage is shared", vmId);
+            } else {
+                log.info("VM {} has {} local disk(s) on storage: {}", vmId, localStorages.size(), localStorages);
+            }
+            
+            return new LocalDiskDetectionResult(!localStorages.isEmpty(), localStorages, "storage-api");
+            
+        } catch (Exception e) {
+            log.error("Failed to check VM {} for local disks: {}", vmId, e.getMessage(), e);
+            
+            if (migrationConfig.useNamingFallback()) {
+                log.warn("Attempting naming-based fallback due to error");
+                try {
+                    Map<String, Object> vmConfig = vmService.getVMConfig(node, vmId, ticket);
+                    List<String> diskStorages = extractDiskStorages(vmConfig);
+                    List<String> localStorages = detectLocalByNaming(diskStorages);
+                    return new LocalDiskDetectionResult(!localStorages.isEmpty(), localStorages, "naming-fallback-error");
+                } catch (Exception fallbackError) {
+                    log.error("Fallback also failed: {}", fallbackError.getMessage());
+                }
+            }
+            
+            // If we can't determine, assume no local disks to avoid blocking migration
+            return new LocalDiskDetectionResult(false, null, "error-default");
+        }
+    }
+    
+    /**
+     * Helper class to hold local disk detection results
+     */
+    public record LocalDiskDetectionResult(
+        boolean hasLocalDisks,
+        List<String> localStoragePools,
+        String detectionMethod
+    ) {}
+    
+    /**
+     * Fetch storage configuration with retry logic
+     */
+    private StorageResponse fetchStorageConfigWithRetry(String ticket) {
+        int maxRetries = migrationConfig.storageQueryMaxRetries();
+        Exception lastException = null;
+        
+        for (int i = 0; i < maxRetries; i++) {
+            try {
+                if (i > 0) {
+                    log.debug("Retrying storage configuration query (attempt {}/{})", i + 1, maxRetries);
+                    Thread.sleep(1000); // Wait 1 second between retries
+                }
+                
+                StorageResponse response = proxmoxClient.getStorage(ticket);
+                if (response != null) {
+                    return response;
+                }
+            } catch (Exception e) {
+                lastException = e;
+                log.debug("Storage query attempt {} failed: {}", i + 1, e.getMessage());
+            }
+        }
+        
+        if (lastException != null) {
+            log.error("All {} attempts to query storage configuration failed. Last error: {}", 
+                     maxRetries, lastException.getMessage());
+        }
+        return null;
+    }
+    
+    /**
+     * Extract storage names from VM disk configuration
+     */
+    private List<String> extractDiskStorages(Map<String, Object> config) {
+        List<String> storages = new ArrayList<>();
+        
+        // Look for disk configurations (scsi0, ide0, virtio0, etc.)
+        for (Map.Entry<String, Object> entry : config.entrySet()) {
+            String key = entry.getKey();
+            if (key.matches("(scsi|ide|sata|virtio|efidisk|tpmstate)\\d+")) {
+                String diskConfig = String.valueOf(entry.getValue());
+                // Extract storage name from config like "local-zfs:vm-8200-disk-0,format=raw,size=20G"
+                int colonIndex = diskConfig.indexOf(':');
+                if (colonIndex > 0) {
+                    String storage = diskConfig.substring(0, colonIndex);
+                    if (!storages.contains(storage)) {
+                        storages.add(storage);
+                    }
+                }
+            }
+        }
+        
+        return storages;
+    }
+    
+    /**
+     * Fallback method using naming conventions if storage query fails
+     * Returns list of storage pools that appear to be local based on naming
+     */
+    private List<String> detectLocalByNaming(List<String> storages) {
+        List<String> localStorages = new ArrayList<>();
+        List<String> patterns = migrationConfig.localStoragePatterns();
+        
+        for (String storage : storages) {
+            if (storage != null) {
+                for (String pattern : patterns) {
+                    if (storage.toLowerCase().contains(pattern.toLowerCase())) {
+                        log.info("Storage '{}' matches local pattern '{}' (name-based detection)", storage, pattern);
+                        localStorages.add(storage);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        return localStorages;
+    }
+    
+    /**
+     * Start VM migration asynchronously - returns immediately with task info
+     * Use this for API calls to avoid HTTP timeouts on long migrations
+     */
+    public MigrationStartResponse startMigrationAsync(int vmId, MigrationRequest request, @AuthTicket String ticket) {
+        // First create the migration record in a transaction
+        MigrationStartInfo startInfo = initiateMigration(vmId, request, ticket);
+        
+        // Then start the async monitoring (outside transaction, after commit)
+        startAsyncMonitoring(startInfo, request, ticket);
+        
+        // Return response immediately
+        String statusUrl = "/api/v1/vms/" + vmId + "/migrate/status/" + startInfo.migrationId();
+        
+        return new MigrationStartResponse(
+            startInfo.migrationId(),
+            startInfo.taskUpid(),
+            "Migration task started successfully",
+            vmId,
+            startInfo.sourceNode(),
+            startInfo.targetNode(),
+            statusUrl
+        );
+    }
+    
+    /**
+     * Create migration record and start the task - this is transactional
      */
     @Transactional
+    public MigrationStartInfo initiateMigration(int vmId, MigrationRequest request, @AuthTicket String ticket) {
+        log.info("Initiating migration of VM {} to node {}", vmId, request.targetNode());
+        
+        // 1. Get VM details to find current node
+        VMResponse vm;
+        try {
+            List<VMResponse> vms = vmService.listVMs(ticket);
+            vm = vms.stream()
+                .filter(v -> v.vmid() == vmId)
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("VM not found: " + vmId));
+        } catch (Exception e) {
+            log.error("Failed to get VM details for migration: {}", e.getMessage());
+            throw new RuntimeException("Failed to get VM details: " + e.getMessage(), e);
+        }
+        
+        String currentNode = vm.node();
+        
+        // Validate target node is different
+        if (currentNode.equals(request.targetNode())) {
+            throw new RuntimeException("VM is already on node " + currentNode);
+        }
+        
+        // 2. Create migration history record
+        VmMigration migration = createMigrationRecord(vm, request);
+        
+        // 3. Auto-detect if we need to migrate with local disks
+        LocalDiskDetectionResult detectionResult = null;
+        boolean needsLocalDiskMigration = false;
+        
+        if (request.withLocalDisks() != null) {
+            needsLocalDiskMigration = request.withLocalDisks();
+            log.info("Using explicit withLocalDisks setting: {}", needsLocalDiskMigration);
+        } else {
+            detectionResult = detectLocalDisks(vmId, currentNode, ticket);
+            needsLocalDiskMigration = detectionResult.hasLocalDisks();
+            log.info("Auto-detected local disks: {}", needsLocalDiskMigration);
+        }
+        
+        // 4. Start migration task
+        String csrfToken = ticketManager.getCsrfToken();
+        
+        try {
+            boolean wasRunning = "running".equals(vm.status());
+            Integer online = wasRunning ? 1 : null;
+            
+            log.info("Starting {} migration task for VM {} from {} to {}", 
+                wasRunning ? "online" : "offline", vmId, currentNode, request.targetNode());
+            
+            // Start migration
+            TaskStatusResponse task = proxmoxClient.migrateVM(
+                currentNode,
+                vmId,
+                request.targetNode(),
+                online,
+                needsLocalDiskMigration ? 1 : null,
+                request.force() ? 1 : null,
+                request.bwlimit(),
+                request.targetStorage(),
+                null,  // migration_type temporarily disabled
+                request.migrationNetwork(),
+                ticket,
+                csrfToken
+            );
+            
+            if (task.getData() == null) {
+                migration.markFailed("No task ID returned from Proxmox");
+                throw new RuntimeException("No task ID returned from Proxmox");
+            }
+            
+            migration.taskUpid = task.getData();
+            migration.persist();
+            migration.flush(); // Force flush to ensure it's persisted
+            
+            log.info("Migration task {} started for VM {}", task.getData(), vmId);
+            
+            // Return info for async monitoring
+            return new MigrationStartInfo(
+                migration.id,
+                task.getData(),
+                vmId,
+                vm.name(),
+                currentNode,
+                request.targetNode(),
+                wasRunning,
+                detectionResult != null,
+                needsLocalDiskMigration,
+                detectionResult
+            );
+            
+        } catch (Exception e) {
+            log.error("Failed to start migration for VM {}: {}", vmId, e.getMessage());
+            migration.markFailed(e.getMessage());
+            throw new RuntimeException("Failed to start migration: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Start async monitoring of migration - called after transaction commits
+     */
+    private void startAsyncMonitoring(MigrationStartInfo startInfo, MigrationRequest request, String ticket) {
+        executorService.submit(() -> {
+            log.info("Starting async migration monitoring for task {}", startInfo.taskUpid());
+            try {
+                // This runs in a virtual thread and can take hours
+                completeMigrationAsync(
+                    startInfo.migrationId(),
+                    startInfo.vmId(),
+                    startInfo.taskUpid(),
+                    startInfo.wasRunning(),
+                    startInfo.wasAutoDetected(),
+                    startInfo.needsLocalDiskMigration(),
+                    startInfo.detectionResult(),
+                    request,
+                    ticket
+                );
+            } catch (Exception e) {
+                log.error("Error in async migration completion for VM {}: {}", startInfo.vmId(), e.getMessage(), e);
+            }
+        });
+    }
+    
+    /**
+     * Complete migration asynchronously - this runs in a virtual thread
+     * and can take hours without blocking
+     */
+    @ActivateRequestContext
+    void completeMigrationAsync(Long migrationId, int vmId, String taskUpid, 
+                                       boolean wasRunning, boolean wasAutoDetected,
+                                       boolean needsLocalDiskMigration,
+                                       LocalDiskDetectionResult detectionResult,
+                                       MigrationRequest request, String ticket) {
+        log.info("Monitoring migration task {} for VM {} (migration ID: {})", taskUpid, vmId, migrationId);
+        
+        // Load the migration record
+        VmMigration migration = VmMigration.findById(migrationId);
+        if (migration == null) {
+            log.error("Migration record {} not found", migrationId);
+            return;
+        }
+        
+        try {
+            // Wait for task completion (no timeout - migrations can take hours)
+            TaskStatusDetailResponse taskStatus = waitForTaskCompletion(taskUpid, ticket);
+            
+            if (!"OK".equals(taskStatus.exitstatus())) {
+                migration.markFailed("Migration task failed: " + taskStatus.exitstatus());
+                log.error("Migration task {} failed with status: {}", taskUpid, taskStatus.exitstatus());
+                return;
+            }
+            
+            // Verify VM is on target node
+            Thread.sleep(2000);
+            List<VMResponse> updatedVms = vmService.listVMs(ticket);
+            VMResponse migratedVm = updatedVms.stream()
+                .filter(v -> v.vmid() == vmId)
+                .findFirst()
+                .orElse(null);
+            
+            if (migratedVm == null) {
+                migration.markFailed("VM not found after migration");
+                return;
+            }
+            
+            if (!request.targetNode().equals(migratedVm.node())) {
+                migration.markFailed("VM not on target node after migration");
+                return;
+            }
+            
+            // Handle state recovery if needed
+            if (wasRunning && !"running".equals(migratedVm.status())) {
+                log.info("VM {} was running before migration but stopped after. Attempting to start...", vmId);
+                try {
+                    vmService.startVM(request.targetNode(), vmId, ticket);
+                    Thread.sleep(3000);
+                } catch (Exception e) {
+                    log.error("Failed to restart VM {} after migration: {}", vmId, e.getMessage());
+                    migration.postMigrationState = "stopped";
+                    migration.errorMessage = "Migration succeeded but VM failed to restart: " + e.getMessage();
+                }
+            }
+            
+            migration.markCompleted(migratedVm.status());
+            log.info("Migration {} completed successfully for VM {}", migrationId, vmId);
+            
+        } catch (Exception e) {
+            log.error("Error monitoring migration {}: {}", migrationId, e.getMessage(), e);
+            migration.markFailed("Error during migration: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Migrate a VM to a target node (synchronous - waits for completion)
+     * Note: Not transactional as migrations can take up to an hour
+     * This method is kept for backward compatibility but should be avoided for production use
+     */
     public MigrationResponse migrateVM(int vmId, MigrationRequest request, @AuthTicket String ticket) {
         log.info("Starting migration of VM {} to node {}", vmId, request.targetNode());
         
@@ -68,7 +498,31 @@ public class MigrationService {
         // 2. Create migration history record
         VmMigration migration = createMigrationRecord(vm, request);
         
-        // 3. Attempt migration directly
+        // 3. Auto-detect if we need to migrate with local disks
+        boolean needsLocalDiskMigration = false;
+        LocalDiskDetectionResult detectionResult = null;
+        boolean wasAutoDetected = false;
+        
+        if (request.withLocalDisks() != null) {
+            // User explicitly specified the option
+            needsLocalDiskMigration = request.withLocalDisks();
+            log.info("Using explicit withLocalDisks setting: {}", needsLocalDiskMigration);
+        } else {
+            // Auto-detect based on VM configuration and storage settings
+            detectionResult = detectLocalDisks(vmId, currentNode, ticket);
+            needsLocalDiskMigration = detectionResult.hasLocalDisks();
+            wasAutoDetected = true;
+            
+            if (needsLocalDiskMigration) {
+                log.info("Auto-detected VM {} has local disks on {} storage pool(s) using {} - enabling withLocalDisks option", 
+                        vmId, detectionResult.localStoragePools().size(), detectionResult.detectionMethod());
+            } else {
+                log.info("VM {} has no local disks (detection method: {}) - standard migration", 
+                        vmId, detectionResult.detectionMethod());
+            }
+        }
+        
+        // 4. Attempt migration directly
         String csrfToken = ticketManager.getCsrfToken();
         
         try {
@@ -80,13 +534,13 @@ public class MigrationService {
             
             // Log parameters for debugging
             log.info("Migration parameters - online: {}, withLocalDisks: {}, force: {}, bwlimit: {}, targetStorage: {}, migrationType: {}, migrationNetwork: {}",
-                online, request.withLocalDisks() ? 1 : null, request.force() ? 1 : null, 
+                online, needsLocalDiskMigration ? 1 : null, request.force() ? 1 : null, 
                 request.bwlimit(), request.targetStorage(), request.migrationType(), request.migrationNetwork());
             
             // Execute migration with proper parameters
             // When migrating with local disks, use insecure migration type
             String migrationType = request.migrationType();
-            if (request.withLocalDisks() && "secure".equals(migrationType)) {
+            if (needsLocalDiskMigration && "secure".equals(migrationType)) {
                 migrationType = "insecure";
                 log.info("Using insecure migration type for local disk migration");
             }
@@ -99,7 +553,7 @@ public class MigrationService {
                 vmId,
                 request.targetNode(),
                 online,  // Send 1 for online if VM is running
-                request.withLocalDisks() ? 1 : null,
+                needsLocalDiskMigration ? 1 : null,  // Auto-detected or user-specified
                 request.force() ? 1 : null,
                 request.bwlimit(),
                 request.targetStorage(),
@@ -179,7 +633,10 @@ public class MigrationService {
                         currentNode,
                         request.targetNode(),
                         wasRunning ? "online" : "offline",
-                        migration.startedAt
+                        migration.startedAt,
+                        wasAutoDetected ? needsLocalDiskMigration : null,
+                        detectionResult != null ? detectionResult.localStoragePools() : null,
+                        detectionResult != null ? detectionResult.detectionMethod() : null
                     );
                 }
             }
@@ -196,7 +653,10 @@ public class MigrationService {
                 currentNode,
                 request.targetNode(),
                 wasRunning ? "online" : "offline",
-                migration.startedAt
+                migration.startedAt,
+                wasAutoDetected ? needsLocalDiskMigration : null,
+                detectionResult != null ? detectionResult.localStoragePools() : null,
+                detectionResult != null ? detectionResult.detectionMethod() : null
             );
             
         } catch (Exception e) {
@@ -340,6 +800,20 @@ public class MigrationService {
     }
     
     /**
+     * Get current migration status by migration ID
+     */
+    public MigrationHistoryResponse getMigrationStatus(Long migrationId) {
+        log.debug("Getting migration status for migration {}", migrationId);
+        
+        VmMigration migration = VmMigration.findById(migrationId);
+        if (migration == null) {
+            return null;
+        }
+        
+        return MigrationHistoryResponse.fromEntity(migration);
+    }
+    
+    /**
      * Get migration history for a VM
      */
     public List<MigrationHistoryResponse> getMigrationHistory(int vmId) {
@@ -410,8 +884,8 @@ public class MigrationService {
         Map<String, Object> options = new HashMap<>();
         if (request.bwlimit() != null) options.put("bwlimit", request.bwlimit());
         if (request.targetStorage() != null) options.put("targetStorage", request.targetStorage());
-        if (request.withLocalDisks()) options.put("withLocalDisks", true);
-        if (request.force()) options.put("force", true);
+        if (request.withLocalDisks() != null && request.withLocalDisks()) options.put("withLocalDisks", true);
+        if (request.force() != null && request.force()) options.put("force", true);
         options.put("migrationType", request.migrationType());
         if (request.migrationNetwork() != null) options.put("migrationNetwork", request.migrationNetwork());
         migration.options = options;
