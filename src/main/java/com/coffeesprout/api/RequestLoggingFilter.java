@@ -16,23 +16,23 @@ import java.util.stream.Collectors;
 @Provider
 public class RequestLoggingFilter implements ContainerRequestFilter {
     
-    private static final Logger log = LoggerFactory.getLogger(RequestLoggingFilter.class);
+    private static final Logger LOG = LoggerFactory.getLogger(RequestLoggingFilter.class);
     
     @Override
     public void filter(ContainerRequestContext requestContext) throws IOException {
-        log.info("=== HTTP REQUEST ===");
-        log.info("Method: {} {}", requestContext.getMethod(), requestContext.getUriInfo().getRequestUri());
-        log.info("Content-Type: {}", requestContext.getHeaderString("Content-Type"));
+        LOG.info("=== HTTP REQUEST ===");
+        LOG.info("Method: {} {}", requestContext.getMethod(), requestContext.getUriInfo().getRequestUri());
+        LOG.info("Content-Type: {}", requestContext.getHeaderString("Content-Type"));
         
         if (requestContext.getUriInfo().getPath().contains("clusters/provision")) {
-            log.info("CLUSTER PROVISION REQUEST DETECTED!");
+            LOG.info("CLUSTER PROVISION REQUEST DETECTED!");
             
             if (requestContext.hasEntity()) {
                 ByteArrayInputStream bais = new ByteArrayInputStream(requestContext.getEntityStream().readAllBytes());
                 String body = new BufferedReader(new InputStreamReader(bais, StandardCharsets.UTF_8))
                     .lines()
                     .collect(Collectors.joining("\n"));
-                log.info("Request body: {}", body);
+                LOG.info("Request body: {}", body);
                 
                 // Reset the stream so it can be read again
                 requestContext.setEntityStream(bais);

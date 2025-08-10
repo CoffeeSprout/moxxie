@@ -33,7 +33,7 @@ import java.util.List;
 @RunOnVirtualThread
 public class ProxmoxResource {
 
-    private static final Logger log = LoggerFactory.getLogger(ProxmoxResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ProxmoxResource.class);
 
     @Inject
     AuthService authService;
@@ -66,7 +66,7 @@ public class ProxmoxResource {
             ClusterDiscoveryResponse config = clusterService.discoverCluster(null);
             return Response.ok(config).build();
         } catch (Exception e) {
-            log.error("Discovery failed", e);
+            LOG.error("Discovery failed", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Discovery failed: " + e.getMessage()))
                     .build();
@@ -89,7 +89,7 @@ public class ProxmoxResource {
             List<Node> nodes = nodeService.listNodes(null);
             return Response.ok(nodes).build();
         } catch (Exception e) {
-            log.error("Failed to list nodes", e);
+            LOG.error("Failed to list nodes", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to list nodes: " + e.getMessage()))
                     .build();
@@ -112,7 +112,7 @@ public class ProxmoxResource {
             List<VMResponse> vms = vmService.listVMs(null);
             return Response.ok(vms).build();
         } catch (Exception e) {
-            log.error("Failed to list VMs", e);
+            LOG.error("Failed to list VMs", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to list VMs: " + e.getMessage()))
                     .build();

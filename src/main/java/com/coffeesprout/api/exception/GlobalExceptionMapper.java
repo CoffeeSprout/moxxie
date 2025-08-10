@@ -22,7 +22,7 @@ import java.util.Map;
 @Provider
 public class GlobalExceptionMapper implements ExceptionMapper<Exception> {
     
-    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionMapper.class);
+    private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionMapper.class);
     
     @Inject
     ObjectMapper objectMapper;
@@ -64,7 +64,7 @@ public class GlobalExceptionMapper implements ExceptionMapper<Exception> {
                     });
                     
                     String message = buildDetailedErrorMessage(fieldErrors);
-                    log.error("Proxmox API error: {}", message);
+                    LOG.error("Proxmox API error: {}", message);
                     
                     return Response.status(status)
                         .entity(new ApiErrorResponse(
@@ -78,7 +78,7 @@ public class GlobalExceptionMapper implements ExceptionMapper<Exception> {
                         .build();
                 }
             } catch (Exception parseError) {
-                log.debug("Failed to parse error response", parseError);
+                LOG.debug("Failed to parse error response", parseError);
             }
         }
         
@@ -98,7 +98,7 @@ public class GlobalExceptionMapper implements ExceptionMapper<Exception> {
     }
     
     private Response handleValidationException(Exception e) {
-        log.warn("Validation error: {}", e.getMessage());
+        LOG.warn("Validation error: {}", e.getMessage());
         
         return Response.status(Response.Status.BAD_REQUEST)
             .entity(new ApiErrorResponse(
@@ -113,7 +113,7 @@ public class GlobalExceptionMapper implements ExceptionMapper<Exception> {
     }
     
     private Response handleProxmoxException(ProxmoxException e) {
-        log.error("Proxmox operation failed: {}", e.getMessage());
+        LOG.error("Proxmox operation failed: {}", e.getMessage());
         
         return Response.status(e.getHttpStatus())
             .entity(new ApiErrorResponse(
@@ -128,7 +128,7 @@ public class GlobalExceptionMapper implements ExceptionMapper<Exception> {
     }
     
     private Response handleGenericException(Exception e) {
-        log.error("Unexpected error", e);
+        LOG.error("Unexpected error", e);
         
         return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
             .entity(new ApiErrorResponse(

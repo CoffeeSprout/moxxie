@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
 @Tag(name = "Bulk Backup", description = "Bulk VM backup management endpoints")
 public class BulkBackupResource {
     
-    private static final Logger log = LoggerFactory.getLogger(BulkBackupResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(BulkBackupResource.class);
     
     @Inject
     BackupService backupService;
@@ -57,7 +57,7 @@ public class BulkBackupResource {
                 content = @Content(schema = @Schema(implementation = BulkBackupRequest.class)))
             @Valid BulkBackupRequest request) {
         try {
-            log.info("Starting bulk backup operation with selectors: {} to storage: {}", 
+            LOG.info("Starting bulk backup operation with selectors: {} to storage: {}", 
                     request.vmSelectors(), request.storage());
             
             // Validate storage parameter
@@ -72,12 +72,12 @@ public class BulkBackupResource {
             
             return Response.ok(response).build();
         } catch (IllegalArgumentException e) {
-            log.error("Invalid request for bulk backup operation", e);
+            LOG.error("Invalid request for bulk backup operation", e);
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(new ErrorResponse("Invalid request: " + e.getMessage()))
                     .build();
         } catch (Exception e) {
-            log.error("Failed to perform bulk backup operation", e);
+            LOG.error("Failed to perform bulk backup operation", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to create backups: " + e.getMessage()))
                     .build();

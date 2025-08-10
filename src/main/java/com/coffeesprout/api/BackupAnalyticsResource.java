@@ -28,14 +28,14 @@ import java.util.List;
 @Tag(name = "Backup Analytics", description = "Backup storage analytics and reporting endpoints")
 public class BackupAnalyticsResource {
     
-    private static final Logger log = LoggerFactory.getLogger(BackupAnalyticsResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(BackupAnalyticsResource.class);
     
     @Inject
     BackupAnalyticsService analyticsService;
     
     @GET
     @Path("/vms")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Get storage usage per VM", 
                description = "Calculate backup storage usage for each VM with breakdown by storage location")
     @APIResponses({
@@ -49,7 +49,7 @@ public class BackupAnalyticsResource {
             List<VMStorageUsage> usage = analyticsService.getVMStorageUsage(null);
             return Response.ok(usage).build();
         } catch (Exception e) {
-            log.error("Failed to calculate VM storage usage", e);
+            LOG.error("Failed to calculate VM storage usage", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to calculate VM storage usage: " + e.getMessage()))
                     .build();
@@ -58,7 +58,7 @@ public class BackupAnalyticsResource {
     
     @GET
     @Path("/clients")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Get storage usage per client", 
                description = "Calculate backup storage usage grouped by client tags")
     @APIResponses({
@@ -72,7 +72,7 @@ public class BackupAnalyticsResource {
             List<ClientStorageUsage> usage = analyticsService.getClientStorageUsage(null);
             return Response.ok(usage).build();
         } catch (Exception e) {
-            log.error("Failed to calculate client storage usage", e);
+            LOG.error("Failed to calculate client storage usage", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to calculate client storage usage: " + e.getMessage()))
                     .build();
@@ -81,7 +81,7 @@ public class BackupAnalyticsResource {
     
     @GET
     @Path("/storage")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Get usage per storage location", 
                description = "Calculate backup storage usage for each storage location")
     @APIResponses({
@@ -95,7 +95,7 @@ public class BackupAnalyticsResource {
             List<StorageLocationUsage> usage = analyticsService.getStorageLocationUsage(null);
             return Response.ok(usage).build();
         } catch (Exception e) {
-            log.error("Failed to calculate storage location usage", e);
+            LOG.error("Failed to calculate storage location usage", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to calculate storage location usage: " + e.getMessage()))
                     .build();
@@ -104,7 +104,7 @@ public class BackupAnalyticsResource {
     
     @GET
     @Path("/trends")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Get storage growth trends", 
                description = "Analyze backup storage growth over time")
     @APIResponses({
@@ -132,7 +132,7 @@ public class BackupAnalyticsResource {
             StorageTrend trends = analyticsService.getStorageTrends(period, null);
             return Response.ok(trends).build();
         } catch (Exception e) {
-            log.error("Failed to calculate storage trends", e);
+            LOG.error("Failed to calculate storage trends", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to calculate storage trends: " + e.getMessage()))
                     .build();

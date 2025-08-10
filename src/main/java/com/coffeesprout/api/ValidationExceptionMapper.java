@@ -15,12 +15,12 @@ import java.util.stream.Collectors;
 @Provider
 public class ValidationExceptionMapper implements ExceptionMapper<ConstraintViolationException> {
     
-    private static final Logger log = LoggerFactory.getLogger(ValidationExceptionMapper.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ValidationExceptionMapper.class);
     
     @Override
     public Response toResponse(ConstraintViolationException exception) {
-        log.error("=== VALIDATION ERROR ===");
-        log.error("Validation failed with {} violations", exception.getConstraintViolations().size());
+        LOG.error("=== VALIDATION ERROR ===");
+        LOG.error("Validation failed with {} violations", exception.getConstraintViolations().size());
         
         Map<String, Object> response = new HashMap<>();
         response.put("title", "Constraint Violation");
@@ -28,7 +28,7 @@ public class ValidationExceptionMapper implements ExceptionMapper<ConstraintViol
         
         var violations = exception.getConstraintViolations().stream()
             .map(violation -> {
-                log.error("Violation: {} = {}", violation.getPropertyPath(), violation.getMessage());
+                LOG.error("Violation: {} = {}", violation.getPropertyPath(), violation.getMessage());
                 Map<String, String> v = new HashMap<>();
                 v.put("field", violation.getPropertyPath().toString());
                 v.put("message", violation.getMessage());

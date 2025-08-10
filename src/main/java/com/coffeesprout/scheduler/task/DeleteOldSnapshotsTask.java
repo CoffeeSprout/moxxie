@@ -35,7 +35,7 @@ import java.util.regex.Pattern;
 @Unremovable
 public class DeleteOldSnapshotsTask extends AbstractVMTask {
     
-    private static final Logger log = LoggerFactory.getLogger(DeleteOldSnapshotsTask.class);
+    private static final Logger LOG = LoggerFactory.getLogger(DeleteOldSnapshotsTask.class);
     private static final Pattern TTL_PATTERN = Pattern.compile("TTL:\\s*(\\d+)h");
     private static final Pattern DATETIME_PATTERN = Pattern.compile("(\\d{8}-\\d{6})");
     
@@ -69,7 +69,7 @@ public class DeleteOldSnapshotsTask extends AbstractVMTask {
         
         // Get snapshots for this VM
         List<SnapshotResponse> snapshots = snapshotService.listSnapshots(vm.vmid(), null);
-        log.info("Found {} snapshots for VM {} ({})", snapshots.size(), vm.vmid(), vm.name());
+        LOG.info("Found {} snapshots for VM {} ({})", snapshots.size(), vm.vmid(), vm.name());
         
         for (SnapshotResponse snapshot : snapshots) {
             try {
@@ -78,7 +78,7 @@ public class DeleteOldSnapshotsTask extends AbstractVMTask {
                 
                 // Check name pattern
                 if (namePattern != null && !matchesPattern(snapshot.name(), namePattern)) {
-                    log.debug("Snapshot '{}' does not match pattern '{}'", snapshot.name(), namePattern);
+                    LOG.debug("Snapshot '{}' does not match pattern '{}'", snapshot.name(), namePattern);
                     continue;
                 }
                 
@@ -118,21 +118,21 @@ public class DeleteOldSnapshotsTask extends AbstractVMTask {
                 // Delete if criteria met
                 if (shouldDelete) {
                     if (dryRun) {
-                        log.info("[DRY RUN] Would delete snapshot '{}' for VM {} - {}", 
+                        LOG.info("[DRY RUN] Would delete snapshot '{}' for VM {} - {}", 
                                snapshot.name(), vm.vmid(), reason);
                         deletedSnapshots.add(snapshot.name() + " (dry run: " + reason + ")");
                     } else {
-                        log.info("Deleting snapshot '{}' for VM {} - {}", 
+                        LOG.info("Deleting snapshot '{}' for VM {} - {}", 
                                snapshot.name(), vm.vmid(), reason);
                         snapshotService.deleteSnapshot(vm.vmid(), snapshot.name(), null);
                         deletedSnapshots.add(snapshot.name() + " (" + reason + ")");
                     }
                 } else {
-                    log.debug("Keeping snapshot '{}' for VM {}", snapshot.name(), vm.vmid());
+                    LOG.debug("Keeping snapshot '{}' for VM {}", snapshot.name(), vm.vmid());
                 }
                 
             } catch (Exception e) {
-                log.error("Failed to process snapshot '{}' for VM {}: {}", 
+                LOG.error("Failed to process snapshot '{}' for VM {}: {}", 
                         snapshot.name(), vm.vmid(), e.getMessage());
                 errorCount++;
             }
@@ -212,7 +212,7 @@ public class DeleteOldSnapshotsTask extends AbstractVMTask {
             try {
                 return Integer.parseInt(matcher.group(1));
             } catch (NumberFormatException e) {
-                log.warn("Failed to parse TTL from description: {}", description);
+                LOG.warn("Failed to parse TTL from description: {}", description);
             }
         }
         

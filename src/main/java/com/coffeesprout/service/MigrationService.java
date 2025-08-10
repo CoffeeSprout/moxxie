@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 @AutoAuthenticate
 public class MigrationService {
     
-    private static final Logger log = LoggerFactory.getLogger(MigrationService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MigrationService.class);
     
     @Inject
     @RestClient
@@ -64,7 +64,7 @@ public class MigrationService {
      */
     private LocalDiskDetectionResult detectLocalDisks(int vmId, String node, String ticket) {
         if (!migrationConfig.autoDetectLocalDisks()) {
-            log.debug("Auto-detection disabled by configuration");
+            LOG.debug("Auto-detection disabled by configuration");
             return new LocalDiskDetectionResult(false, null, null);
         }
         
@@ -74,31 +74,31 @@ public class MigrationService {
             List<String> diskStorages = extractDiskStorages(vmConfig);
             
             if (diskStorages.isEmpty()) {
-                log.debug("VM {} has no disks to check", vmId);
+                LOG.debug("VM {} has no disks to check", vmId);
                 return new LocalDiskDetectionResult(false, List.of(), "no-disks");
             }
             
-            log.debug("VM {} has disks on storage pools: {}", vmId, diskStorages);
+            LOG.debug("VM {} has disks on storage pools: {}", vmId, diskStorages);
             
             // Try to get storage configuration from cache first
             StorageResponse storageResponse = storageCache.getCached();
             if (storageResponse == null) {
-                log.debug("Storage configuration not in cache, fetching from API");
+                LOG.debug("Storage configuration not in cache, fetching from API");
                 storageResponse = fetchStorageConfigWithRetry(ticket);
                 if (storageResponse != null) {
                     storageCache.updateCache(storageResponse);
                 }
             } else {
-                log.debug("Using cached storage configuration");
+                LOG.debug("Using cached storage configuration");
             }
             
             if (storageResponse == null || storageResponse.getData() == null) {
                 if (migrationConfig.useNamingFallback()) {
-                    log.warn("Could not get storage configuration for VM {}, falling back to name-based detection", vmId);
+                    LOG.warn("Could not get storage configuration for VM {}, falling back to name-based detection", vmId);
                     List<String> localStorages = detectLocalByNaming(diskStorages);
                     return new LocalDiskDetectionResult(!localStorages.isEmpty(), localStorages, "naming-fallback");
                 } else {
-                    log.error("Could not get storage configuration and naming fallback is disabled");
+                    LOG.error("Could not get storage configuration and naming fallback is disabled");
                     throw new RuntimeException("Unable to determine storage type - storage query failed and fallback disabled");
                 }
             }
@@ -115,9 +115,9 @@ public class MigrationService {
                 String logMsg = String.format("Storage pool '%s' type='%s' shared=%s", 
                     pool.getStorage(), pool.getType(), isShared);
                 if ("INFO".equals(migrationConfig.autoDetectionLogLevel())) {
-                    log.info(logMsg);
+                    LOG.info(logMsg);
                 } else {
-                    log.debug(logMsg);
+                    LOG.debug(logMsg);
                 }
             }
             
@@ -126,30 +126,30 @@ public class MigrationService {
                 Boolean isShared = storageSharedMap.get(storageName);
                 if (isShared != null && !isShared) {
                     localStorages.add(storageName);
-                    log.info("VM {} has local disk on non-shared storage: {}", vmId, storageName);
+                    LOG.info("VM {} has local disk on non-shared storage: {}", vmId, storageName);
                 }
             }
             
             if (localStorages.isEmpty()) {
-                log.info("VM {} has no local disks - all storage is shared", vmId);
+                LOG.info("VM {} has no local disks - all storage is shared", vmId);
             } else {
-                log.info("VM {} has {} local disk(s) on storage: {}", vmId, localStorages.size(), localStorages);
+                LOG.info("VM {} has {} local disk(s) on storage: {}", vmId, localStorages.size(), localStorages);
             }
             
             return new LocalDiskDetectionResult(!localStorages.isEmpty(), localStorages, "storage-api");
             
         } catch (Exception e) {
-            log.error("Failed to check VM {} for local disks: {}", vmId, e.getMessage(), e);
+            LOG.error("Failed to check VM {} for local disks: {}", vmId, e.getMessage(), e);
             
             if (migrationConfig.useNamingFallback()) {
-                log.warn("Attempting naming-based fallback due to error");
+                LOG.warn("Attempting naming-based fallback due to error");
                 try {
                     Map<String, Object> vmConfig = vmService.getVMConfig(node, vmId, ticket);
                     List<String> diskStorages = extractDiskStorages(vmConfig);
                     List<String> localStorages = detectLocalByNaming(diskStorages);
                     return new LocalDiskDetectionResult(!localStorages.isEmpty(), localStorages, "naming-fallback-error");
                 } catch (Exception fallbackError) {
-                    log.error("Fallback also failed: {}", fallbackError.getMessage());
+                    LOG.error("Fallback also failed: {}", fallbackError.getMessage());
                 }
             }
             
@@ -177,7 +177,7 @@ public class MigrationService {
         for (int i = 0; i < maxRetries; i++) {
             try {
                 if (i > 0) {
-                    log.debug("Retrying storage configuration query (attempt {}/{})", i + 1, maxRetries);
+                    LOG.debug("Retrying storage configuration query (attempt {}/{})", i + 1, maxRetries);
                     Thread.sleep(1000); // Wait 1 second between retries
                 }
                 
@@ -187,12 +187,12 @@ public class MigrationService {
                 }
             } catch (Exception e) {
                 lastException = e;
-                log.debug("Storage query attempt {} failed: {}", i + 1, e.getMessage());
+                LOG.debug("Storage query attempt {} failed: {}", i + 1, e.getMessage());
             }
         }
         
         if (lastException != null) {
-            log.error("All {} attempts to query storage configuration failed. Last error: {}", 
+            LOG.error("All {} attempts to query storage configuration failed. Last error: {}", 
                      maxRetries, lastException.getMessage());
         }
         return null;
@@ -235,7 +235,7 @@ public class MigrationService {
             if (storage != null) {
                 for (String pattern : patterns) {
                     if (storage.toLowerCase().contains(pattern.toLowerCase())) {
-                        log.info("Storage '{}' matches local pattern '{}' (name-based detection)", storage, pattern);
+                        LOG.info("Storage '{}' matches local pattern '{}' (name-based detection)", storage, pattern);
                         localStorages.add(storage);
                         break;
                     }
@@ -276,7 +276,7 @@ public class MigrationService {
      */
     @Transactional
     public MigrationStartInfo initiateMigration(int vmId, MigrationRequest request, @AuthTicket String ticket) {
-        log.info("Initiating migration of VM {} to node {}", vmId, request.targetNode());
+        LOG.info("Initiating migration of VM {} to node {}", vmId, request.targetNode());
         
         // 1. Get VM details to find current node
         VMResponse vm;
@@ -287,7 +287,7 @@ public class MigrationService {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("VM not found: " + vmId));
         } catch (Exception e) {
-            log.error("Failed to get VM details for migration: {}", e.getMessage());
+            LOG.error("Failed to get VM details for migration: {}", e.getMessage());
             throw new RuntimeException("Failed to get VM details: " + e.getMessage(), e);
         }
         
@@ -307,11 +307,11 @@ public class MigrationService {
         
         if (request.withLocalDisks() != null) {
             needsLocalDiskMigration = request.withLocalDisks();
-            log.info("Using explicit withLocalDisks setting: {}", needsLocalDiskMigration);
+            LOG.info("Using explicit withLocalDisks setting: {}", needsLocalDiskMigration);
         } else {
             detectionResult = detectLocalDisks(vmId, currentNode, ticket);
             needsLocalDiskMigration = detectionResult.hasLocalDisks();
-            log.info("Auto-detected local disks: {}", needsLocalDiskMigration);
+            LOG.info("Auto-detected local disks: {}", needsLocalDiskMigration);
         }
         
         // 4. Start migration task
@@ -321,7 +321,7 @@ public class MigrationService {
             boolean wasRunning = "running".equals(vm.status());
             Integer online = wasRunning ? 1 : null;
             
-            log.info("Starting {} migration task for VM {} from {} to {}", 
+            LOG.info("Starting {} migration task for VM {} from {} to {}", 
                 wasRunning ? "online" : "offline", vmId, currentNode, request.targetNode());
             
             // Start migration
@@ -349,7 +349,7 @@ public class MigrationService {
             migration.persist();
             migration.flush(); // Force flush to ensure it's persisted
             
-            log.info("Migration task {} started for VM {}", task.getData(), vmId);
+            LOG.info("Migration task {} started for VM {}", task.getData(), vmId);
             
             // Return info for async monitoring
             return new MigrationStartInfo(
@@ -366,7 +366,7 @@ public class MigrationService {
             );
             
         } catch (Exception e) {
-            log.error("Failed to start migration for VM {}: {}", vmId, e.getMessage());
+            LOG.error("Failed to start migration for VM {}: {}", vmId, e.getMessage());
             migration.markFailed(e.getMessage());
             throw new RuntimeException("Failed to start migration: " + e.getMessage(), e);
         }
@@ -377,7 +377,7 @@ public class MigrationService {
      */
     private void startAsyncMonitoring(MigrationStartInfo startInfo, MigrationRequest request, String ticket) {
         executorService.submit(() -> {
-            log.info("Starting async migration monitoring for task {}", startInfo.taskUpid());
+            LOG.info("Starting async migration monitoring for task {}", startInfo.taskUpid());
             try {
                 // This runs in a virtual thread and can take hours
                 completeMigrationAsync(
@@ -392,7 +392,7 @@ public class MigrationService {
                     ticket
                 );
             } catch (Exception e) {
-                log.error("Error in async migration completion for VM {}: {}", startInfo.vmId(), e.getMessage(), e);
+                LOG.error("Error in async migration completion for VM {}: {}", startInfo.vmId(), e.getMessage(), e);
             }
         });
     }
@@ -407,12 +407,12 @@ public class MigrationService {
                                        boolean needsLocalDiskMigration,
                                        LocalDiskDetectionResult detectionResult,
                                        MigrationRequest request, String ticket) {
-        log.info("Monitoring migration task {} for VM {} (migration ID: {})", taskUpid, vmId, migrationId);
+        LOG.info("Monitoring migration task {} for VM {} (migration ID: {})", taskUpid, vmId, migrationId);
         
         // Load the migration record
         VmMigration migration = VmMigration.findById(migrationId);
         if (migration == null) {
-            log.error("Migration record {} not found", migrationId);
+            LOG.error("Migration record {} not found", migrationId);
             return;
         }
         
@@ -422,7 +422,7 @@ public class MigrationService {
             
             if (!"OK".equals(taskStatus.exitstatus())) {
                 migration.markFailed("Migration task failed: " + taskStatus.exitstatus());
-                log.error("Migration task {} failed with status: {}", taskUpid, taskStatus.exitstatus());
+                LOG.error("Migration task {} failed with status: {}", taskUpid, taskStatus.exitstatus());
                 return;
             }
             
@@ -446,22 +446,22 @@ public class MigrationService {
             
             // Handle state recovery if needed
             if (wasRunning && !"running".equals(migratedVm.status())) {
-                log.info("VM {} was running before migration but stopped after. Attempting to start...", vmId);
+                LOG.info("VM {} was running before migration but stopped after. Attempting to start...", vmId);
                 try {
                     vmService.startVM(request.targetNode(), vmId, ticket);
                     Thread.sleep(3000);
                 } catch (Exception e) {
-                    log.error("Failed to restart VM {} after migration: {}", vmId, e.getMessage());
+                    LOG.error("Failed to restart VM {} after migration: {}", vmId, e.getMessage());
                     migration.postMigrationState = "stopped";
                     migration.errorMessage = "Migration succeeded but VM failed to restart: " + e.getMessage();
                 }
             }
             
             migration.markCompleted(migratedVm.status());
-            log.info("Migration {} completed successfully for VM {}", migrationId, vmId);
+            LOG.info("Migration {} completed successfully for VM {}", migrationId, vmId);
             
         } catch (Exception e) {
-            log.error("Error monitoring migration {}: {}", migrationId, e.getMessage(), e);
+            LOG.error("Error monitoring migration {}: {}", migrationId, e.getMessage(), e);
             migration.markFailed("Error during migration: " + e.getMessage());
         }
     }
@@ -472,7 +472,7 @@ public class MigrationService {
      * This method is kept for backward compatibility but should be avoided for production use
      */
     public MigrationResponse migrateVM(int vmId, MigrationRequest request, @AuthTicket String ticket) {
-        log.info("Starting migration of VM {} to node {}", vmId, request.targetNode());
+        LOG.info("Starting migration of VM {} to node {}", vmId, request.targetNode());
         
         // 1. Get VM details to find current node and state
         VMResponse vm;
@@ -483,7 +483,7 @@ public class MigrationService {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("VM not found: " + vmId));
         } catch (Exception e) {
-            log.error("Failed to get VM details for migration: {}", e.getMessage());
+            LOG.error("Failed to get VM details for migration: {}", e.getMessage());
             throw new RuntimeException("Failed to get VM details: " + e.getMessage(), e);
         }
         
@@ -506,7 +506,7 @@ public class MigrationService {
         if (request.withLocalDisks() != null) {
             // User explicitly specified the option
             needsLocalDiskMigration = request.withLocalDisks();
-            log.info("Using explicit withLocalDisks setting: {}", needsLocalDiskMigration);
+            LOG.info("Using explicit withLocalDisks setting: {}", needsLocalDiskMigration);
         } else {
             // Auto-detect based on VM configuration and storage settings
             detectionResult = detectLocalDisks(vmId, currentNode, ticket);
@@ -514,10 +514,10 @@ public class MigrationService {
             wasAutoDetected = true;
             
             if (needsLocalDiskMigration) {
-                log.info("Auto-detected VM {} has local disks on {} storage pool(s) using {} - enabling withLocalDisks option", 
+                LOG.info("Auto-detected VM {} has local disks on {} storage pool(s) using {} - enabling withLocalDisks option", 
                         vmId, detectionResult.localStoragePools().size(), detectionResult.detectionMethod());
             } else {
-                log.info("VM {} has no local disks (detection method: {}) - standard migration", 
+                LOG.info("VM {} has no local disks (detection method: {}) - standard migration", 
                         vmId, detectionResult.detectionMethod());
             }
         }
@@ -529,11 +529,11 @@ public class MigrationService {
             // Default to online migration if VM is running
             Integer online = wasRunning ? 1 : null;
             
-            log.info("Attempting {} migration for VM {} from {} to {}", 
+            LOG.info("Attempting {} migration for VM {} from {} to {}", 
                 wasRunning ? "online" : "offline", vmId, currentNode, request.targetNode());
             
             // Log parameters for debugging
-            log.info("Migration parameters - online: {}, withLocalDisks: {}, force: {}, bwlimit: {}, targetStorage: {}, migrationType: {}, migrationNetwork: {}",
+            LOG.info("Migration parameters - online: {}, withLocalDisks: {}, force: {}, bwlimit: {}, targetStorage: {}, migrationType: {}, migrationNetwork: {}",
                 online, needsLocalDiskMigration ? 1 : null, request.force() ? 1 : null, 
                 request.bwlimit(), request.targetStorage(), request.migrationType(), request.migrationNetwork());
             
@@ -542,11 +542,11 @@ public class MigrationService {
             String migrationType = request.migrationType();
             if (needsLocalDiskMigration && "secure".equals(migrationType)) {
                 migrationType = "insecure";
-                log.info("Using insecure migration type for local disk migration");
+                LOG.info("Using insecure migration type for local disk migration");
             }
             
             // TEMPORARY: Don't send migration_type to debug parameter verification issue
-            log.info("DEBUG: Calling migrateVM without migration_type parameter");
+            LOG.info("DEBUG: Calling migrateVM without migration_type parameter");
             
             TaskStatusResponse task = proxmoxClient.migrateVM(
                 currentNode,
@@ -570,7 +570,7 @@ public class MigrationService {
             migration.taskUpid = task.getData();
             migration.persist();
             
-            log.info("Migration task {} started for VM {}", task.getData(), vmId);
+            LOG.info("Migration task {} started for VM {}", task.getData(), vmId);
             
             // 4. Monitor task completion
             try {
@@ -580,7 +580,7 @@ public class MigrationService {
                     throw new RuntimeException("Migration task failed: " + taskStatus.exitstatus());
                 }
             } catch (Exception e) {
-                log.error("Error waiting for migration task: {}", e.getMessage());
+                LOG.error("Error waiting for migration task: {}", e.getMessage());
                 // Continue to check VM state anyway
             }
             
@@ -605,7 +605,7 @@ public class MigrationService {
             
             // 6. Handle state recovery if needed
             if (wasRunning && !"running".equals(migratedVm.status())) {
-                log.info("VM {} was running before migration but stopped after. Attempting to start...", vmId);
+                LOG.info("VM {} was running before migration but stopped after. Attempting to start...", vmId);
                 try {
                     vmService.startVM(request.targetNode(), vmId, ticket);
                     // Give it a moment to start
@@ -619,7 +619,7 @@ public class MigrationService {
                         .orElse(migratedVm);
                     
                 } catch (Exception e) {
-                    log.error("Failed to restart VM {} after migration: {}", vmId, e.getMessage());
+                    LOG.error("Failed to restart VM {} after migration: {}", vmId, e.getMessage());
                     migration.postMigrationState = "stopped";
                     migration.errorMessage = "Migration succeeded but VM failed to restart: " + e.getMessage();
                     migration.markCompleted("stopped");
@@ -660,7 +660,7 @@ public class MigrationService {
             );
             
         } catch (Exception e) {
-            log.error("Migration failed for VM {}: {}", vmId, e.getMessage());
+            LOG.error("Migration failed for VM {}: {}", vmId, e.getMessage());
             
             // Handle online migration failure
             if (wasRunning && !request.allowOfflineMigration()) {
@@ -673,7 +673,7 @@ public class MigrationService {
             
             // Try offline migration if allowed
             if (wasRunning && request.allowOfflineMigration()) {
-                log.info("Online migration failed, attempting offline migration for VM {}", vmId);
+                LOG.info("Online migration failed, attempting offline migration for VM {}", vmId);
                 return performOfflineMigration(vm, request, migration, ticket);
             }
             
@@ -692,20 +692,20 @@ public class MigrationService {
         
         try {
             // Stop the VM first
-            log.info("Stopping VM {} for offline migration", vm.vmid());
+            LOG.info("Stopping VM {} for offline migration", vm.vmid());
             vmService.stopVM(vm.node(), vm.vmid(), ticket);
             
             // Wait for VM to stop
             Thread.sleep(5000);
             
             // Now attempt offline migration
-            log.info("Attempting offline migration for VM {} (with-local-disks not sent for offline)", vm.vmid());
+            LOG.info("Attempting offline migration for VM {} (with-local-disks not sent for offline)", vm.vmid());
             
             // For offline migration, use the original migration type
             String migrationType = request.migrationType();
             
             // TEMPORARY: Don't send migration_type to debug parameter verification issue
-            log.info("DEBUG: Calling migrateVM for offline without migration_type parameter");
+            LOG.info("DEBUG: Calling migrateVM for offline without migration_type parameter");
             
             TaskStatusResponse task = proxmoxClient.migrateVM(
                 vm.node(),
@@ -738,7 +738,7 @@ public class MigrationService {
             }
             
             // Start the VM on the target node
-            log.info("Starting VM {} on target node {}", vm.vmid(), request.targetNode());
+            LOG.info("Starting VM {} on target node {}", vm.vmid(), request.targetNode());
             vmService.startVM(request.targetNode(), vm.vmid(), ticket);
             
             // Give it a moment to start
@@ -770,7 +770,7 @@ public class MigrationService {
             );
             
         } catch (Exception e) {
-            log.error("Offline migration failed for VM {}: {}", vm.vmid(), e.getMessage());
+            LOG.error("Offline migration failed for VM {}: {}", vm.vmid(), e.getMessage());
             migration.markFailed("Offline migration failed: " + e.getMessage());
             throw new RuntimeException("Offline migration failed: " + e.getMessage(), e);
         }
@@ -780,7 +780,7 @@ public class MigrationService {
      * Check migration preconditions (mainly for bulk operations)
      */
     public MigrationPreconditionsResponse checkMigration(int vmId, String targetNode, @AuthTicket String ticket) {
-        log.debug("Checking migration preconditions for VM {} to node {}", vmId, targetNode);
+        LOG.debug("Checking migration preconditions for VM {} to node {}", vmId, targetNode);
         
         try {
             // Get VM details to find current node
@@ -794,7 +794,7 @@ public class MigrationService {
             return proxmoxClient.checkMigrationPreconditions(vm.node(), vmId, targetNode, ticket);
             
         } catch (Exception e) {
-            log.error("Failed to check migration preconditions: {}", e.getMessage());
+            LOG.error("Failed to check migration preconditions: {}", e.getMessage());
             throw new RuntimeException("Failed to check migration preconditions: " + e.getMessage(), e);
         }
     }
@@ -803,7 +803,7 @@ public class MigrationService {
      * Get current migration status by migration ID
      */
     public MigrationHistoryResponse getMigrationStatus(Long migrationId) {
-        log.debug("Getting migration status for migration {}", migrationId);
+        LOG.debug("Getting migration status for migration {}", migrationId);
         
         VmMigration migration = VmMigration.findById(migrationId);
         if (migration == null) {
@@ -817,7 +817,7 @@ public class MigrationService {
      * Get migration history for a VM
      */
     public List<MigrationHistoryResponse> getMigrationHistory(int vmId) {
-        log.debug("Getting migration history for VM {}", vmId);
+        LOG.debug("Getting migration history for VM {}", vmId);
         
         List<VmMigration> migrations = VmMigration.findByVmId(vmId);
         return migrations.stream()
@@ -829,7 +829,7 @@ public class MigrationService {
      * Get all migrations for a specific node (as source or target)
      */
     public List<MigrationHistoryResponse> getNodeMigrations(String node, boolean asSource) {
-        log.debug("Getting migrations for node {} as {}", node, asSource ? "source" : "target");
+        LOG.debug("Getting migrations for node {} as {}", node, asSource ? "source" : "target");
         
         List<VmMigration> migrations = asSource 
             ? VmMigration.findBySourceNode(node)
@@ -844,20 +844,20 @@ public class MigrationService {
      * Wait for a task to complete (no timeout - migrations can take hours)
      */
     private TaskStatusDetailResponse waitForTaskCompletion(String upid, String ticket) throws Exception {
-        log.info("Waiting for task {} to complete (this may take a while for large disks)...", upid);
+        LOG.info("Waiting for task {} to complete (this may take a while for large disks)...", upid);
         
         int checkCount = 0;
         while (true) {
             TaskStatusDetailResponse status = taskService.getTaskStatus(upid, ticket);
             
             if (Boolean.TRUE.equals(status.finished())) {
-                log.info("Task {} completed with status: {}", upid, status.exitstatus());
+                LOG.info("Task {} completed with status: {}", upid, status.exitstatus());
                 return status;
             }
             
             // Log progress every 10 checks (20 seconds)
             if (++checkCount % 10 == 0) {
-                log.info("Migration still in progress... (checked {} times)", checkCount);
+                LOG.info("Migration still in progress... (checked {} times)", checkCount);
             }
             
             // Wait 2 seconds before checking again

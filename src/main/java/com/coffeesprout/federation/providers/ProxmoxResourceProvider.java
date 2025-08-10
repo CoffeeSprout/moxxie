@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class ProxmoxResourceProvider implements ResourceProvider {
     
-    private static final Logger log = LoggerFactory.getLogger(ProxmoxResourceProvider.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ProxmoxResourceProvider.class);
     
     @Inject
     @RestClient
@@ -86,7 +86,7 @@ public class ProxmoxResourceProvider implements ResourceProvider {
                 StatusResponse status = proxmoxClient.getStatus();
                 return status != null;
             } catch (Exception e) {
-                log.error("Failed to check Proxmox availability", e);
+                LOG.error("Failed to check Proxmox availability", e);
                 return false;
             }
         });
@@ -187,7 +187,7 @@ public class ProxmoxResourceProvider implements ResourceProvider {
                 return resources;
                 
             } catch (Exception e) {
-                log.error("Failed to get cluster resources", e);
+                LOG.error("Failed to get cluster resources", e);
                 throw new RuntimeException("Failed to get cluster resources", e);
             }
         });
@@ -304,7 +304,7 @@ public class ProxmoxResourceProvider implements ResourceProvider {
                 return resources;
                 
             } catch (Exception e) {
-                log.error("Failed to get node resources for: " + nodeId, e);
+                LOG.error("Failed to get node resources for: " + nodeId, e);
                 throw new RuntimeException("Failed to get node resources", e);
             }
         });
@@ -347,7 +347,7 @@ public class ProxmoxResourceProvider implements ResourceProvider {
                             .count());
                         
                     } catch (Exception e) {
-                        log.warn("Failed to get detailed info for node: " + node.getName(), e);
+                        LOG.warn("Failed to get detailed info for node: " + node.getName(), e);
                     }
                     
                     nodeInfos.add(info);
@@ -356,7 +356,7 @@ public class ProxmoxResourceProvider implements ResourceProvider {
                 return nodeInfos;
                 
             } catch (Exception e) {
-                log.error("Failed to get nodes", e);
+                LOG.error("Failed to get nodes", e);
                 throw new RuntimeException("Failed to get nodes", e);
             }
         });
@@ -415,7 +415,7 @@ public class ProxmoxResourceProvider implements ResourceProvider {
                 return new ArrayList<>(poolMap.values());
                 
             } catch (Exception e) {
-                log.error("Failed to get storage pools", e);
+                LOG.error("Failed to get storage pools", e);
                 throw new RuntimeException("Failed to get storage pools", e);
             }
         });
@@ -436,7 +436,7 @@ public class ProxmoxResourceProvider implements ResourceProvider {
                 return calculationService.calculateLargestPossibleVM(nodeResources, requirements);
                 
             } catch (Exception e) {
-                log.error("Failed to calculate largest possible VM", e);
+                LOG.error("Failed to calculate largest possible VM", e);
                 throw new RuntimeException("Failed to calculate largest possible VM", e);
             }
         });
@@ -489,7 +489,7 @@ public class ProxmoxResourceProvider implements ResourceProvider {
                 return Optional.empty();
                 
             } catch (Exception e) {
-                log.error("Failed to find optimal placement", e);
+                LOG.error("Failed to find optimal placement", e);
                 return Optional.empty();
             }
         });
@@ -524,7 +524,7 @@ public class ProxmoxResourceProvider implements ResourceProvider {
                 metrics.put("storageEfficiency", resources.getStorageEfficiency());
                 
             } catch (Exception e) {
-                log.error("Failed to get provider metrics", e);
+                LOG.error("Failed to get provider metrics", e);
                 metrics.put("error", e.getMessage());
             }
             
@@ -537,7 +537,7 @@ public class ProxmoxResourceProvider implements ResourceProvider {
         return CompletableFuture.runAsync(() -> {
             cache.clear();
             lastRefreshTime = System.currentTimeMillis();
-            log.info("Refreshed Proxmox resource provider cache");
+            LOG.info("Refreshed Proxmox resource provider cache");
         });
     }
     
@@ -573,7 +573,7 @@ public class ProxmoxResourceProvider implements ResourceProvider {
             return resources;
             
         } catch (Exception e) {
-            log.error("Failed to get VM resources", e);
+            LOG.error("Failed to get VM resources", e);
             return new ArrayList<>();
         }
     }

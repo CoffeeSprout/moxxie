@@ -72,7 +72,7 @@ import java.util.stream.Collectors;
 @Tag(name = "VMs", description = "Virtual Machine management endpoints")
 public class VMResource {
 
-    private static final Logger log = LoggerFactory.getLogger(VMResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(VMResource.class);
 
     @Inject
     VMService vmService;
@@ -106,7 +106,7 @@ public class VMResource {
     UriInfo uriInfo;
 
     @GET
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "List all VMs", description = "Get a list of all VMs in the Proxmox cluster with optional filtering by tags, client, node, and status")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "VMs retrieved successfully",
@@ -176,7 +176,7 @@ public class VMResource {
 
     @GET
     @Path("/{vmId}")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Get VM details", description = "Get detailed information about a specific VM")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "VM retrieved successfully",
@@ -197,7 +197,7 @@ public class VMResource {
 
     @GET
     @Path("/{vmId}/debug")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Debug VM info", description = "Get raw JSON from Proxmox cluster resources for a specific VM")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Debug info retrieved successfully"),
@@ -337,7 +337,7 @@ public class VMResource {
             if (request.disks() != null && !request.disks().isEmpty()) {
                 for (DiskConfig disk : request.disks()) {
                     String diskString = disk.toProxmoxString();
-                    log.info("Setting disk {} with config: {}", disk.getParameterName(), diskString);
+                    LOG.info("Setting disk {} with config: {}", disk.getParameterName(), diskString);
                     
                     // Set the disk based on its interface and slot
                     switch (disk.interfaceType()) {
@@ -362,7 +362,7 @@ public class VMResource {
                                     clientRequest.setScsi5(diskString);
                                     break;
                                 default:
-                                    log.warn("SCSI slot {} is not supported yet (max slot 5)", disk.slot());
+                                    LOG.warn("SCSI slot {} is not supported yet (max slot 5)", disk.slot());
                                     break;
                             }
                             break;
@@ -419,7 +419,7 @@ public class VMResource {
             @RequestBody(description = "Cloud-init VM creation request", required = true,
                 content = @Content(schema = @Schema(implementation = CloudInitVMRequest.class)))
             @Valid CloudInitVMRequest request) {
-        log.info("Creating cloud-init VM {} from image {}", request.name(), request.imageSource());
+        LOG.info("Creating cloud-init VM {} from image {}", request.name(), request.imageSource());
         
         // Delegate to VMService which handles VMID allocation, creation, and migration
         CreateVMResponse response = vmService.createCloudInitVM(request, null);
@@ -471,7 +471,7 @@ public class VMResource {
     
     @GET
     @Path("/{vmId}/detail")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Get detailed VM information", description = "Get detailed information including network configuration")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "VM details retrieved successfully",
@@ -487,7 +487,7 @@ public class VMResource {
         VMResponse vm = findVmById(vmId);
         
         // Get detailed VM configuration
-        log.debug("Getting config for VM {} on node '{}'", vmId, vm.node());
+        LOG.debug("Getting config for VM {} on node '{}'", vmId, vm.node());
         Map<String, Object> config = vmService.getVMConfig(vm.node(), vmId, null);
         
         // Parse network interfaces from config
@@ -599,7 +599,7 @@ public class VMResource {
     
     @GET
     @Path("/{vmId}/status")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Get VM status", description = "Get detailed status information about a specific VM")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "VM status retrieved successfully",
@@ -909,7 +909,7 @@ public class VMResource {
     
     @GET
     @Path("/{vmId}/tags")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Get VM tags", description = "Get all tags assigned to a virtual machine")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Tags retrieved successfully",
@@ -1047,7 +1047,7 @@ public class VMResource {
                 diskSpec
             );
         } catch (Exception e) {
-            log.warn("Failed to parse disk info for {}: {}", diskInterface, diskSpec, e);
+            LOG.warn("Failed to parse disk info for {}: {}", diskInterface, diskSpec, e);
             return null;
         }
     }
@@ -1072,7 +1072,7 @@ public class VMResource {
                 return Long.parseLong(sizeStr);
             }
         } catch (Exception e) {
-            log.warn("Failed to parse disk size: {}", sizeStr, e);
+            LOG.warn("Failed to parse disk size: {}", sizeStr, e);
             return null;
         }
     }
@@ -1117,7 +1117,7 @@ public class VMResource {
             throw ProxmoxException.notFound("VM", String.valueOf(vmId));
         }
         
-        log.info("Setting SSH keys for VM {}", vmId);
+        LOG.info("Setting SSH keys for VM {}", vmId);
         
         // Use the direct SSH key method that does double encoding
         vmService.setSSHKeysDirect(vm.node(), vmId, request.sshKeys(), null);
@@ -1133,7 +1133,7 @@ public class VMResource {
     
     @GET
     @Path("/{vmId}/snapshots")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "List VM snapshots", 
                description = "Get all snapshots for a specific VM")
     @APIResponses({
@@ -1153,7 +1153,7 @@ public class VMResource {
     
     @POST
     @Path("/{vmId}/snapshots")
-    @SafeMode(value = true)  // Write operation
+    @SafeMode(true)  // Write operation
     @Operation(summary = "Create VM snapshot", 
                description = "Create a new snapshot of the VM's current state")
     @APIResponses({
@@ -1178,7 +1178,7 @@ public class VMResource {
     
     @DELETE
     @Path("/{vmId}/snapshots/{snapshotName}")
-    @SafeMode(value = true)  // Write operation
+    @SafeMode(true)  // Write operation
     @Operation(summary = "Delete VM snapshot", 
                description = "Delete a specific snapshot of the VM")
     @APIResponses({
@@ -1200,7 +1200,7 @@ public class VMResource {
     
     @POST
     @Path("/{vmId}/snapshots/{snapshotName}/rollback")
-    @SafeMode(value = true)  // Write operation - potentially dangerous
+    @SafeMode(true)  // Write operation - potentially dangerous
     @Operation(summary = "Rollback VM to snapshot", 
                description = "Rollback the VM to a previous snapshot state. WARNING: This will discard all changes made after the snapshot.")
     @APIResponses({
@@ -1224,7 +1224,7 @@ public class VMResource {
     
     @GET
     @Path("/{vmId}/backups")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "List VM backups", 
                description = "Get all backups for a specific VM across all storage locations")
     @APIResponses({
@@ -1244,7 +1244,7 @@ public class VMResource {
     
     @POST
     @Path("/{vmId}/backup")
-    @SafeMode(value = true)  // Write operation
+    @SafeMode(true)  // Write operation
     @Operation(summary = "Create VM backup", 
                description = "Create a new backup of the VM using vzdump")
     @APIResponses({

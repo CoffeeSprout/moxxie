@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 @Tag(name = "Networks", description = "Network management endpoints")
 public class NetworkResource {
     
-    private static final Logger log = LoggerFactory.getLogger(NetworkResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(NetworkResource.class);
     
     @Inject
     NetworkService networkService;

@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 @Tag(name = "Backups", description = "VM backup and restore management endpoints")
 public class BackupResource {
     
-    private static final Logger log = LoggerFactory.getLogger(BackupResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(BackupResource.class);
     
     @Inject
     BackupService backupService;
@@ -46,7 +46,7 @@ public class BackupResource {
     BackupLifecycleService lifecycleService;
     
     @GET
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "List all backups", 
                description = "Get all VM backups across all storage locations and nodes")
     @APIResponses({
@@ -60,7 +60,7 @@ public class BackupResource {
             List<BackupResponse> backups = backupService.listAllBackups(null);
             return Response.ok(backups).build();
         } catch (Exception e) {
-            log.error("Failed to list all backups", e);
+            LOG.error("Failed to list all backups", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to list backups: " + e.getMessage()))
                     .build();
@@ -69,7 +69,7 @@ public class BackupResource {
     
     @DELETE
     @Path("/{volid}")
-    @SafeMode(value = true)  // Write operation - deleting backups
+    @SafeMode(true)  // Write operation - deleting backups
     @Operation(summary = "Delete a backup", 
                description = "Delete a specific backup by volume ID. Protected backups cannot be deleted.")
     @APIResponses({
@@ -104,7 +104,7 @@ public class BackupResource {
             }
             throw e;
         } catch (Exception e) {
-            log.error("Failed to delete backup: {}", volid, e);
+            LOG.error("Failed to delete backup: {}", volid, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to delete backup: " + e.getMessage()))
                     .build();
@@ -113,7 +113,7 @@ public class BackupResource {
     
     @POST
     @Path("/restore")
-    @SafeMode(value = true)  // Write operation - creating new VM
+    @SafeMode(true)  // Write operation - creating new VM
     @Operation(summary = "Restore VM from backup", 
                description = "Restore a VM from a backup to the same or different node")
     @APIResponses({
@@ -140,7 +140,7 @@ public class BackupResource {
             }
             throw e;
         } catch (Exception e) {
-            log.error("Failed to restore VM from backup", e);
+            LOG.error("Failed to restore VM from backup", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to restore VM: " + e.getMessage()))
                     .build();
@@ -151,7 +151,7 @@ public class BackupResource {
     
     @GET
     @Path("/jobs")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "List backup jobs", 
                description = "Get all configured backup jobs from Proxmox cluster")
     @APIResponses({
@@ -165,7 +165,7 @@ public class BackupResource {
             List<BackupJobResponse> jobs = backupJobService.listBackupJobs(null);
             return Response.ok(jobs).build();
         } catch (Exception e) {
-            log.error("Failed to list backup jobs", e);
+            LOG.error("Failed to list backup jobs", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to list backup jobs: " + e.getMessage()))
                     .build();
@@ -174,7 +174,7 @@ public class BackupResource {
     
     @GET
     @Path("/jobs/{jobId}")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Get backup job details", 
                description = "Get details of a specific backup job")
     @APIResponses({
@@ -199,7 +199,7 @@ public class BackupResource {
             }
             throw e;
         } catch (Exception e) {
-            log.error("Failed to get backup job: {}", jobId, e);
+            LOG.error("Failed to get backup job: {}", jobId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get backup job: " + e.getMessage()))
                     .build();
@@ -210,7 +210,7 @@ public class BackupResource {
     
     @GET
     @Path("/retention-candidates")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Get retention candidates", 
                description = "List backups eligible for deletion based on retention policy")
     @APIResponses({
@@ -253,7 +253,7 @@ public class BackupResource {
             
             return Response.ok(candidates).build();
         } catch (Exception e) {
-            log.error("Failed to get retention candidates", e);
+            LOG.error("Failed to get retention candidates", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get retention candidates: " + e.getMessage()))
                     .build();
@@ -262,7 +262,7 @@ public class BackupResource {
     
     @POST
     @Path("/cleanup")
-    @SafeMode(value = true)  // Write operation - deleting backups
+    @SafeMode(true)  // Write operation - deleting backups
     @Operation(summary = "Clean up old backups", 
                description = "Delete backups based on retention policy. Use dryRun=true to preview.")
     @APIResponses({
@@ -280,7 +280,7 @@ public class BackupResource {
             BackupCleanupResponse response = lifecycleService.cleanupBackups(request, null);
             return Response.ok(response).build();
         } catch (Exception e) {
-            log.error("Failed to cleanup backups", e);
+            LOG.error("Failed to cleanup backups", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to cleanup backups: " + e.getMessage()))
                     .build();
@@ -289,7 +289,7 @@ public class BackupResource {
     
     @POST
     @Path("/{volid}/protect")
-    @SafeMode(value = true)  // Write operation
+    @SafeMode(true)  // Write operation
     @Operation(summary = "Update backup protection", 
                description = "Protect or unprotect a backup from deletion")
     @APIResponses({
@@ -309,7 +309,7 @@ public class BackupResource {
             lifecycleService.updateBackupProtection(decodedVolid, protect, null);
             return Response.noContent().build();
         } catch (Exception e) {
-            log.error("Failed to update backup protection", e);
+            LOG.error("Failed to update backup protection", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to update protection: " + e.getMessage()))
                     .build();

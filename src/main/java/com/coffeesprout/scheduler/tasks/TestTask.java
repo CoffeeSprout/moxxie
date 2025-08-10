@@ -16,21 +16,21 @@ import java.util.Map;
 @ApplicationScoped
 public class TestTask implements ScheduledTask {
     
-    private static final Logger log = LoggerFactory.getLogger(TestTask.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TestTask.class);
     
     @Override
     public TaskResult execute(TaskContext context) {
-        log.info("Executing test task for job: {}", context.getJob().name);
+        LOG.info("Executing test task for job: {}", context.getJob().name);
         
         try {
             // Simulate some work
             String message = context.getParameter("message", "Hello from test task!");
             int delay = context.getIntParameter("delay", 1000);
             
-            log.info("Test task message: {}", message);
+            LOG.info("Test task message: {}", message);
             
             if (delay > 0) {
-                log.info("Simulating work for {} ms...", delay);
+                LOG.info("Simulating work for {} ms...", delay);
                 Thread.sleep(delay);
             }
             
@@ -44,7 +44,7 @@ public class TestTask implements ScheduledTask {
                 .withDetail("manualTrigger", context.isManualTrigger());
                 
         } catch (Exception e) {
-            log.error("Test task failed: {}", e.getMessage(), e);
+            LOG.error("Test task failed: {}", e.getMessage(), e);
             return TaskResult.failure("Test task failed: " + e.getMessage())
                 .withProcessedCount(1)
                 .withFailedCount(1);

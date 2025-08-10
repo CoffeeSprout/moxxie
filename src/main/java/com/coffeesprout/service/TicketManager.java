@@ -20,7 +20,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 @ApplicationScoped
 public class TicketManager {
     
-    private static final Logger log = LoggerFactory.getLogger(TicketManager.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TicketManager.class);
     
     // Proxmox tickets are valid for 2 hours, refresh after 1.5 hours to be safe
     private static final Duration TICKET_REFRESH_INTERVAL = Duration.ofMinutes(90);
@@ -43,9 +43,9 @@ public class TicketManager {
         if (config.proxmox().password() != null && !config.proxmox().password().isEmpty()) {
             try {
                 refreshTicket();
-                log.info("Successfully authenticated with Proxmox on startup");
+                LOG.info("Successfully authenticated with Proxmox on startup");
             } catch (Exception e) {
-                log.warn("Failed to authenticate on startup, will retry on first request: {}", e.getMessage());
+                LOG.warn("Failed to authenticate on startup, will retry on first request: {}", e.getMessage());
             }
         }
     }
@@ -100,7 +100,7 @@ public class TicketManager {
     public void forceRefresh() {
         lock.writeLock().lock();
         try {
-            log.debug("Forcing ticket refresh");
+            LOG.debug("Forcing ticket refresh");
             refreshTicket();
         } finally {
             lock.writeLock().unlock();
@@ -137,20 +137,20 @@ public class TicketManager {
                 throw new IllegalStateException("Proxmox password not configured. Set MOXXIE_PROXMOX_PASSWORD environment variable.");
             }
             
-            log.info("Authenticating with Proxmox as user: {}", username);
+            LOG.info("Authenticating with Proxmox as user: {}", username);
             LoginResponse response = authService.authenticate(username, password);
             currentTicket = response.getData().getTicket();
             currentCsrfToken = response.getData().getCsrfPreventionToken();
             ticketExpiry = Instant.now().plus(TICKET_REFRESH_INTERVAL);
             authenticationFailed = false;
             
-            log.debug("Successfully refreshed authentication ticket, valid until: {}", ticketExpiry);
+            LOG.debug("Successfully refreshed authentication ticket, valid until: {}", ticketExpiry);
         } catch (Exception e) {
             authenticationFailed = true;
             currentTicket = null;
             currentCsrfToken = null;
             ticketExpiry = null;
-            log.error("Failed to refresh authentication ticket: {}", e.getMessage());
+            LOG.error("Failed to refresh authentication ticket: {}", e.getMessage());
             throw new RuntimeException("Authentication failed: " + e.getMessage(), e);
         }
     }

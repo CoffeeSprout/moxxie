@@ -13,11 +13,11 @@ import java.util.Map;
 @Provider
 public class SafeModeExceptionMapper implements ExceptionMapper<SafeModeViolationException> {
     
-    private static final Logger log = LoggerFactory.getLogger(SafeModeExceptionMapper.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SafeModeExceptionMapper.class);
     
     @Override
     public Response toResponse(SafeModeViolationException exception) {
-        log.warn("Safe mode violation: {}", exception.getMessage());
+        LOG.warn("Safe mode violation: {}", exception.getMessage());
         
         Map<String, Object> errorResponse = new HashMap<>();
         errorResponse.put("error", "SAFE_MODE_VIOLATION");

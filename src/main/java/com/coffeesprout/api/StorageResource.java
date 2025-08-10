@@ -32,13 +32,13 @@ import java.util.List;
 @Tag(name = "Storage", description = "Storage pool and content management endpoints")
 public class StorageResource {
     
-    private static final Logger log = LoggerFactory.getLogger(StorageResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(StorageResource.class);
     
     @Inject
     StorageService storageService;
     
     @GET
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "List storage pools", 
                description = "Get all storage pools with usage statistics across the cluster")
     @APIResponses({
@@ -54,7 +54,7 @@ public class StorageResource {
             List<StoragePoolResponse> pools = storageService.listStoragePools(null);
             return Response.ok(pools).build();
         } catch (Exception e) {
-            log.error("Failed to list storage pools", e);
+            LOG.error("Failed to list storage pools", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to list storage pools: " + e.getMessage()))
                     .build();
@@ -63,7 +63,7 @@ public class StorageResource {
     
     @GET
     @Path("/{storageId}/content")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "List storage content", 
                description = "Get content of a specific storage pool with optional type filtering")
     @APIResponses({
@@ -90,7 +90,7 @@ public class StorageResource {
             }
             throw e;
         } catch (Exception e) {
-            log.error("Failed to list storage content for: " + storageId, e);
+            LOG.error("Failed to list storage content for: " + storageId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to list storage content: " + e.getMessage()))
                     .build();
@@ -99,7 +99,7 @@ public class StorageResource {
     
     @GET
     @Path("/{storageId}/status")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Get storage status", 
                description = "Get detailed status and usage information for a specific storage on a node")
     @APIResponses({
@@ -142,7 +142,7 @@ public class StorageResource {
             }
             throw e;
         } catch (Exception e) {
-            log.error("Failed to get storage status for: " + storageId, e);
+            LOG.error("Failed to get storage status for: " + storageId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get storage status: " + e.getMessage()))
                     .build();
@@ -151,7 +151,7 @@ public class StorageResource {
     
     @DELETE
     @Path("/{storageId}/content/{volumeId}")
-    @SafeMode(value = true)  // Write operation - deleting content
+    @SafeMode(true)  // Write operation - deleting content
     @Operation(summary = "Delete storage content", 
                description = "Delete a specific file from storage (ISOs, templates, etc)")
     @APIResponses({
@@ -187,7 +187,7 @@ public class StorageResource {
             }
             throw e;
         } catch (Exception e) {
-            log.error("Failed to delete content: {}:{}", storageId, volumeId, e);
+            LOG.error("Failed to delete content: {}:{}", storageId, volumeId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to delete content: " + e.getMessage()))
                     .build();
@@ -196,7 +196,7 @@ public class StorageResource {
     
     @POST
     @Path("/{storageId}/download-url")
-    @SafeMode(value = true)  // Write operation - downloading new content
+    @SafeMode(true)  // Write operation - downloading new content
     @Operation(summary = "Download from URL", 
                description = "Download content from a URL directly to storage with optional checksum verification")
     @APIResponses({
@@ -233,7 +233,7 @@ public class StorageResource {
             }
             throw e;
         } catch (Exception e) {
-            log.error("Failed to download from URL", e);
+            LOG.error("Failed to download from URL", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to download from URL: " + e.getMessage()))
                     .build();
@@ -243,7 +243,7 @@ public class StorageResource {
     @POST
     @Path("/{storageId}/upload")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    @SafeMode(value = true)  // Write operation - uploading new content
+    @SafeMode(true)  // Write operation - uploading new content
     @Operation(summary = "Upload file", 
                description = "Upload a file (ISO, template, etc) to storage")
     @APIResponses({
@@ -309,7 +309,7 @@ public class StorageResource {
             }
             throw e;
         } catch (Exception e) {
-            log.error("Failed to upload file", e);
+            LOG.error("Failed to upload file", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to upload file: " + e.getMessage()))
                     .build();

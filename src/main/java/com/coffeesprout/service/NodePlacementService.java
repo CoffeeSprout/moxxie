@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 @AutoAuthenticate
 public class NodePlacementService {
     
-    private static final Logger log = LoggerFactory.getLogger(NodePlacementService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(NodePlacementService.class);
     
     @Inject
     @RestClient
@@ -62,13 +62,13 @@ public class NodePlacementService {
             // Record assignment
             assignments.recordAssignment(group.name(), selectedNode.name());
             
-            log.info("Selected node '{}' for {}-{} with strategy {}", 
+            LOG.info("Selected node '{}' for {}-{} with strategy {}", 
                 selectedNode.name(), group.name(), nodeIndex, constraints.antiAffinity());
             
             return selectedNode.name();
             
         } catch (Exception e) {
-            log.error("Failed to select host for node placement", e);
+            LOG.error("Failed to select host for node placement", e);
             // Fallback to first available node
             return getFirstAvailableNode(constraints);
         }
@@ -84,7 +84,7 @@ public class NodePlacementService {
                     NodeStatusResponse status = proxmoxClient.getNodeStatus(node.getName(), ticket);
                     return new NodeInfo(node, status.getData());
                 } catch (Exception e) {
-                    log.warn("Failed to get status for node {}, excluding from placement", node.getName());
+                    LOG.warn("Failed to get status for node {}, excluding from placement", node.getName());
                     return null;
                 }
             })
@@ -179,7 +179,7 @@ public class NodePlacementService {
                 .orElseThrow(() -> new RuntimeException("No available nodes found"));
                 
         } catch (Exception e) {
-            log.error("Failed to get first available node", e);
+            LOG.error("Failed to get first available node", e);
             throw new RuntimeException("Failed to determine node placement", e);
         }
     }

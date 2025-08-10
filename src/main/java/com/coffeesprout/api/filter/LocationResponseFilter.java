@@ -19,7 +19,7 @@ import java.io.IOException;
 @Provider
 public class LocationResponseFilter implements ContainerResponseFilter {
     
-    private static final Logger log = LoggerFactory.getLogger(LocationResponseFilter.class);
+    private static final Logger LOG = LoggerFactory.getLogger(LocationResponseFilter.class);
     
     @Inject
     LocationService locationService;
@@ -43,7 +43,7 @@ public class LocationResponseFilter implements ContainerResponseFilter {
             
         } catch (Exception e) {
             // Log but don't fail the request if headers can't be added
-            log.warn("Failed to add location headers to response", e);
+            LOG.warn("Failed to add location headers to response", e);
         }
     }
 }

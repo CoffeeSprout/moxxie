@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
 @ReadOnly
 public class ReadOnlyInterceptor {
 
-    private static final Logger log = LoggerFactory.getLogger(ReadOnlyInterceptor.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ReadOnlyInterceptor.class);
 
     @Inject
     @ConfigProperty(name = "moxxie.read-only", defaultValue = "false")
@@ -27,7 +27,7 @@ public class ReadOnlyInterceptor {
             
             // Block any write operations
             if (isWriteOperation(methodName)) {
-                log.warn("BLOCKED: Write operation '{}' attempted in read-only mode", methodName);
+                LOG.warn("BLOCKED: Write operation '{}' attempted in read-only mode", methodName);
                 throw new UnsupportedOperationException(
                     "Operation '" + methodName + "' is not allowed in read-only mode"
                 );

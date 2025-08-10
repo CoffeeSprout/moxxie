@@ -30,13 +30,13 @@ import org.slf4j.LoggerFactory;
 @Tag(name = "Tasks", description = "Task monitoring and management endpoints")
 public class TaskResource {
     
-    private static final Logger log = LoggerFactory.getLogger(TaskResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TaskResource.class);
     
     @Inject
     TaskService taskService;
     
     @GET
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "List tasks", 
                description = "List tasks across the cluster with optional filtering")
     @APIResponses({
@@ -69,7 +69,7 @@ public class TaskResource {
             );
             return Response.ok(tasks).build();
         } catch (Exception e) {
-            log.error("Failed to list tasks", e);
+            LOG.error("Failed to list tasks", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to list tasks: " + e.getMessage()))
                     .build();
@@ -78,7 +78,7 @@ public class TaskResource {
     
     @GET
     @Path("/{taskId}")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Get task status", 
                description = "Get detailed status of a specific task by UPID")
     @APIResponses({
@@ -112,7 +112,7 @@ public class TaskResource {
             }
             throw e;
         } catch (Exception e) {
-            log.error("Failed to get task status for: " + taskId, e);
+            LOG.error("Failed to get task status for: " + taskId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get task status: " + e.getMessage()))
                     .build();
@@ -121,7 +121,7 @@ public class TaskResource {
     
     @GET
     @Path("/{taskId}/log")
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     @Operation(summary = "Get task log", 
                description = "Get execution log of a specific task with pagination")
     @APIResponses({
@@ -159,7 +159,7 @@ public class TaskResource {
             }
             throw e;
         } catch (Exception e) {
-            log.error("Failed to get task log for: " + taskId, e);
+            LOG.error("Failed to get task log for: " + taskId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get task log: " + e.getMessage()))
                     .build();
@@ -168,7 +168,7 @@ public class TaskResource {
     
     @DELETE
     @Path("/{taskId}")
-    @SafeMode(value = true)  // Write operation - stopping a task
+    @SafeMode(true)  // Write operation - stopping a task
     @Operation(summary = "Stop task", 
                description = "Stop a running task (requires appropriate permissions)")
     @APIResponses({
@@ -217,7 +217,7 @@ public class TaskResource {
             }
             throw e;
         } catch (Exception e) {
-            log.error("Failed to stop task: " + taskId, e);
+            LOG.error("Failed to stop task: " + taskId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to stop task: " + e.getMessage()))
                     .build();

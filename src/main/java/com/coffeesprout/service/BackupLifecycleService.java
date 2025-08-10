@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 @AutoAuthenticate
 public class BackupLifecycleService {
     
-    private static final Logger log = LoggerFactory.getLogger(BackupLifecycleService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(BackupLifecycleService.class);
     
     @Inject
     BackupService backupService;
@@ -44,7 +44,7 @@ public class BackupLifecycleService {
     public List<BackupDeletionCandidate> getRetentionCandidates(String retentionPolicy, List<String> tags, 
                                                                 List<Integer> vmIds, boolean includeProtected, 
                                                                 @AuthTicket String ticket) {
-        log.debug("Finding retention candidates with policy: {}", retentionPolicy);
+        LOG.debug("Finding retention candidates with policy: {}", retentionPolicy);
         
         try {
             // Parse retention policy
@@ -104,7 +104,7 @@ public class BackupLifecycleService {
             return candidates;
             
         } catch (Exception e) {
-            log.error("Failed to get retention candidates: {}", e.getMessage());
+            LOG.error("Failed to get retention candidates: {}", e.getMessage());
             throw new RuntimeException("Failed to get retention candidates: " + e.getMessage(), e);
         }
     }
@@ -113,7 +113,7 @@ public class BackupLifecycleService {
      * Clean up old backups based on retention policy
      */
     public BackupCleanupResponse cleanupBackups(BackupCleanupRequest request, @AuthTicket String ticket) {
-        log.info("Starting backup cleanup with policy: {}, dryRun: {}", 
+        LOG.info("Starting backup cleanup with policy: {}, dryRun: {}", 
                  request.retentionPolicy(), request.dryRun());
         
         try {
@@ -139,15 +139,15 @@ public class BackupLifecycleService {
             if (!request.dryRun()) {
                 for (BackupDeletionCandidate candidate : candidates) {
                     if (candidate.isProtected() && !request.ignoreProtected()) {
-                        log.info("Skipping protected backup: {}", candidate.volid());
+                        LOG.info("Skipping protected backup: {}", candidate.volid());
                         continue;
                     }
                     
                     try {
-                        log.info("Deleting backup: {} ({})", candidate.volid(), candidate.sizeHuman());
+                        LOG.info("Deleting backup: {} ({})", candidate.volid(), candidate.sizeHuman());
                         backupService.deleteBackup(candidate.volid(), ticket);
                     } catch (Exception e) {
-                        log.error("Failed to delete backup {}: {}", candidate.volid(), e.getMessage());
+                        LOG.error("Failed to delete backup {}: {}", candidate.volid(), e.getMessage());
                     }
                 }
             }
@@ -164,7 +164,7 @@ public class BackupLifecycleService {
             );
             
         } catch (Exception e) {
-            log.error("Failed to cleanup backups: {}", e.getMessage());
+            LOG.error("Failed to cleanup backups: {}", e.getMessage());
             throw new RuntimeException("Failed to cleanup backups: " + e.getMessage(), e);
         }
     }
@@ -173,7 +173,7 @@ public class BackupLifecycleService {
      * Update backup protection status
      */
     public void updateBackupProtection(String volid, boolean protect, @AuthTicket String ticket) {
-        log.info("Updating backup {} protection to: {}", volid, protect);
+        LOG.info("Updating backup {} protection to: {}", volid, protect);
         
         try {
             // Parse volid to get storage and volume
@@ -195,10 +195,10 @@ public class BackupLifecycleService {
             
             // Note: This is a conceptual endpoint - Proxmox might use a different approach
             // You might need to use the storage content update endpoint
-            log.warn("Backup protection update not fully implemented - Proxmox API endpoint needed");
+            LOG.warn("Backup protection update not fully implemented - Proxmox API endpoint needed");
             
         } catch (Exception e) {
-            log.error("Failed to update backup protection: {}", e.getMessage());
+            LOG.error("Failed to update backup protection: {}", e.getMessage());
             throw new RuntimeException("Failed to update backup protection: " + e.getMessage(), e);
         }
     }
@@ -207,10 +207,10 @@ public class BackupLifecycleService {
      * Update backup notes
      */
     public void updateBackupNotes(String volid, String notes, @AuthTicket String ticket) {
-        log.info("Updating backup {} notes", volid);
+        LOG.info("Updating backup {} notes", volid);
         
         // Similar to protection update - needs proper Proxmox API endpoint
-        log.warn("Backup notes update not fully implemented - Proxmox API endpoint needed");
+        LOG.warn("Backup notes update not fully implemented - Proxmox API endpoint needed");
     }
     
     /**

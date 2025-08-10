@@ -21,7 +21,7 @@ import java.util.Map;
 @AutoAuthenticate
 public class ConsoleService {
 
-    private static final Logger log = LoggerFactory.getLogger(ConsoleService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ConsoleService.class);
     private static final int CONSOLE_TICKET_VALIDITY_MINUTES = 10;
 
     @Inject
@@ -40,9 +40,9 @@ public class ConsoleService {
     @Inject
     MoxxieConfig config;
     
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     public ConsoleResponse createConsoleAccess(int vmId, ConsoleRequest request, @AuthTicket String ticket) {
-        log.info("Creating console access for VM {} with type {}", vmId, request.getType());
+        LOG.info("Creating console access for VM {} with type {}", vmId, request.getType());
         
         // First, get VM details to find the node
         VMResponse vm = vmLocatorService.findVM(vmId, ticket)
@@ -70,14 +70,14 @@ public class ConsoleService {
             return buildConsoleResponse(request.getType(), proxmoxResponse, node, vmId);
             
         } catch (Exception e) {
-            log.error("Failed to create console access for VM {}: {}", vmId, e.getMessage(), e);
+            LOG.error("Failed to create console access for VM {}: {}", vmId, e.getMessage(), e);
             throw new RuntimeException("Failed to create console access: " + e.getMessage(), e);
         }
     }
     
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     public ConsoleWebSocketResponse getWebSocketDetails(int vmId, String consoleTicket, @AuthTicket String ticket) {
-        log.debug("Getting WebSocket details for VM {} with console ticket", vmId);
+        LOG.debug("Getting WebSocket details for VM {} with console ticket", vmId);
         
         VMResponse vm = vmLocatorService.findVM(vmId, ticket)
             .orElseThrow(() -> new IllegalArgumentException("VM with ID " + vmId + " not found"));
@@ -99,9 +99,9 @@ public class ConsoleService {
         return response;
     }
     
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     public SpiceConnectionFile generateSpiceFile(int vmId, String consoleTicket, @AuthTicket String ticket) {
-        log.info("Generating SPICE connection file for VM {}", vmId);
+        LOG.info("Generating SPICE connection file for VM {}", vmId);
         
         VMResponse vm = vmLocatorService.findVM(vmId, ticket)
             .orElseThrow(() -> new IllegalArgumentException("VM with ID " + vmId + " not found"));
@@ -153,7 +153,7 @@ public class ConsoleService {
                 try {
                     response.setPort(Integer.parseInt(data.getPort()));
                 } catch (NumberFormatException e) {
-                    log.warn("Could not parse port number: {}", data.getPort());
+                    LOG.warn("Could not parse port number: {}", data.getPort());
                 }
             }
             

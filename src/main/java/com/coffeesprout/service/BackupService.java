@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 @AutoAuthenticate
 public class BackupService {
     
-    private static final Logger log = LoggerFactory.getLogger(BackupService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(BackupService.class);
     
     // Pattern to extract VM ID from backup filename
     private static final Pattern BACKUP_FILENAME_PATTERN = 
@@ -60,7 +60,7 @@ public class BackupService {
      * Create a backup for a VM
      */
     public TaskResponse createBackup(int vmId, BackupRequest request, @AuthTicket String ticket) {
-        log.info("Creating backup for VM {} to storage '{}'", vmId, request.storage());
+        LOG.info("Creating backup for VM {} to storage '{}'", vmId, request.storage());
         
         try {
             // Get VM info to find its node
@@ -92,12 +92,12 @@ public class BackupService {
                 throw new RuntimeException("No task ID returned from Proxmox");
             }
             
-            log.info("Backup task started: {}", response.getData());
+            LOG.info("Backup task started: {}", response.getData());
             return new TaskResponse(response.getData(), 
                     String.format("Backup of VM %d to storage '%s' started", vmId, request.storage()));
                     
         } catch (Exception e) {
-            log.error("Failed to create backup for VM {}: {}", vmId, e.getMessage());
+            LOG.error("Failed to create backup for VM {}: {}", vmId, e.getMessage());
             throw new RuntimeException("Failed to create backup: " + e.getMessage(), e);
         }
     }
@@ -106,7 +106,7 @@ public class BackupService {
      * List all backups for a specific VM
      */
     public List<BackupResponse> listBackups(int vmId, @AuthTicket String ticket) {
-        log.debug("Listing backups for VM {}", vmId);
+        LOG.debug("Listing backups for VM {}", vmId);
         
         try {
             List<BackupResponse> allBackups = new ArrayList<>();
@@ -147,13 +147,13 @@ public class BackupService {
                                     allBackups.addAll(backups);
                                 }
                             } catch (Exception e) {
-                                log.debug("Failed to list content for storage {} on node {}: {}", 
+                                LOG.debug("Failed to list content for storage {} on node {}: {}", 
                                          storage.getStorage(), node.getName(), e.getMessage());
                             }
                         }
                     }
                 } catch (Exception e) {
-                    log.debug("Failed to process node {}: {}", node.getName(), e.getMessage());
+                    LOG.debug("Failed to process node {}: {}", node.getName(), e.getMessage());
                 }
             }
             
@@ -163,7 +163,7 @@ public class BackupService {
             return allBackups;
                     
         } catch (Exception e) {
-            log.error("Failed to list backups for VM {}: {}", vmId, e.getMessage());
+            LOG.error("Failed to list backups for VM {}: {}", vmId, e.getMessage());
             throw new RuntimeException("Failed to list backups: " + e.getMessage(), e);
         }
     }
@@ -172,7 +172,7 @@ public class BackupService {
      * List all backups across all VMs
      */
     public List<BackupResponse> listAllBackups(@AuthTicket String ticket) {
-        log.info("Listing all backups across all nodes and storages");
+        LOG.info("Listing all backups across all nodes and storages");
         
         try {
             List<BackupResponse> allBackups = new ArrayList<>();
@@ -180,11 +180,11 @@ public class BackupService {
             
             // Get all nodes
             var nodes = nodeService.listNodes(ticket);
-            log.info("Found {} nodes to check for backups", nodes.size());
+            LOG.info("Found {} nodes to check for backups", nodes.size());
             
             // Process each node
             for (var node : nodes) {
-                log.info("Checking node {} for backup storages", node.getName());
+                LOG.info("Checking node {} for backup storages", node.getName());
                 try {
                     // Get storage pools for this node
                     StorageResponse storageResponse = proxmoxClient.getNodeStorage(node.getName(), ticket);
@@ -193,18 +193,18 @@ public class BackupService {
                     }
                     
                     // Check each storage for backups
-                    log.info("Node {} has {} storage pools", node.getName(), storageResponse.getData().size());
+                    LOG.info("Node {} has {} storage pools", node.getName(), storageResponse.getData().size());
                     for (var storage : storageResponse.getData()) {
                         if (storage.getContent() != null && storage.getContent().contains("backup")) {
                             // Check if this is a shared storage that we've already processed
                             boolean isShared = storage.getShared() == 1;
                             if (isShared && processedSharedStorages.contains(storage.getStorage())) {
-                                log.info("Skipping shared storage {} on node {} (already processed)", 
+                                LOG.info("Skipping shared storage {} on node {} (already processed)", 
                                         storage.getStorage(), node.getName());
                                 continue;
                             }
                             
-                            log.info("Storage {} on node {} supports backups (shared: {})", 
+                            LOG.info("Storage {} on node {} supports backups (shared: {})", 
                                     storage.getStorage(), node.getName(), isShared);
                             
                             try {
@@ -224,7 +224,7 @@ public class BackupService {
                                             .map(content -> convertToBackupResponse(content, node.getName()))
                                             .collect(Collectors.toList());
                                     
-                                    log.info("Found {} backups in storage {} on node {}", 
+                                    LOG.info("Found {} backups in storage {} on node {}", 
                                              backups.size(), storage.getStorage(), node.getName());
                                     allBackups.addAll(backups);
                                     
@@ -233,17 +233,17 @@ public class BackupService {
                                         processedSharedStorages.add(storage.getStorage());
                                     }
                                 } else {
-                                    log.info("No backup data returned for storage {} on node {}", 
+                                    LOG.info("No backup data returned for storage {} on node {}", 
                                              storage.getStorage(), node.getName());
                                 }
                             } catch (Exception e) {
-                                log.debug("Failed to list content for storage {} on node {}: {}", 
+                                LOG.debug("Failed to list content for storage {} on node {}: {}", 
                                          storage.getStorage(), node.getName(), e.getMessage());
                             }
                         }
                     }
                 } catch (Exception e) {
-                    log.debug("Failed to process node {}: {}", node.getName(), e.getMessage());
+                    LOG.debug("Failed to process node {}: {}", node.getName(), e.getMessage());
                 }
             }
             
@@ -253,7 +253,7 @@ public class BackupService {
             return allBackups;
                     
         } catch (Exception e) {
-            log.error("Failed to list all backups: {}", e.getMessage());
+            LOG.error("Failed to list all backups: {}", e.getMessage());
             throw new RuntimeException("Failed to list backups: " + e.getMessage(), e);
         }
     }
@@ -262,7 +262,7 @@ public class BackupService {
      * Delete a backup
      */
     public TaskResponse deleteBackup(String volid, @AuthTicket String ticket) {
-        log.info("Deleting backup: {}", volid);
+        LOG.info("Deleting backup: {}", volid);
         
         try {
             // Parse volume ID to extract storage and volume path
@@ -316,12 +316,12 @@ public class BackupService {
                 throw new RuntimeException("No task ID returned from Proxmox");
             }
             
-            log.info("Backup deletion task started: {}", response.getData());
+            LOG.info("Backup deletion task started: {}", response.getData());
             return new TaskResponse(response.getData(), 
                     "Backup deletion started: " + volid);
                     
         } catch (Exception e) {
-            log.error("Failed to delete backup {}: {}", volid, e.getMessage());
+            LOG.error("Failed to delete backup {}: {}", volid, e.getMessage());
             throw new RuntimeException("Failed to delete backup: " + e.getMessage(), e);
         }
     }
@@ -330,7 +330,7 @@ public class BackupService {
      * Restore a VM from backup
      */
     public TaskResponse restoreBackup(RestoreRequest request, @AuthTicket String ticket) {
-        log.info("Restoring VM {} from backup: {}", request.vmId(), request.backup());
+        LOG.info("Restoring VM {} from backup: {}", request.vmId(), request.backup());
         
         try {
             // Check if target VM ID already exists if not forcing overwrite
@@ -368,13 +368,13 @@ public class BackupService {
                 throw new RuntimeException("No task ID returned from Proxmox");
             }
             
-            log.info("VM restore task started: {}", response.getData());
+            LOG.info("VM restore task started: {}", response.getData());
             return new TaskResponse(response.getData(), 
                     String.format("Restore of VM %d from backup '%s' started on node %s", 
                                   request.vmId(), request.backup(), request.targetNode()));
                     
         } catch (Exception e) {
-            log.error("Failed to restore VM from backup: {}", e.getMessage());
+            LOG.error("Failed to restore VM from backup: {}", e.getMessage());
             throw new RuntimeException("Failed to restore VM: " + e.getMessage(), e);
         }
     }
@@ -397,7 +397,7 @@ public class BackupService {
                     }
                 }
             } catch (Exception e) {
-                log.debug("Failed to check storage on node {}: {}", node.getName(), e.getMessage());
+                LOG.debug("Failed to check storage on node {}: {}", node.getName(), e.getMessage());
             }
         }
         
@@ -458,7 +458,7 @@ public class BackupService {
                 try {
                     return Integer.parseInt(matcher.group(1));
                 } catch (NumberFormatException e) {
-                    log.debug("Failed to parse VM ID from filename: {}", filename);
+                    LOG.debug("Failed to parse VM ID from filename: {}", filename);
                 }
             }
         }
@@ -469,7 +469,7 @@ public class BackupService {
      * Perform bulk backup operations on multiple VMs
      */
     public BulkBackupResponse bulkCreateBackups(BulkBackupRequest request, @AuthTicket String ticket) {
-        log.info("Starting bulk backup operation with {} selectors to storage '{}'", 
+        LOG.info("Starting bulk backup operation with {} selectors to storage '{}'", 
                 request.vmSelectors().size(), request.storage());
         
         Instant startTime = Instant.now();
@@ -481,7 +481,7 @@ public class BackupService {
                 List<VMResponse> vms = vmSelectorService.selectVMs(selector, ticket);
                 targetVMs.addAll(vms);
             } catch (Exception e) {
-                log.error("Failed to select VMs with selector {}: {}", selector, e.getMessage());
+                LOG.error("Failed to select VMs with selector {}: {}", selector, e.getMessage());
                 throw new RuntimeException("Failed to select VMs: " + e.getMessage(), e);
             }
         }
@@ -493,7 +493,7 @@ public class BackupService {
         }
         targetVMs = new ArrayList<>(uniqueVMs.values());
         
-        log.info("Found {} unique VMs matching selectors", targetVMs.size());
+        LOG.info("Found {} unique VMs matching selectors", targetVMs.size());
         
         if (targetVMs.isEmpty()) {
             Instant endTime = Instant.now();
@@ -522,10 +522,10 @@ public class BackupService {
                         null,
                         ticket
                     );
-                    log.debug("Storage '{}' verified", request.storage());
+                    LOG.debug("Storage '{}' verified", request.storage());
                 }
             } catch (Exception e) {
-                log.error("Storage verification failed for '{}': {}", request.storage(), e.getMessage());
+                LOG.error("Storage verification failed for '{}': {}", request.storage(), e.getMessage());
                 throw new RuntimeException("Storage '" + request.storage() + "' not accessible: " + e.getMessage());
             }
         }
@@ -578,7 +578,7 @@ public class BackupService {
         for (VMResponse vm : targetVMs) {
             CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
                 try {
-                    log.info("Creating backup for VM {} ({}) on node {} to storage '{}'", 
+                    LOG.info("Creating backup for VM {} ({}) on node {} to storage '{}'", 
                         vm.vmid(), vm.name(), vm.node(), request.storage());
                     
                     // Build notes with VM info
@@ -593,7 +593,7 @@ public class BackupService {
                     }
                     
                     // Debug log the notes
-                    log.debug("Backup notes for VM {}: {}", vm.vmid(), notes);
+                    LOG.debug("Backup notes for VM {}: {}", vm.vmid(), notes);
                     
                     // Create backup with notes (using notes-template parameter)
                     TaskStatusResponse response = proxmoxClient.createBackup(
@@ -618,11 +618,11 @@ public class BackupService {
                         response.getData(), vm.name(), vm.node(), request.storage()
                     ));
                     
-                    log.info("Backup task {} started for VM {} ({})", 
+                    LOG.info("Backup task {} started for VM {} ({})", 
                         response.getData(), vm.vmid(), vm.name());
                     
                 } catch (Exception e) {
-                    log.error("Failed to create backup for VM {} ({}): {}", 
+                    LOG.error("Failed to create backup for VM {} ({}): {}", 
                         vm.vmid(), vm.name(), e.getMessage());
                     results.put(vm.vmid(), BulkBackupResponse.BackupResult.error(
                         e.getMessage(), vm.name(), vm.node()
@@ -637,7 +637,7 @@ public class BackupService {
         try {
             CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get();
         } catch (Exception e) {
-            log.error("Error waiting for bulk backup completion: {}", e.getMessage());
+            LOG.error("Error waiting for bulk backup completion: {}", e.getMessage());
         } finally {
             executor.shutdown();
         }

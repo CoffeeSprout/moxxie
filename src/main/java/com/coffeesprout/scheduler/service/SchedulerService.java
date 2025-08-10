@@ -25,7 +25,7 @@ import java.util.UUID;
 @Startup
 public class SchedulerService {
     
-    private static final Logger log = LoggerFactory.getLogger(SchedulerService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SchedulerService.class);
     private static final String JOB_GROUP = "moxxie-jobs";
     private static final String TRIGGER_GROUP = "moxxie-triggers";
     
@@ -37,23 +37,23 @@ public class SchedulerService {
      */
     @Transactional
     void onStart(@Observes StartupEvent event) {
-        log.info("Initializing Moxxie Scheduler Service");
+        LOG.info("Initializing Moxxie Scheduler Service");
         try {
             // Load all enabled jobs from database
             List<ScheduledJob> enabledJobs = ScheduledJob.findEnabled();
-            log.info("Found {} enabled scheduled jobs", enabledJobs.size());
+            LOG.info("Found {} enabled scheduled jobs", enabledJobs.size());
             
             for (ScheduledJob job : enabledJobs) {
                 try {
                     scheduleJob(job);
                 } catch (Exception e) {
-                    log.error("Failed to schedule job {}: {}", job.name, e.getMessage(), e);
+                    LOG.error("Failed to schedule job {}: {}", job.name, e.getMessage(), e);
                 }
             }
             
-            log.info("Scheduler initialization completed");
+            LOG.info("Scheduler initialization completed");
         } catch (Exception e) {
-            log.error("Failed to initialize scheduler: {}", e.getMessage(), e);
+            LOG.error("Failed to initialize scheduler: {}", e.getMessage(), e);
         }
     }
     
@@ -62,7 +62,7 @@ public class SchedulerService {
      */
     public void scheduleJob(ScheduledJob job) throws SchedulerException {
         if (!job.enabled) {
-            log.debug("Job {} is disabled, skipping scheduling", job.name);
+            LOG.debug("Job {} is disabled, skipping scheduling", job.name);
             return;
         }
         
@@ -71,7 +71,7 @@ public class SchedulerService {
         
         // Check if job already exists
         if (scheduler.checkExists(jobKey)) {
-            log.debug("Job {} already scheduled, updating", job.name);
+            LOG.debug("Job {} already scheduled, updating", job.name);
             unscheduleJob(job.name);
         }
         
@@ -96,7 +96,7 @@ public class SchedulerService {
         
         // Schedule the job
         scheduler.scheduleJob(jobDetail, trigger);
-        log.info("Scheduled job {} with cron expression: {}", job.name, job.cronExpression);
+        LOG.info("Scheduled job {} with cron expression: {}", job.name, job.cronExpression);
     }
     
     /**
@@ -107,7 +107,7 @@ public class SchedulerService {
         
         if (scheduler.checkExists(jobKey)) {
             scheduler.deleteJob(jobKey);
-            log.info("Unscheduled job: {}", jobName);
+            LOG.info("Unscheduled job: {}", jobName);
         }
     }
     
@@ -117,7 +117,7 @@ public class SchedulerService {
     public void pauseJob(String jobName) throws SchedulerException {
         JobKey jobKey = new JobKey(jobName, JOB_GROUP);
         scheduler.pauseJob(jobKey);
-        log.info("Paused job: {}", jobName);
+        LOG.info("Paused job: {}", jobName);
     }
     
     /**
@@ -126,7 +126,7 @@ public class SchedulerService {
     public void resumeJob(String jobName) throws SchedulerException {
         JobKey jobKey = new JobKey(jobName, JOB_GROUP);
         scheduler.resumeJob(jobKey);
-        log.info("Resumed job: {}", jobName);
+        LOG.info("Resumed job: {}", jobName);
     }
     
     /**
@@ -150,7 +150,7 @@ public class SchedulerService {
         
         // Trigger the job
         scheduler.triggerJob(jobKey, dataMap);
-        log.info("Manually triggered job {} with execution ID: {}", jobName, executionId);
+        LOG.info("Manually triggered job {} with execution ID: {}", jobName, executionId);
         
         return executionId;
     }
@@ -196,7 +196,7 @@ public class SchedulerService {
             scheduleJob(job);
         }
         
-        log.info("Updated schedule for job {} to: {}", job.name, newCronExpression);
+        LOG.info("Updated schedule for job {} to: {}", job.name, newCronExpression);
     }
     
     /**
@@ -219,7 +219,7 @@ public class SchedulerService {
             unscheduleJob(job.name);
         }
         
-        log.info("{} job: {}", enabled ? "Enabled" : "Disabled", job.name);
+        LOG.info("{} job: {}", enabled ? "Enabled" : "Disabled", job.name);
     }
     
     /**
@@ -259,7 +259,7 @@ public class SchedulerService {
         // NOTE: Scheduling is now handled by JobCreatedEvent to avoid transaction conflicts
         // The job will be scheduled after the transaction commits
         
-        log.info("Created new scheduled job: {}", name);
+        LOG.info("Created new scheduled job: {}", name);
         return job;
     }
     
@@ -279,7 +279,7 @@ public class SchedulerService {
         // Delete from database
         job.delete();
         
-        log.info("Deleted scheduled job: {}", job.name);
+        LOG.info("Deleted scheduled job: {}", job.name);
     }
     
     /**
@@ -288,16 +288,16 @@ public class SchedulerService {
     @Scheduled(cron = "0 0 2 * * ?") // Run at 2 AM daily
     @Transactional
     void cleanupOldExecutions() {
-        log.info("Starting cleanup of old job executions");
+        LOG.info("Starting cleanup of old job executions");
         
         try {
             // Delete executions older than 30 days
             Instant cutoffDate = Instant.now().minusSeconds(30 * 24 * 60 * 60);
             long deleted = JobExecution.delete("completedAt < ?1", cutoffDate);
             
-            log.info("Deleted {} old job executions", deleted);
+            LOG.info("Deleted {} old job executions", deleted);
         } catch (Exception e) {
-            log.error("Failed to cleanup old executions: {}", e.getMessage(), e);
+            LOG.error("Failed to cleanup old executions: {}", e.getMessage(), e);
         }
     }
 }

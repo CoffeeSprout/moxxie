@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @AutoAuthenticate
 public class VMIdService {
 
-    private static final Logger log = Logger.getLogger(VMIdService.class);
+    private static final Logger LOG = Logger.getLogger(VMIdService.class);
     
     // VM ID constraints
     private static final int MIN_VM_ID = 100;
@@ -65,14 +65,14 @@ public class VMIdService {
                         // Track this allocation
                         recentlyAllocatedIds.put(vmId, System.currentTimeMillis());
                         lastAllocatedId.set(vmId);
-                        log.infof("Allocated VM ID from Proxmox cluster API: %d (attempt %d)", vmId, attempts + 1);
+                        LOG.infof("Allocated VM ID from Proxmox cluster API: %d (attempt %d)", vmId, attempts + 1);
                         return vmId;
                     } else {
-                        log.debugf("VM ID %d is recently allocated or invalid, trying again", vmId);
+                        LOG.debugf("VM ID %d is recently allocated or invalid, trying again", vmId);
                     }
                 }
             } catch (Exception e) {
-                log.warnf("Failed to get next VM ID from Proxmox API (attempt %d): %s", attempts + 1, e.getMessage());
+                LOG.warnf("Failed to get next VM ID from Proxmox API (attempt %d): %s", attempts + 1, e.getMessage());
             }
             
             attempts++;
@@ -87,12 +87,12 @@ public class VMIdService {
         }
         
         // Fallback to generation if Proxmox API fails after all attempts
-        log.warnf("Failed to get unique VM ID from Proxmox after %d attempts, falling back to generation", maxAttempts);
+        LOG.warnf("Failed to get unique VM ID from Proxmox after %d attempts, falling back to generation", maxAttempts);
         int vmId = generateUniqueVmId(0);
         
         // Track this allocation
         recentlyAllocatedIds.put(vmId, System.currentTimeMillis());
-        log.infof("Allocated VM ID (fallback): %d", vmId);
+        LOG.infof("Allocated VM ID (fallback): %d", vmId);
         
         return vmId;
     }
@@ -106,13 +106,13 @@ public class VMIdService {
     public int generateRandomVmIdWithRetry() {
         for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
             int vmId = generateRandomVmId();
-            log.debugf("Generated random VM ID (attempt %d): %d", attempt + 1, vmId);
+            LOG.debugf("Generated random VM ID (attempt %d): %d", attempt + 1, vmId);
             return vmId; // In the future, we could add availability checking here
         }
         
         // Final fallback
         int vmId = generateRandomVmId();
-        log.warnf("Used final fallback VM ID after %d attempts: %d", MAX_RETRIES, vmId);
+        LOG.warnf("Used final fallback VM ID after %d attempts: %d", MAX_RETRIES, vmId);
         return vmId;
     }
 
@@ -183,7 +183,7 @@ public class VMIdService {
         
         // Emergency fallback - increment from last known
         int fallbackId = lastAllocatedId.incrementAndGet();
-        log.warnf("Using emergency fallback VM ID: %d", fallbackId);
+        LOG.warnf("Using emergency fallback VM ID: %d", fallbackId);
         return fallbackId;
     }
     

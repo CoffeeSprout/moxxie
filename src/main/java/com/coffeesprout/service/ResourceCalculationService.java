@@ -21,7 +21,7 @@ import java.util.Map;
 @ApplicationScoped
 public class ResourceCalculationService {
     
-    private static final Logger log = LoggerFactory.getLogger(ResourceCalculationService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ResourceCalculationService.class);
     
     @Inject
     MoxxieConfig config;

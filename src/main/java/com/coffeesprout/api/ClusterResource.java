@@ -34,7 +34,7 @@ import java.util.Collection;
 @Tag(name = "Clusters", description = "Cluster provisioning and management endpoints")
 public class ClusterResource {
     
-    private static final Logger log = LoggerFactory.getLogger(ClusterResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ClusterResource.class);
     
     @Inject
     ClusterProvisioningService clusterProvisioningService;
@@ -63,8 +63,8 @@ public class ClusterResource {
                 content = @Content(schema = @Schema(implementation = ClusterSpec.class)))
             @Valid ClusterSpec spec) {
         
-        log.info("=== CLUSTER PROVISION ENDPOINT CALLED ===");
-        log.info("Received cluster provisioning request for '{}'", spec != null ? spec.name() : "null spec");
+        LOG.info("=== CLUSTER PROVISION ENDPOINT CALLED ===");
+        LOG.info("Received cluster provisioning request for '{}'", spec != null ? spec.name() : "null spec");
         
         String baseUrl = uriInfo.getBaseUri().toString().replaceAll("/$", "");
         

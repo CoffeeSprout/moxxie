@@ -25,7 +25,7 @@ import java.util.UUID;
  */
 public class MoxxieScheduledJob implements Job {
     
-    private static final Logger log = LoggerFactory.getLogger(MoxxieScheduledJob.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MoxxieScheduledJob.class);
     
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
@@ -38,14 +38,14 @@ public class MoxxieScheduledJob implements Job {
             executionId = UUID.randomUUID().toString();
         }
         
-        log.info("Starting execution {} for job {} (manual: {})", executionId, jobName, isManualTrigger);
+        LOG.info("Starting execution {} for job {} (manual: {})", executionId, jobName, isManualTrigger);
         
         // Get CDI container to access services
         try {
             // Execute in transaction
             Arc.container().select(JobExecutor.class).get().executeJob(jobId, executionId, isManualTrigger);
         } catch (Exception e) {
-            log.error("Failed to execute job {}: {}", jobName, e.getMessage(), e);
+            LOG.error("Failed to execute job {}: {}", jobName, e.getMessage(), e);
             throw new JobExecutionException("Job execution failed", e);
         }
     }
@@ -57,7 +57,7 @@ public class MoxxieScheduledJob implements Job {
     @io.quarkus.arc.Unremovable
     public static class JobExecutor {
         
-        private static final Logger log = LoggerFactory.getLogger(JobExecutor.class);
+        private static final Logger LOG = LoggerFactory.getLogger(JobExecutor.class);
         
         @Transactional
         public void executeJob(Long jobId, String executionId, boolean isManualTrigger) {
@@ -69,7 +69,7 @@ public class MoxxieScheduledJob implements Job {
                 // Load job from database
                 ScheduledJob job = ScheduledJob.findById(jobId);
                 if (job == null) {
-                    log.error("Job not found with ID: {}", jobId);
+                    LOG.error("Job not found with ID: {}", jobId);
                     return;
                 }
                 
@@ -83,7 +83,7 @@ public class MoxxieScheduledJob implements Job {
                 execution.executionDetails.put("manualTrigger", isManualTrigger);
                 execution.persist();
                 
-                log.info("Created execution record {} for job {}", executionId, job.name);
+                LOG.info("Created execution record {} for job {}", executionId, job.name);
                 
                 // Load task implementation
                 Class<?> taskClass = Class.forName(job.taskType.taskClass);
@@ -107,7 +107,7 @@ public class MoxxieScheduledJob implements Job {
                 }
                 
                 // Execute the task
-                log.info("Executing task {} for job {}", job.taskType.name, job.name);
+                LOG.info("Executing task {} for job {}", job.taskType.name, job.name);
                 TaskResult result = task.execute(taskContext);
                 
                 // Update execution record with results
@@ -117,11 +117,11 @@ public class MoxxieScheduledJob implements Job {
                 
                 if (result.isSuccess()) {
                     execution.complete();
-                    log.info("Job {} completed successfully. Processed: {}, Success: {}, Failed: {}", 
+                    LOG.info("Job {} completed successfully. Processed: {}, Success: {}, Failed: {}", 
                             job.name, result.getProcessedCount(), result.getSuccessCount(), result.getFailedCount());
                 } else {
                     execution.fail(result.getErrorMessage());
-                    log.error("Job {} failed: {}", job.name, result.getErrorMessage());
+                    LOG.error("Job {} failed: {}", job.name, result.getErrorMessage());
                 }
                 
                 // Store additional details
@@ -136,7 +136,7 @@ public class MoxxieScheduledJob implements Job {
                 execution.persist();
                 
             } catch (Exception e) {
-                log.error("Job execution failed with exception: {}", e.getMessage(), e);
+                LOG.error("Job execution failed with exception: {}", e.getMessage(), e);
                 
                 if (execution != null) {
                     execution.fail("Execution failed: " + e.getMessage());

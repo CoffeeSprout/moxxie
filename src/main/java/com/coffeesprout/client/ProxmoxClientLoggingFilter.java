@@ -20,26 +20,26 @@ import java.util.stream.Collectors;
 @Provider
 public class ProxmoxClientLoggingFilter implements ClientRequestFilter, ClientResponseFilter {
     
-    private static final Logger log = LoggerFactory.getLogger(ProxmoxClientLoggingFilter.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ProxmoxClientLoggingFilter.class);
     
     @Override
     public void filter(ClientRequestContext requestContext) throws IOException {
-        log.info("=== Proxmox API Request ===");
-        log.info("Method: {} {}", requestContext.getMethod(), requestContext.getUri());
-        log.info("Headers: {}", requestContext.getHeaders());
+        LOG.info("=== Proxmox API Request ===");
+        LOG.info("Method: {} {}", requestContext.getMethod(), requestContext.getUri());
+        LOG.info("Headers: {}", requestContext.getHeaders());
         
         // Log request body if present
         if (requestContext.hasEntity()) {
             Object entity = requestContext.getEntity();
-            log.info("Request Body: {}", entity);
+            LOG.info("Request Body: {}", entity);
         }
     }
     
     @Override
     public void filter(ClientRequestContext requestContext, ClientResponseContext responseContext) throws IOException {
-        log.info("=== Proxmox API Response ===");
-        log.info("Status: {} {}", responseContext.getStatus(), responseContext.getStatusInfo());
-        log.info("Headers: {}", responseContext.getHeaders());
+        LOG.info("=== Proxmox API Response ===");
+        LOG.info("Status: {} {}", responseContext.getStatus(), responseContext.getStatusInfo());
+        LOG.info("Headers: {}", responseContext.getHeaders());
         
         // Log response body
         if (responseContext.hasEntity()) {
@@ -58,9 +58,9 @@ public class ProxmoxClientLoggingFilter implements ClientRequestFilter, ClientRe
             // Log the response body
             String responseBody = new String(responseBytes, StandardCharsets.UTF_8);
             if (responseContext.getStatus() >= 400) {
-                log.error("Response Body (Error): {}", responseBody);
+                LOG.error("Response Body (Error): {}", responseBody);
             } else {
-                log.info("Response Body: {}", responseBody);
+                LOG.info("Response Body: {}", responseBody);
             }
             
             // Reset the stream so the client can still read it

@@ -18,7 +18,7 @@ import java.util.UUID;
 @ApplicationScoped
 public class LocationService {
     
-    private static final Logger log = LoggerFactory.getLogger(LocationService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(LocationService.class);
     
     @Inject
     MoxxieConfig config;
@@ -29,14 +29,14 @@ public class LocationService {
      * Initialize location information at startup
      */
     void onStart(@Observes StartupEvent ev) {
-        log.info("Initializing location information for Moxxie instance");
+        LOG.info("Initializing location information for Moxxie instance");
         
         try {
             // Generate instance ID if not provided
             String instanceId = config.location().instanceId()
                 .orElseGet(() -> {
                     String generated = "moxxie-" + UUID.randomUUID().toString().substring(0, 8);
-                    log.info("Generated instance ID: {}", generated);
+                    LOG.info("Generated instance ID: {}", generated);
                     return generated;
                 });
             
@@ -55,17 +55,17 @@ public class LocationService {
             // Validate location information
             locationInfo.validate();
             
-            log.info("Location initialized: {} ({}) at {}/{}", 
+            LOG.info("Location initialized: {} ({}) at {}/{}", 
                 locationInfo.name(), 
                 locationInfo.provider(),
                 locationInfo.region(),
                 locationInfo.datacenter()
             );
-            log.info("Coordinates: {}, {}", locationInfo.latitude(), locationInfo.longitude());
-            log.info("Instance ID: {}", locationInfo.instanceId());
+            LOG.info("Coordinates: {}, {}", locationInfo.latitude(), locationInfo.longitude());
+            LOG.info("Instance ID: {}", locationInfo.instanceId());
             
         } catch (Exception e) {
-            log.error("Failed to initialize location information", e);
+            LOG.error("Failed to initialize location information", e);
             throw new RuntimeException("Invalid location configuration: " + e.getMessage(), e);
         }
     }

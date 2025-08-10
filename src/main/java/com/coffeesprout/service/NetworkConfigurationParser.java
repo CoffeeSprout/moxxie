@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class NetworkConfigurationParser {
     
-    private static final Logger log = LoggerFactory.getLogger(NetworkConfigurationParser.class);
+    private static final Logger LOG = LoggerFactory.getLogger(NetworkConfigurationParser.class);
     private static final Pattern NETWORK_PATTERN = Pattern.compile(VMConstants.Network.INTERFACE_PATTERN);
     
     /**
@@ -67,7 +67,7 @@ public class NetworkConfigurationParser {
         }
         
         String config = configValue.toString();
-        log.debug("Parsing network interface {}: {}", interfaceName, config);
+        LOG.debug("Parsing network interface {}: {}", interfaceName, config);
         
         try {
             // Parse the network string format: "model=virtio,bridge=vmbr0,tag=100,..."
@@ -90,7 +90,7 @@ public class NetworkConfigurationParser {
             );
             
         } catch (Exception e) {
-            log.warn("Failed to parse network interface {}: {}", interfaceName, e.getMessage());
+            LOG.warn("Failed to parse network interface {}: {}", interfaceName, e.getMessage());
             return new VMDetailResponse.NetworkInterfaceInfo(
                 interfaceName,
                 null,
@@ -178,7 +178,7 @@ public class NetworkConfigurationParser {
         try {
             return Integer.parseInt(value);
         } catch (NumberFormatException e) {
-            log.debug("Failed to parse integer: {}", value);
+            LOG.debug("Failed to parse integer: {}", value);
             return null;
         }
     }
@@ -196,7 +196,7 @@ public class NetworkConfigurationParser {
         try {
             return Double.parseDouble(value);
         } catch (NumberFormatException e) {
-            log.debug("Failed to parse double: {}", value);
+            LOG.debug("Failed to parse double: {}", value);
             return null;
         }
     }

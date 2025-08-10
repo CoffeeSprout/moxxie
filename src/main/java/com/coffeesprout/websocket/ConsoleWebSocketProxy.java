@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @ApplicationScoped
 public class ConsoleWebSocketProxy {
     
-    private static final Logger log = LoggerFactory.getLogger(ConsoleWebSocketProxy.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ConsoleWebSocketProxy.class);
     
     // Map to track active sessions
     private final Map<String, Session> activeSessions = new ConcurrentHashMap<>();
@@ -34,7 +34,7 @@ public class ConsoleWebSocketProxy {
     public void onOpen(Session session, 
                       @PathParam("vmId") String vmId,
                       @PathParam("ticket") String ticket) {
-        log.info("WebSocket connection opened for VM {} with session {}", vmId, session.getId());
+        LOG.info("WebSocket connection opened for VM {} with session {}", vmId, session.getId());
         
         // Store the session
         activeSessions.put(session.getId(), session);
@@ -47,26 +47,26 @@ public class ConsoleWebSocketProxy {
         try {
             session.getBasicRemote().sendText("Console WebSocket connection established for VM " + vmId);
         } catch (IOException e) {
-            log.error("Failed to send welcome message", e);
+            LOG.error("Failed to send welcome message", e);
         }
     }
     
     @OnMessage
     public void onTextMessage(String message, Session session) {
-        log.debug("Received text message from session {}: {}", session.getId(), message);
+        LOG.debug("Received text message from session {}: {}", session.getId(), message);
         
         // In a real implementation, this would forward the message to Proxmox
         // For now, just echo it back
         try {
             session.getBasicRemote().sendText("Echo: " + message);
         } catch (IOException e) {
-            log.error("Failed to send text message", e);
+            LOG.error("Failed to send text message", e);
         }
     }
     
     @OnMessage
     public void onBinaryMessage(ByteBuffer message, Session session) {
-        log.debug("Received binary message from session {}, size: {} bytes", 
+        LOG.debug("Received binary message from session {}, size: {} bytes", 
                  session.getId(), message.remaining());
         
         // In a real implementation, this would forward the binary data to Proxmox
@@ -75,7 +75,7 @@ public class ConsoleWebSocketProxy {
     
     @OnClose
     public void onClose(Session session, CloseReason closeReason) {
-        log.info("WebSocket connection closed for session {}: {}", 
+        LOG.info("WebSocket connection closed for session {}: {}", 
                 session.getId(), closeReason.getReasonPhrase());
         
         // Clean up the session
@@ -86,7 +86,7 @@ public class ConsoleWebSocketProxy {
     
     @OnError
     public void onError(Session session, Throwable throwable) {
-        log.error("WebSocket error for session {}: {}", 
+        LOG.error("WebSocket error for session {}: {}", 
                  session.getId(), throwable.getMessage(), throwable);
         
         // Clean up on error
@@ -96,7 +96,7 @@ public class ConsoleWebSocketProxy {
             session.close(new CloseReason(CloseReason.CloseCodes.UNEXPECTED_CONDITION, 
                                         "Error: " + throwable.getMessage()));
         } catch (IOException e) {
-            log.error("Failed to close session after error", e);
+            LOG.error("Failed to close session after error", e);
         }
     }
     

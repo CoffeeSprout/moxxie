@@ -15,7 +15,7 @@ import java.util.List;
 @AutoAuthenticate
 public class ClusterService {
 
-    private static final Logger log = LoggerFactory.getLogger(ClusterService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ClusterService.class);
 
     @Inject
     @RestClient

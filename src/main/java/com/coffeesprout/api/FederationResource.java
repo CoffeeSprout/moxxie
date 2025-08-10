@@ -43,7 +43,7 @@ import java.util.Optional;
 @Tag(name = "Federation", description = "Federation-ready API endpoints for Cafn8 integration")
 public class FederationResource {
     
-    private static final Logger log = LoggerFactory.getLogger(FederationResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FederationResource.class);
     
     @Inject
     ProxmoxResourceProvider resourceProvider;
@@ -128,7 +128,7 @@ public class FederationResource {
             return Response.ok(response).build();
             
         } catch (Exception e) {
-            log.error("Failed to get capacity", e);
+            LOG.error("Failed to get capacity", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get capacity", e.getMessage()))
                     .build();
@@ -195,7 +195,7 @@ public class FederationResource {
             return Response.ok(response).build();
             
         } catch (Exception e) {
-            log.error("Failed to get utilization", e);
+            LOG.error("Failed to get utilization", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get utilization", e.getMessage()))
                     .build();
@@ -265,7 +265,7 @@ public class FederationResource {
             return Response.ok(response).build();
             
         } catch (Exception e) {
-            log.error("Failed to get capabilities", e);
+            LOG.error("Failed to get capabilities", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to get capabilities", e.getMessage()))
                     .build();
@@ -344,7 +344,7 @@ public class FederationResource {
             return Response.ok(response).build();
             
         } catch (Exception e) {
-            log.error("Failed to calculate estimate", e);
+            LOG.error("Failed to calculate estimate", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to calculate estimate", e.getMessage()))
                     .build();

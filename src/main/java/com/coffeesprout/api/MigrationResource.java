@@ -32,7 +32,7 @@ import java.util.List;
 @Tag(name = "VM Migration", description = "VM migration operations")
 public class MigrationResource {
     
-    private static final Logger log = LoggerFactory.getLogger(MigrationResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MigrationResource.class);
     
     @Inject
     MigrationService migrationService;
@@ -61,7 +61,7 @@ public class MigrationResource {
                 content = @Content(schema = @Schema(implementation = MigrationRequest.class)))
             @Valid MigrationRequest request) {
         
-        log.info("Received migration request for VM {} to node {}", vmId, request.targetNode());
+        LOG.info("Received migration request for VM {} to node {}", vmId, request.targetNode());
         
         try {
             // Use async migration to avoid HTTP timeouts on long migrations
@@ -84,13 +84,13 @@ public class MigrationResource {
                     .build();
             }
             
-            log.error("Migration failed for VM {}: {}", vmId, message);
+            LOG.error("Migration failed for VM {}: {}", vmId, message);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(new ErrorResponse("Migration failed: " + message))
                 .build();
                 
         } catch (Exception e) {
-            log.error("Unexpected error during migration of VM {}: {}", vmId, e.getMessage(), e);
+            LOG.error("Unexpected error during migration of VM {}: {}", vmId, e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(new ErrorResponse("Unexpected error: " + e.getMessage()))
                 .build();
@@ -99,7 +99,7 @@ public class MigrationResource {
     
     @GET
     @Path("/check")
-    @SafeMode(value = false) // Read operation
+    @SafeMode(false) // Read operation
     @Operation(summary = "Check migration preconditions", 
         description = "Check if a VM can be migrated to a target node (mainly for bulk operations)")
     @APIResponses({
@@ -133,7 +133,7 @@ public class MigrationResource {
                     .build();
             }
             
-            log.error("Failed to check migration preconditions for VM {}: {}", vmId, e.getMessage());
+            LOG.error("Failed to check migration preconditions for VM {}: {}", vmId, e.getMessage());
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(new ErrorResponse("Failed to check preconditions: " + e.getMessage()))
                 .build();
@@ -142,7 +142,7 @@ public class MigrationResource {
     
     @GET
     @Path("/history")
-    @SafeMode(value = false) // Read operation
+    @SafeMode(false) // Read operation
     @Operation(summary = "Get migration history", description = "Get migration history for a VM")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Migration history retrieved",
@@ -157,7 +157,7 @@ public class MigrationResource {
             return Response.ok(history).build();
             
         } catch (Exception e) {
-            log.error("Failed to get migration history for VM {}: {}", vmId, e.getMessage());
+            LOG.error("Failed to get migration history for VM {}: {}", vmId, e.getMessage());
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(new ErrorResponse("Failed to get migration history: " + e.getMessage()))
                 .build();
@@ -166,7 +166,7 @@ public class MigrationResource {
     
     @GET
     @Path("/status/{migrationId}")
-    @SafeMode(value = false) // Read operation
+    @SafeMode(false) // Read operation
     @Operation(summary = "Get migration status", 
         description = "Get the current status of a specific migration by its ID")
     @APIResponses({
@@ -200,7 +200,7 @@ public class MigrationResource {
             return Response.ok(status).build();
             
         } catch (Exception e) {
-            log.error("Failed to get migration status {}: {}", migrationId, e.getMessage());
+            LOG.error("Failed to get migration status {}: {}", migrationId, e.getMessage());
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(new ErrorResponse("Failed to get migration status: " + e.getMessage()))
                 .build();
@@ -229,14 +229,14 @@ public class MigrationResource {
                 content = @Content(schema = @Schema(implementation = MigrationRequest.class)))
             @Valid MigrationRequest request) {
         
-        log.warn("Using deprecated synchronous migration endpoint for VM {}", vmId);
+        LOG.warn("Using deprecated synchronous migration endpoint for VM {}", vmId);
         
         try {
             MigrationResponse response = migrationService.migrateVM(vmId, request, null);
             return Response.ok(response).build();
             
         } catch (Exception e) {
-            log.error("Synchronous migration failed for VM {}: {}", vmId, e.getMessage());
+            LOG.error("Synchronous migration failed for VM {}: {}", vmId, e.getMessage());
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(new ErrorResponse("Migration failed: " + e.getMessage()))
                 .build();

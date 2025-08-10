@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
  */
 public abstract class AbstractVMTask implements ScheduledTask {
     
-    private static final Logger log = LoggerFactory.getLogger(AbstractVMTask.class);
+    private static final Logger LOG = LoggerFactory.getLogger(AbstractVMTask.class);
     
     @Inject
     protected VMService vmService;
@@ -32,7 +32,7 @@ public abstract class AbstractVMTask implements ScheduledTask {
     
     @Override
     public TaskResult execute(TaskContext context) {
-        log.info("Starting {} task execution for job {}", getTaskType(), context.getJob().name);
+        LOG.info("Starting {} task execution for job {}", getTaskType(), context.getJob().name);
         
         try {
             // Validate configuration
@@ -40,7 +40,7 @@ public abstract class AbstractVMTask implements ScheduledTask {
             
             // Get VMs to process
             List<VMResponse> vmsToProcess = selectVMs(context);
-            log.info("Selected {} VMs to process", vmsToProcess.size());
+            LOG.info("Selected {} VMs to process", vmsToProcess.size());
             
             if (vmsToProcess.isEmpty()) {
                 return TaskResult.success()
@@ -58,7 +58,7 @@ public abstract class AbstractVMTask implements ScheduledTask {
                 processed++;
                 
                 try {
-                    log.debug("Processing VM {} ({})", vm.vmid(), vm.name());
+                    LOG.debug("Processing VM {} ({})", vm.vmid(), vm.name());
                     
                     // Create VM execution record
                     JobVMExecution vmExecution = createVMExecution(context, vm);
@@ -70,10 +70,10 @@ public abstract class AbstractVMTask implements ScheduledTask {
                     updateVMExecution(vmExecution, JobVMExecution.Status.SUCCESS, result);
                     succeeded++;
                     
-                    log.debug("Successfully processed VM {} ({})", vm.vmid(), vm.name());
+                    LOG.debug("Successfully processed VM {} ({})", vm.vmid(), vm.name());
                     
                 } catch (Exception e) {
-                    log.error("Failed to process VM {} ({}): {}", vm.vmid(), vm.name(), e.getMessage(), e);
+                    LOG.error("Failed to process VM {} ({}): {}", vm.vmid(), vm.name(), e.getMessage(), e);
                     failed++;
                     errors.add(String.format("VM %d (%s): %s", vm.vmid(), vm.name(), e.getMessage()));
                     
@@ -86,7 +86,7 @@ public abstract class AbstractVMTask implements ScheduledTask {
                                 Map.of("error", e.getMessage()));
                         }
                     } catch (Exception ex) {
-                        log.error("Failed to update VM execution record: {}", ex.getMessage());
+                        LOG.error("Failed to update VM execution record: {}", ex.getMessage());
                     }
                 }
             }
@@ -101,7 +101,7 @@ public abstract class AbstractVMTask implements ScheduledTask {
             return result;
             
         } catch (Exception e) {
-            log.error("Task execution failed: {}", e.getMessage(), e);
+            LOG.error("Task execution failed: {}", e.getMessage(), e);
             return TaskResult.failure("Task execution failed: " + e.getMessage());
         }
     }
@@ -113,7 +113,7 @@ public abstract class AbstractVMTask implements ScheduledTask {
         List<VMResponse> allVMs = vmService.listVMs(null);
         
         if (context.getJob().vmSelectors.isEmpty()) {
-            log.warn("No VM selectors configured, processing all VMs");
+            LOG.warn("No VM selectors configured, processing all VMs");
             return allVMs;
         }
         
@@ -138,7 +138,7 @@ public abstract class AbstractVMTask implements ScheduledTask {
                             try {
                                 selectorVMIds.add(Integer.parseInt(id));
                             } catch (NumberFormatException e) {
-                                log.warn("Invalid VM ID in selector: {}", id);
+                                LOG.warn("Invalid VM ID in selector: {}", id);
                             }
                         });
                     break;
@@ -176,7 +176,7 @@ public abstract class AbstractVMTask implements ScheduledTask {
         try {
             // Parse the tag expression
             TagExpression tagExpr = TagExpressionParser.parse(expression);
-            log.debug("Evaluating tag expression: {}", expression);
+            LOG.debug("Evaluating tag expression: {}", expression);
             
             // Get all VMs and evaluate expression against their tags
             List<VMResponse> allVMs = vmService.listVMs(null);
@@ -189,22 +189,22 @@ public abstract class AbstractVMTask implements ScheduledTask {
                 // Evaluate expression
                 if (tagExpr.evaluate(vmTags)) {
                     matchingVMs.add(vm.vmid());
-                    log.trace("VM {} ({}) matches expression", vm.vmid(), vm.name());
+                    LOG.trace("VM {} ({}) matches expression", vm.vmid(), vm.name());
                 }
             }
             
-            log.debug("Tag expression '{}' matched {} VMs", expression, matchingVMs.size());
+            LOG.debug("Tag expression '{}' matched {} VMs", expression, matchingVMs.size());
             return matchingVMs;
             
         } catch (Exception e) {
-            log.error("Failed to evaluate tag expression '{}': {}", expression, e.getMessage());
+            LOG.error("Failed to evaluate tag expression '{}': {}", expression, e.getMessage());
             // Fall back to simple tag matching for backward compatibility
             try {
                 List<Integer> vmIds = tagService.getVMsByTag(expression.trim(), null);
-                log.warn("Fell back to simple tag matching for '{}', found {} VMs", expression, vmIds.size());
+                LOG.warn("Fell back to simple tag matching for '{}', found {} VMs", expression, vmIds.size());
                 return new HashSet<>(vmIds);
             } catch (Exception ex) {
-                log.error("Simple tag matching also failed: {}", ex.getMessage());
+                LOG.error("Simple tag matching also failed: {}", ex.getMessage());
                 return new HashSet<>();
             }
         }

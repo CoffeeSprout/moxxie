@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 @AutoAuthenticate
 public class VMSelectorService {
     
-    private static final Logger log = LoggerFactory.getLogger(VMSelectorService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(VMSelectorService.class);
     
     @Inject
     VMService vmService;
@@ -33,7 +33,7 @@ public class VMSelectorService {
      * Select VMs based on the given selector
      */
     public List<VMResponse> selectVMs(VMSelector selector, @AuthTicket String ticket) {
-        log.debug("Selecting VMs with selector type: {}, value: {}", selector.type(), selector.value());
+        LOG.debug("Selecting VMs with selector type: {}, value: {}", selector.type(), selector.value());
         
         // Get all VMs first
         List<VMResponse> allVMs = vmService.listVMs(ticket);
@@ -55,7 +55,7 @@ public class VMSelectorService {
                     try {
                         selectedVMIds.add(Integer.parseInt(id.trim()));
                     } catch (NumberFormatException e) {
-                        log.warn("Invalid VM ID in selector: {}", id);
+                        LOG.warn("Invalid VM ID in selector: {}", id);
                     }
                 }
                 break;
@@ -78,7 +78,7 @@ public class VMSelectorService {
                 break;
                 
             default:
-                log.warn("Unknown selector type: {}", selector.type());
+                LOG.warn("Unknown selector type: {}", selector.type());
         }
         
         // Filter VMs to only include selected ones
@@ -86,7 +86,7 @@ public class VMSelectorService {
             .filter(vm -> selectedVMIds.contains(vm.vmid()))
             .collect(Collectors.toList());
         
-        log.info("Selected {} VMs using selector type: {}", selectedVMs.size(), selector.type());
+        LOG.info("Selected {} VMs using selector type: {}", selectedVMs.size(), selector.type());
         return selectedVMs;
     }
     
@@ -139,7 +139,7 @@ public class VMSelectorService {
         try {
             // Parse the tag expression
             TagExpression tagExpr = TagExpressionParser.parse(expression);
-            log.debug("Evaluating tag expression: {}", expression);
+            LOG.debug("Evaluating tag expression: {}", expression);
             
             Set<Integer> matchingVMs = new HashSet<>();
             
@@ -150,22 +150,22 @@ public class VMSelectorService {
                 // Evaluate expression
                 if (tagExpr.evaluate(vmTags)) {
                     matchingVMs.add(vm.vmid());
-                    log.trace("VM {} ({}) matches expression", vm.vmid(), vm.name());
+                    LOG.trace("VM {} ({}) matches expression", vm.vmid(), vm.name());
                 }
             }
             
-            log.debug("Tag expression '{}' matched {} VMs", expression, matchingVMs.size());
+            LOG.debug("Tag expression '{}' matched {} VMs", expression, matchingVMs.size());
             return matchingVMs;
             
         } catch (Exception e) {
-            log.error("Failed to evaluate tag expression '{}': {}", expression, e.getMessage());
+            LOG.error("Failed to evaluate tag expression '{}': {}", expression, e.getMessage());
             // Fall back to simple tag matching
             try {
                 List<Integer> vmIds = tagService.getVMsByTag(expression.trim(), ticket);
-                log.warn("Fell back to simple tag matching for '{}', found {} VMs", expression, vmIds.size());
+                LOG.warn("Fell back to simple tag matching for '{}', found {} VMs", expression, vmIds.size());
                 return new HashSet<>(vmIds);
             } catch (Exception ex) {
-                log.error("Simple tag matching also failed: {}", ex.getMessage());
+                LOG.error("Simple tag matching also failed: {}", ex.getMessage());
                 return new HashSet<>();
             }
         }

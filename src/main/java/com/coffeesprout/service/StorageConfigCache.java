@@ -18,7 +18,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 @ApplicationScoped
 public class StorageConfigCache {
     
-    private static final Logger log = LoggerFactory.getLogger(StorageConfigCache.class);
+    private static final Logger LOG = LoggerFactory.getLogger(StorageConfigCache.class);
     
     @Inject
     MigrationConfig migrationConfig;
@@ -34,7 +34,7 @@ public class StorageConfigCache {
         lock.readLock().lock();
         try {
             if (cachedResponse != null && cacheExpiry != null && Instant.now().isBefore(cacheExpiry)) {
-                log.debug("Returning cached storage configuration (expires at {})", cacheExpiry);
+                LOG.debug("Returning cached storage configuration (expires at {})", cacheExpiry);
                 return cachedResponse;
             }
             return null;
@@ -55,7 +55,7 @@ public class StorageConfigCache {
         try {
             this.cachedResponse = response;
             this.cacheExpiry = Instant.now().plus(Duration.ofSeconds(migrationConfig.storageCacheSeconds()));
-            log.debug("Updated storage configuration cache (expires at {})", cacheExpiry);
+            LOG.debug("Updated storage configuration cache (expires at {})", cacheExpiry);
         } finally {
             lock.writeLock().unlock();
         }
@@ -69,7 +69,7 @@ public class StorageConfigCache {
         try {
             this.cachedResponse = null;
             this.cacheExpiry = null;
-            log.debug("Cleared storage configuration cache");
+            LOG.debug("Cleared storage configuration cache");
         } finally {
             lock.writeLock().unlock();
         }

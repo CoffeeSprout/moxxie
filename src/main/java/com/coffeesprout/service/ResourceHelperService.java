@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 @AutoAuthenticate
 public class ResourceHelperService {
     
-    private static final Logger log = LoggerFactory.getLogger(ResourceHelperService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ResourceHelperService.class);
     
     @Inject
     VMService vmService;
@@ -38,7 +38,7 @@ public class ResourceHelperService {
      * @throws ProxmoxException if VM not found
      */
     public VMResponse findVMByIdOrThrow(int vmId, @AuthTicket String ticket) {
-        log.debug("Looking up VM with ID: {}", vmId);
+        LOG.debug("Looking up VM with ID: {}", vmId);
         
         List<VMResponse> vms = vmService.listVMs(ticket);
         
@@ -46,7 +46,7 @@ public class ResourceHelperService {
             .filter(v -> v.vmid() == vmId)
             .findFirst()
             .orElseThrow(() -> {
-                log.error("VM {} not found in cluster", vmId);
+                LOG.error("VM {} not found in cluster", vmId);
                 return ProxmoxException.notFound("VM", String.valueOf(vmId),
                     "VM with ID " + vmId + " does not exist in the cluster. " +
                     "Available VM IDs: " + getAvailableVMIds(vms, 10));
@@ -61,7 +61,7 @@ public class ResourceHelperService {
      * @return Optional containing the VM if found
      */
     public Optional<VMResponse> findVMById(int vmId, @AuthTicket String ticket) {
-        log.debug("Looking up VM with ID: {}", vmId);
+        LOG.debug("Looking up VM with ID: {}", vmId);
         
         List<VMResponse> vms = vmService.listVMs(ticket);
         
@@ -78,7 +78,7 @@ public class ResourceHelperService {
      * @return List of found VMs (may be smaller than input if some VMs don't exist)
      */
     public List<VMResponse> findVMsByIds(List<Integer> vmIds, @AuthTicket String ticket) {
-        log.debug("Looking up {} VMs", vmIds.size());
+        LOG.debug("Looking up {} VMs", vmIds.size());
         
         List<VMResponse> allVms = vmService.listVMs(ticket);
         
@@ -97,7 +97,7 @@ public class ResourceHelperService {
      */
     public void validateVMStatus(VMResponse vm, String expectedStatus, String operation) {
         if (!expectedStatus.equals(vm.status())) {
-            log.warn("VM {} status validation failed: expected '{}' but was '{}' for operation '{}'",
+            LOG.warn("VM {} status validation failed: expected '{}' but was '{}' for operation '{}'",
                 vm.vmid(), expectedStatus, vm.status(), operation);
             
             throw ProxmoxException.conflict("VM",
@@ -118,7 +118,7 @@ public class ResourceHelperService {
      */
     public void validateVMStatusIn(VMResponse vm, List<String> allowedStatuses, String operation) {
         if (!allowedStatuses.contains(vm.status())) {
-            log.warn("VM {} status validation failed: status '{}' not in allowed list {} for operation '{}'",
+            LOG.warn("VM {} status validation failed: status '{}' not in allowed list {} for operation '{}'",
                 vm.vmid(), vm.status(), allowedStatuses, operation);
             
             throw ProxmoxException.conflict("VM",
@@ -148,7 +148,7 @@ public class ResourceHelperService {
      */
     public void validateVMNotLocked(VMResponse vm, String operation) {
         if (isVMLocked(vm)) {
-            log.warn("VM {} is locked, cannot perform operation '{}'", vm.vmid(), operation);
+            LOG.warn("VM {} is locked, cannot perform operation '{}'", vm.vmid(), operation);
             
             throw ProxmoxException.conflict("VM",
                 String.format("Cannot %s VM %d (%s): VM is currently locked by another operation. " +
@@ -186,7 +186,7 @@ public class ResourceHelperService {
      */
     public void validateMoxxieManaged(VMResponse vm, String operation) {
         if (!isMoxxieManaged(vm)) {
-            log.warn("VM {} is not Moxxie-managed, cannot perform operation '{}' in safe mode",
+            LOG.warn("VM {} is not Moxxie-managed, cannot perform operation '{}' in safe mode",
                 vm.vmid(), operation);
             
             throw ProxmoxException.forbidden("VM",
@@ -250,7 +250,7 @@ public class ResourceHelperService {
      * @return List of matching VMs
      */
     public List<VMResponse> findVMsByNamePattern(String namePattern, @AuthTicket String ticket) {
-        log.debug("Looking up VMs with name pattern: {}", namePattern);
+        LOG.debug("Looking up VMs with name pattern: {}", namePattern);
         
         List<VMResponse> allVms = vmService.listVMs(ticket);
         String regex = namePattern.replace("*", ".*");
@@ -268,7 +268,7 @@ public class ResourceHelperService {
      * @return List of VMs on the node
      */
     public List<VMResponse> findVMsByNode(String node, @AuthTicket String ticket) {
-        log.debug("Looking up VMs on node: {}", node);
+        LOG.debug("Looking up VMs on node: {}", node);
         
         List<VMResponse> allVms = vmService.listVMs(ticket);
         

@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 @AutoAuthenticate
 public class StorageService {
     
-    private static final Logger log = LoggerFactory.getLogger(StorageService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(StorageService.class);
     
     @Inject
     @RestClient
@@ -32,7 +32,7 @@ public class StorageService {
      * List all storage pools across the cluster with aggregated statistics
      */
     public List<StoragePoolResponse> listStoragePools(@AuthTicket String ticket) {
-        log.debug("Listing all storage pools");
+        LOG.debug("Listing all storage pools");
         
         try {
             // Get cluster-wide storage configuration
@@ -70,7 +70,7 @@ public class StorageService {
                                 }
                             }
                         } catch (Exception e) {
-                            log.debug("Failed to get storage {} from node {}: {}", 
+                            LOG.debug("Failed to get storage {} from node {}: {}", 
                                      storage.getStorage(), node.getName(), e.getMessage());
                         }
                     }
@@ -90,7 +90,7 @@ public class StorageService {
                                 }
                             }
                         } catch (Exception e) {
-                            log.debug("Failed to get storage {} from node {}: {}", 
+                            LOG.debug("Failed to get storage {} from node {}: {}", 
                                      storage.getStorage(), node.getName(), e.getMessage());
                         }
                     }
@@ -106,7 +106,7 @@ public class StorageService {
                     .collect(Collectors.toList());
                     
         } catch (Exception e) {
-            log.error("Failed to list storage pools: {}", e.getMessage());
+            LOG.error("Failed to list storage pools: {}", e.getMessage());
             throw new RuntimeException("Failed to list storage pools: " + e.getMessage(), e);
         }
     }
@@ -115,7 +115,7 @@ public class StorageService {
      * List content of a specific storage pool
      */
     public List<com.coffeesprout.api.dto.StorageContentResponse> listStorageContent(String storageId, String contentType, @AuthTicket String ticket) {
-        log.debug("Listing content of storage {} with type {}", storageId, contentType);
+        LOG.debug("Listing content of storage {} with type {}", storageId, contentType);
         
         try {
             List<com.coffeesprout.api.dto.StorageContentResponse> allContent = new ArrayList<>();
@@ -177,7 +177,7 @@ public class StorageService {
                         }
                     }
                 } catch (Exception e) {
-                    log.debug("Failed to list content for storage {} on node {}: {}", 
+                    LOG.debug("Failed to list content for storage {} on node {}: {}", 
                              storageId, node.getName(), e.getMessage());
                 }
             }
@@ -194,7 +194,7 @@ public class StorageService {
                     .collect(Collectors.toList());
                     
         } catch (Exception e) {
-            log.error("Failed to list storage content: {}", e.getMessage());
+            LOG.error("Failed to list storage content: {}", e.getMessage());
             throw new RuntimeException("Failed to list storage content: " + e.getMessage(), e);
         }
     }
@@ -203,7 +203,7 @@ public class StorageService {
      * Get detailed status of a specific storage on a specific node
      */
     public com.coffeesprout.api.dto.StorageStatusResponse getStorageStatus(String node, String storageId, @AuthTicket String ticket) {
-        log.debug("Getting status of storage {} on node {}", storageId, node);
+        LOG.debug("Getting status of storage {} on node {}", storageId, node);
         
         try {
             // Get storage configuration
@@ -255,7 +255,7 @@ public class StorageService {
             );
             
         } catch (Exception e) {
-            log.error("Failed to get storage status: {}", e.getMessage());
+            LOG.error("Failed to get storage status: {}", e.getMessage());
             throw new RuntimeException("Failed to get storage status: " + e.getMessage(), e);
         }
     }
@@ -264,7 +264,7 @@ public class StorageService {
      * Delete content from storage
      */
     public void deleteStorageContent(String volid, @AuthTicket String ticket) {
-        log.info("Deleting storage content: {}", volid);
+        LOG.info("Deleting storage content: {}", volid);
         
         try {
             // Parse volume ID to extract storage and volume path
@@ -318,10 +318,10 @@ public class StorageService {
                 throw new RuntimeException("No task ID returned from Proxmox");
             }
             
-            log.info("Content deletion task started: {}", response.getData());
+            LOG.info("Content deletion task started: {}", response.getData());
             
         } catch (Exception e) {
-            log.error("Failed to delete storage content {}: {}", volid, e.getMessage());
+            LOG.error("Failed to delete storage content {}: {}", volid, e.getMessage());
             throw new RuntimeException("Failed to delete content: " + e.getMessage(), e);
         }
     }
@@ -330,7 +330,7 @@ public class StorageService {
      * Download content from URL to storage
      */
     public TaskResponse downloadFromUrl(String node, String storageId, DownloadUrlRequest request, @AuthTicket String ticket) {
-        log.info("Downloading from URL {} to storage {} on node {}", 
+        LOG.info("Downloading from URL {} to storage {} on node {}", 
                 request.url(), storageId, node);
         
         try {
@@ -368,12 +368,12 @@ public class StorageService {
                 throw new RuntimeException("No task ID returned from Proxmox");
             }
             
-            log.info("Download task started: {}", response.getData());
+            LOG.info("Download task started: {}", response.getData());
             return new TaskResponse(response.getData(), 
                     String.format("Download of %s to storage '%s' started", request.filename(), storageId));
                     
         } catch (Exception e) {
-            log.error("Failed to download from URL: {}", e.getMessage());
+            LOG.error("Failed to download from URL: {}", e.getMessage());
             throw new RuntimeException("Failed to download from URL: " + e.getMessage(), e);
         }
     }
@@ -383,7 +383,7 @@ public class StorageService {
      */
     public UploadResponse uploadToStorage(String node, String storageId, String contentType,
                                          InputStream fileStream, String filename, @AuthTicket String ticket) {
-        log.info("Uploading file to storage {} on node {}", storageId, node);
+        LOG.info("Uploading file to storage {} on node {}", storageId, node);
         
         try {
             // Verify storage exists and supports the content type
@@ -406,11 +406,11 @@ public class StorageService {
                 throw new RuntimeException("No task ID returned from Proxmox");
             }
             
-            log.info("Upload task started: {}", response.getData());
+            LOG.info("Upload task started: {}", response.getData());
             return UploadResponse.create(response.getData(), filename, storageId);
                     
         } catch (Exception e) {
-            log.error("Failed to upload file: {}", e.getMessage());
+            LOG.error("Failed to upload file: {}", e.getMessage());
             throw new RuntimeException("Failed to upload file: " + e.getMessage(), e);
         }
     }
@@ -440,7 +440,7 @@ public class StorageService {
                     }
                 }
             } catch (Exception e) {
-                log.debug("Failed to check content on node {}: {}", node.getName(), e.getMessage());
+                LOG.debug("Failed to check content on node {}: {}", node.getName(), e.getMessage());
             }
         }
         

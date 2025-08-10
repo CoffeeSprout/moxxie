@@ -36,7 +36,7 @@ import java.util.Map;
 @Tag(name = "Admin", description = "Administrative endpoints")
 public class AdminResource {
     
-    private static final Logger log = LoggerFactory.getLogger(AdminResource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(AdminResource.class);
     
     @Inject
     @RestClient
@@ -79,13 +79,13 @@ public class AdminResource {
             StringBuilder tagStyle = new StringBuilder();
             
             // Add case sensitivity setting
-            tagStyle.append("case-sensitive=").append(config.tagStyle().caseSensitive() ? "1" : "0").append(";");
+            tagStyle.append("case-sensitive=").append(config.tagStyle().caseSensitive() ? "1" : "0").append(';');
             
             // Add ordering
-            tagStyle.append("ordering=").append(config.tagStyle().ordering()).append(";");
+            tagStyle.append("ordering=").append(config.tagStyle().ordering()).append(';');
             
             // Add shape
-            tagStyle.append("shape=").append(config.tagStyle().shape()).append(";");
+            tagStyle.append("shape=").append(config.tagStyle().shape()).append(';');
             
             // Add color mappings
             if (config.tagStyle().colorMap() != null && !config.tagStyle().colorMap().isEmpty()) {
@@ -93,16 +93,16 @@ public class AdminResource {
                 boolean first = true;
                 for (Map.Entry<String, String> entry : config.tagStyle().colorMap().entrySet()) {
                     if (!first) {
-                        tagStyle.append(",");
+                        tagStyle.append(',');
                     }
-                    tagStyle.append(entry.getKey()).append(":").append(entry.getValue());
+                    tagStyle.append(entry.getKey()).append(':').append(entry.getValue());
                     first = false;
                 }
             }
             
             // Note: The actual Proxmox API endpoint for updating datacenter config varies
             // This is a conceptual implementation - adjust based on your Proxmox version
-            log.info("Configuring tag style: {}", tagStyle.toString());
+            LOG.info("Configuring tag style: {}", tagStyle.toString());
             
             // For now, we'll store this configuration locally and return success
             // In a real implementation, this would update Proxmox datacenter.cfg
@@ -110,7 +110,7 @@ public class AdminResource {
             return Response.ok(new ConfigResponse("Tag style configuration updated successfully"))
                     .build();
         } catch (Exception e) {
-            log.error("Failed to configure tag style", e);
+            LOG.error("Failed to configure tag style", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to configure tag style: " + e.getMessage()))
                     .build();
@@ -137,13 +137,13 @@ public class AdminResource {
                 content = @Content(schema = @Schema(implementation = SimpleTagStyle.class)))
             @Valid SimpleTagStyle style) {
         try {
-            log.info("Configuring style for tag '{}': color={}, icon={}", tag, style.color(), style.icon());
+            LOG.info("Configuring style for tag '{}': color={}, icon={}", tag, style.color(), style.icon());
             
             // Store tag style configuration locally for now
             // In a real implementation, this would update Proxmox datacenter config
             return Response.ok(new ConfigResponse("Tag style for '" + tag + "' updated successfully")).build();
         } catch (Exception e) {
-            log.error("Failed to configure style for tag: " + tag, e);
+            LOG.error("Failed to configure style for tag: " + tag, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(new ErrorResponse("Failed to configure tag style: " + e.getMessage()))
                     .build();

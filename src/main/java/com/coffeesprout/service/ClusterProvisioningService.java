@@ -25,7 +25,7 @@ import java.util.stream.IntStream;
 @AutoAuthenticate
 public class ClusterProvisioningService {
     
-    private static final Logger log = LoggerFactory.getLogger(ClusterProvisioningService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ClusterProvisioningService.class);
     
     @Inject
     VMService vmService;
@@ -51,11 +51,11 @@ public class ClusterProvisioningService {
         ClusterProvisioningState state = new ClusterProvisioningState(operationId, spec);
         provisioningStates.put(operationId, state);
         
-        log.info("Starting cluster provisioning for '{}' with operation ID: {}", spec.name(), operationId);
+        LOG.info("Starting cluster provisioning for '{}' with operation ID: {}", spec.name(), operationId);
         
         // Check for dry run mode
         if (spec.options() != null && Boolean.TRUE.equals(spec.options().dryRun())) {
-            log.info("DRY RUN mode - validating configuration without creating VMs");
+            LOG.info("DRY RUN mode - validating configuration without creating VMs");
             return validateClusterSpec(state)
                 .onItem().transform(s -> {
                     s.setStatus(ClusterProvisioningState.ClusterStatus.COMPLETED);
@@ -69,9 +69,9 @@ public class ClusterProvisioningService {
         // Start async provisioning
         provisionClusterAsync(state)
             .subscribe().with(
-                result -> log.info("Cluster provisioning completed: {}", result),
+                result -> LOG.info("Cluster provisioning completed: {}", result),
                 error -> {
-                    log.error("Cluster provisioning failed", error);
+                    LOG.error("Cluster provisioning failed", error);
                     state.setStatus(ClusterProvisioningState.ClusterStatus.FAILED);
                     state.setErrorMessage(error.getMessage());
                     state.setEndTime(Instant.now());
@@ -114,7 +114,7 @@ public class ClusterProvisioningService {
     }
     
     private Uni<ClusterProvisioningState> validateClusterSpec(ClusterProvisioningState state) {
-        log.debug("Validating cluster specification for '{}'", state.getSpec().name());
+        LOG.debug("Validating cluster specification for '{}'", state.getSpec().name());
         
         // Pre-populate node states for tracking
         state.getSpec().nodeGroups().forEach(group -> {
@@ -156,7 +156,7 @@ public class ClusterProvisioningService {
                         state.updateProgress();
                     })
                     .onFailure().recoverWithItem(error -> {
-                        log.error("Failed to provision node '{}': {}", nodeName, error.getMessage());
+                        LOG.error("Failed to provision node '{}': {}", nodeName, error.getMessage());
                         nodeState.setStatus(ClusterProvisioningState.NodeProvisioningState.NodeStatus.FAILED);
                         nodeState.setErrorMessage(error.getMessage());
                         nodeState.setEndTime(Instant.now());
@@ -219,7 +219,7 @@ public class ClusterProvisioningService {
         String targetHost = nodePlacementService.selectHost(group, index, spec, null);
         nodeState.setAssignedHost(targetHost);
         
-        log.info("Provisioning node '{}' on host '{}'", nodeName, targetHost);
+        LOG.info("Provisioning node '{}' on host '{}'", nodeName, targetHost);
         nodeState.setStatus(ClusterProvisioningState.NodeProvisioningState.NodeStatus.CREATING_VM);
         
         // Check if this is an FCOS node (for OKD)
@@ -255,7 +255,7 @@ public class ClusterProvisioningService {
                 nodeIndex += g.count();
             }
             vmId = spec.options().vmIdRangeStart() + nodeIndex + index;
-            log.debug("Using VM ID {} from specified range starting at {}", vmId, spec.options().vmIdRangeStart());
+            LOG.debug("Using VM ID {} from specified range starting at {}", vmId, spec.options().vmIdRangeStart());
         } else {
             vmId = vmIdService.getNextAvailableVmId(null);
         }
@@ -265,7 +265,7 @@ public class ClusterProvisioningService {
         CloudInitVMRequest vmRequest;
         if (isFCOS) {
             // For FCOS nodes, create minimal VM without cloud-init
-            log.info("Creating FCOS VM {} without cloud-init for OKD cluster", nodeName);
+            LOG.info("Creating FCOS VM {} without cloud-init for OKD cluster", nodeName);
             vmRequest = CloudInitVMRequestBuilder.forFCOS(vmId, nodeName, targetHost, template)
                 .networks(networks)
                 .ipConfigs(ipConfigs)
@@ -292,7 +292,7 @@ public class ClusterProvisioningService {
         // The VMService.createCloudInitVM method now handles creation and migration
         return Uni.createFrom().item(() -> vmService.createCloudInitVM(vmRequest, null))
             .onItem().transform(response -> {
-                log.info("Successfully provisioned VM {} for node '{}' on target host '{}'", vmId, nodeName, targetHost);
+                LOG.info("Successfully provisioned VM {} for node '{}' on target host '{}'", vmId, nodeName, targetHost);
                 nodeState.setStatus(ClusterProvisioningState.NodeProvisioningState.NodeStatus.READY);
                 return new NodeProvisioningResult(nodeName, vmId, targetHost, null);
             });
@@ -304,7 +304,7 @@ public class ClusterProvisioningService {
         // - Setting up VLANs
         // - Configuring SDN zones
         // - Setting up load balancer rules
-        log.debug("Configuring networking for cluster '{}'", state.getSpec().name());
+        LOG.debug("Configuring networking for cluster '{}'", state.getSpec().name());
         return Uni.createFrom().item(state);
     }
     
@@ -314,12 +314,12 @@ public class ClusterProvisioningService {
         // - Configure monitoring
         // - Set up backup schedules
         // - Initialize cluster-specific configurations (e.g., Talos config)
-        log.debug("Applying post-provisioning configuration for cluster '{}'", state.getSpec().name());
+        LOG.debug("Applying post-provisioning configuration for cluster '{}'", state.getSpec().name());
         return Uni.createFrom().item(state);
     }
     
     private Uni<ClusterProvisioningState> handleProvisioningFailure(ClusterProvisioningState state, Throwable error) {
-        log.error("Cluster provisioning failed for '{}': {}", state.getSpec().name(), error.getMessage());
+        LOG.error("Cluster provisioning failed for '{}': {}", state.getSpec().name(), error.getMessage());
         state.setStatus(ClusterProvisioningState.ClusterStatus.FAILED);
         state.setErrorMessage(error.getMessage());
         state.setEndTime(Instant.now());
@@ -332,7 +332,7 @@ public class ClusterProvisioningService {
     }
     
     private Uni<ClusterProvisioningState> rollbackCluster(ClusterProvisioningState state) {
-        log.info("Rolling back cluster '{}'", state.getSpec().name());
+        LOG.info("Rolling back cluster '{}'", state.getSpec().name());
         state.setStatus(ClusterProvisioningState.ClusterStatus.ROLLING_BACK);
         state.setCurrentOperation("Rolling back provisioned resources");
         
@@ -340,7 +340,7 @@ public class ClusterProvisioningService {
         List<Uni<Void>> deletionUnis = state.getSuccessfulNodes().stream()
             .filter(node -> node.getVmId() != null)
             .map(node -> {
-                log.info("Deleting VM {} for rollback", node.getVmId());
+                LOG.info("Deleting VM {} for rollback", node.getVmId());
                 node.setStatus(ClusterProvisioningState.NodeProvisioningState.NodeStatus.DELETING);
                 return Uni.createFrom().voidItem()
                     .invoke(() -> vmService.deleteVM(node.getAssignedHost(), node.getVmId(), null))

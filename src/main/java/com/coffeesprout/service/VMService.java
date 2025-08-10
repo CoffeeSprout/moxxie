@@ -26,7 +26,7 @@ import java.nio.charset.StandardCharsets;
 @AutoAuthenticate
 public class VMService {
 
-    private static final Logger log = LoggerFactory.getLogger(VMService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(VMService.class);
 
     @Inject
     @RestClient
@@ -47,12 +47,12 @@ public class VMService {
     @Inject
     ObjectMapper objectMapper;
 
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     public List<VMResponse> listVMs(@AuthTicket String ticket) {
         return listVMsWithFilters(null, null, null, null, ticket);
     }
     
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     public List<VMResponse> listVMsWithFilters(List<String> tags, String client, String node, String status, @AuthTicket String ticket) {
         try {
             // Get all VMs from cluster
@@ -78,8 +78,8 @@ public class VMService {
                     List<String> vmTagsList = new ArrayList<>(vmTags);
                     
                     // Debug logging
-                    if (!tagsString.isEmpty() && log.isDebugEnabled()) {
-                        log.debug("VM {} has tags string '{}' parsed to: {}", 
+                    if (!tagsString.isEmpty() && LOG.isDebugEnabled()) {
+                        LOG.debug("VM {} has tags string '{}' parsed to: {}", 
                             resource.path("vmid").asInt(), tagsString, vmTags);
                     }
                     
@@ -141,7 +141,7 @@ public class VMService {
             
             return vms;
         } catch (Exception e) {
-            log.error("Error listing VMs with filters", e);
+            LOG.error("Error listing VMs with filters", e);
             throw new RuntimeException("Failed to list VMs: " + e.getMessage(), e);
         }
     }
@@ -180,7 +180,7 @@ public class VMService {
     @SafeMode(operation = SafeMode.Operation.WRITE)
     public void resizeDisk(String node, int vmId, String disk, String size, @AuthTicket String ticket) {
         try {
-            log.info("Resizing disk {} for VM {} to size {}", disk, vmId, size);
+            LOG.info("Resizing disk {} for VM {} to size {}", disk, vmId, size);
             
             // The disk parameter should be like "scsi0", size like "+20G" or "50G"
             String resizeParam = disk + "=" + size;
@@ -188,9 +188,9 @@ public class VMService {
             // Use a generic update config method - we may need to add this to ProxmoxClient
             proxmoxClient.resizeDisk(node, vmId, disk, size, ticket, ticketManager.getCsrfToken());
             
-            log.info("Successfully resized disk {} for VM {}", disk, vmId);
+            LOG.info("Successfully resized disk {} for VM {}", disk, vmId);
         } catch (Exception e) {
-            log.error("Failed to resize disk for VM {}", vmId, e);
+            LOG.error("Failed to resize disk for VM {}", vmId, e);
             throw new RuntimeException("Failed to resize disk: " + e.getMessage(), e);
         }
     }
@@ -222,10 +222,10 @@ public class VMService {
                 // Apply tags to the VM
                 if (!autoTags.isEmpty()) {
                     tagService.bulkAddTags(List.of(request.getVmid()), autoTags, null);
-                    log.info("Auto-tagged VM {} with tags: {}", request.getVmid(), autoTags);
+                    LOG.info("Auto-tagged VM {} with tags: {}", request.getVmid(), autoTags);
                 }
             } catch (Exception e) {
-                log.warn("Failed to auto-tag VM {}: {}", request.getVmid(), e.getMessage());
+                LOG.warn("Failed to auto-tag VM {}: {}", request.getVmid(), e.getMessage());
                 // Don't fail the VM creation just because tagging failed
             }
         }
@@ -237,82 +237,82 @@ public class VMService {
         return proxmoxClient.importCloudImage(node, storage, ticket, request);
     }
 
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     public VMStatusResponse getVMStatus(String node, int vmid, @AuthTicket String ticket) {
-        log.debug("Getting detailed status for VM {} on node {}", vmid, node);
+        LOG.debug("Getting detailed status for VM {} on node {}", vmid, node);
         return proxmoxClient.getVMStatus(node, vmid, ticket);
     }
 
     @SafeMode(operation = SafeMode.Operation.WRITE)
     public void startVM(String node, int vmid, @AuthTicket String ticket) {
-        log.info("Starting VM {} on node {}", vmid, node);
+        LOG.info("Starting VM {} on node {}", vmid, node);
         TaskStatusResponse response = proxmoxClient.startVM(node, vmid, ticket, ticketManager.getCsrfToken());
         if (response != null && response.getData() != null) {
-            log.debug("VM start task initiated: {}", response.getData());
+            LOG.debug("VM start task initiated: {}", response.getData());
         }
     }
 
     @SafeMode(operation = SafeMode.Operation.WRITE)
     public void stopVM(String node, int vmid, @AuthTicket String ticket) {
-        log.info("Stopping VM {} on node {}", vmid, node);
+        LOG.info("Stopping VM {} on node {}", vmid, node);
         TaskStatusResponse response = proxmoxClient.stopVM(node, vmid, ticket, ticketManager.getCsrfToken());
         if (response != null && response.getData() != null) {
-            log.debug("VM stop task initiated: {}", response.getData());
+            LOG.debug("VM stop task initiated: {}", response.getData());
         }
     }
 
     @SafeMode(operation = SafeMode.Operation.DELETE)
     public void deleteVM(String node, int vmid, @AuthTicket String ticket) {
-        log.info("Deleting VM {} on node {}", vmid, node);
+        LOG.info("Deleting VM {} on node {}", vmid, node);
         proxmoxClient.deleteVM(node, vmid, ticket, ticketManager.getCsrfToken());
     }
     
     @SafeMode(operation = SafeMode.Operation.WRITE)
     public void rebootVM(String node, int vmid, @AuthTicket String ticket) {
-        log.info("Rebooting VM {} on node {}", vmid, node);
+        LOG.info("Rebooting VM {} on node {}", vmid, node);
         TaskStatusResponse response = proxmoxClient.rebootVM(node, vmid, ticket, ticketManager.getCsrfToken());
         if (response != null && response.getData() != null) {
-            log.debug("VM reboot task initiated: {}", response.getData());
+            LOG.debug("VM reboot task initiated: {}", response.getData());
         }
     }
     
     @SafeMode(operation = SafeMode.Operation.WRITE)
     public void suspendVM(String node, int vmid, @AuthTicket String ticket) {
-        log.info("Suspending VM {} on node {}", vmid, node);
+        LOG.info("Suspending VM {} on node {}", vmid, node);
         TaskStatusResponse response = proxmoxClient.suspendVM(node, vmid, ticket, ticketManager.getCsrfToken());
         if (response != null && response.getData() != null) {
-            log.debug("VM suspend task initiated: {}", response.getData());
+            LOG.debug("VM suspend task initiated: {}", response.getData());
         }
     }
     
     @SafeMode(operation = SafeMode.Operation.WRITE)
     public void resumeVM(String node, int vmid, @AuthTicket String ticket) {
-        log.info("Resuming VM {} on node {}", vmid, node);
+        LOG.info("Resuming VM {} on node {}", vmid, node);
         TaskStatusResponse response = proxmoxClient.resumeVM(node, vmid, ticket, ticketManager.getCsrfToken());
         if (response != null && response.getData() != null) {
-            log.debug("VM resume task initiated: {}", response.getData());
+            LOG.debug("VM resume task initiated: {}", response.getData());
         }
     }
     
     @SafeMode(operation = SafeMode.Operation.WRITE)
     public void shutdownVM(String node, int vmid, @AuthTicket String ticket) {
-        log.info("Shutting down VM {} on node {}", vmid, node);
+        LOG.info("Shutting down VM {} on node {}", vmid, node);
         TaskStatusResponse response = proxmoxClient.shutdownVM(node, vmid, ticket, ticketManager.getCsrfToken());
         if (response != null && response.getData() != null) {
-            log.debug("VM shutdown task initiated: {}", response.getData());
+            LOG.debug("VM shutdown task initiated: {}", response.getData());
         }
     }
     
-    @SafeMode(value = false)  // Read operation
+    @SafeMode(false)  // Read operation
     public Map<String, Object> getVMConfig(String node, int vmId, @AuthTicket String ticket) {
-        log.debug("Getting VM config for VM {} on node '{}'", vmId, node);
+        LOG.debug("Getting VM config for VM {} on node '{}'", vmId, node);
         VMConfigResponse response = proxmoxClient.getVMConfig(node, vmId, ticket);
         return response.getData() != null ? response.getData() : new HashMap<>();
     }
     
     @SafeMode(operation = SafeMode.Operation.WRITE)
     public void updateVMConfig(String node, int vmId, CreateVMRequest config, @AuthTicket String ticket) {
-        log.info("Updating VM {} configuration on node '{}'", vmId, node);
+        LOG.info("Updating VM {} configuration on node '{}'", vmId, node);
         
         // The Proxmox updateVMConfig method expects the config as form data
         // We need to use the generic update method with the CreateVMRequest
@@ -344,14 +344,14 @@ public class VMService {
             String sshKeys = config.getSshkeys().trim();
             
             // Log the exact SSH key we're about to encode
-            log.info("Raw SSH keys before encoding: '{}'", sshKeys);
-            log.info("SSH keys length: {}, ends with newline: {}", 
+            LOG.info("Raw SSH keys before encoding: '{}'", sshKeys);
+            LOG.info("SSH keys length: {}, ends with newline: {}", 
                     sshKeys.length(), sshKeys.endsWith("\n"));
             
             // Try the original approach with standard URL encoding
             appendFormParam(formData, "sshkeys", sshKeys);
             
-            log.info("SSH keys added to form data");
+            LOG.info("SSH keys added to form data");
         }
         if (config.getDescription() != null) {
             appendFormParam(formData, "description", config.getDescription());
@@ -379,7 +379,7 @@ public class VMService {
     
     @SafeMode(operation = SafeMode.Operation.WRITE)
     public void importDisk(String node, int vmId, String diskConfig, @AuthTicket String ticket) {
-        log.info("Importing disk for VM {} on node '{}' with config: {}", vmId, node, diskConfig);
+        LOG.info("Importing disk for VM {} on node '{}' with config: {}", vmId, node, diskConfig);
         
         // Use the updateDisk method from ProxmoxClient which is designed for disk import
         ConfigResponse response = proxmoxClient.updateDisk(node, vmId, diskConfig, ticket, ticketManager.getCsrfToken());
@@ -388,7 +388,7 @@ public class VMService {
             throw new RuntimeException("Failed to import disk - no response from Proxmox");
         }
         
-        log.info("Disk import initiated successfully for VM {}", vmId);
+        LOG.info("Disk import initiated successfully for VM {}", vmId);
     }
     
     /**
@@ -397,7 +397,7 @@ public class VMService {
      */
     @SafeMode(operation = SafeMode.Operation.WRITE)
     public void setSSHKeysDirect(String node, int vmId, String sshKeys, @AuthTicket String ticket) {
-        log.info("Setting SSH keys on VM {} using double encoding", vmId);
+        LOG.info("Setting SSH keys on VM {} using double encoding", vmId);
         
         try {
             // First, normalize the SSH key
@@ -414,7 +414,7 @@ public class VMService {
             String doubleEncoded = java.net.URLEncoder.encode(encoded, "UTF-8")
                     .replaceAll("\\+", "%20");
             
-            log.debug("SSH key double-encoded successfully");
+            LOG.debug("SSH key double-encoded successfully");
             
             // Build the form data with the double-encoded value
             String formData = "sshkeys=" + doubleEncoded;
@@ -422,10 +422,10 @@ public class VMService {
             // Send the request
             proxmoxClient.updateVMConfig(node, vmId, ticket, ticketManager.getCsrfToken(), formData);
             
-            log.info("Successfully set SSH keys on VM {}", vmId);
+            LOG.info("Successfully set SSH keys on VM {}", vmId);
             
         } catch (Exception e) {
-            log.error("Failed to set SSH keys on VM {}", vmId, e);
+            LOG.error("Failed to set SSH keys on VM {}", vmId, e);
             throw new RuntimeException("Failed to set SSH keys: " + e.getMessage(), e);
         }
     }
@@ -439,7 +439,7 @@ public class VMService {
                                     String snapname, String storage, String targetNode, 
                                     @AuthTicket String ticket) {
         try {
-            log.info("Cloning VM {} to new VM {} on node {}", templateId, newVmId, targetNode != null ? targetNode : node);
+            LOG.info("Cloning VM {} to new VM {} on node {}", templateId, newVmId, targetNode != null ? targetNode : node);
             
             return proxmoxClient.cloneVM(
                 node, 
@@ -457,7 +457,7 @@ public class VMService {
             );
             
         } catch (Exception e) {
-            log.error("Failed to clone VM {} to {}", templateId, newVmId, e);
+            LOG.error("Failed to clone VM {} to {}", templateId, newVmId, e);
             throw new RuntimeException("Failed to clone VM: " + e.getMessage(), e);
         }
     }
@@ -512,14 +512,14 @@ public class VMService {
         Integer vmId = request.vmid();
         if (vmId == null) {
             vmId = vmIdService.getNextAvailableVmId(ticket);
-            log.info("Allocated VM ID {} for VM {}", vmId, request.name());
+            LOG.info("Allocated VM ID {} for VM {}", vmId, request.name());
         }
         
         // Determine creation node - use templateNode if specified, otherwise use target node
         String creationNode = request.templateNode() != null ? request.templateNode() : request.node();
         String targetNode = request.node();
         
-        log.info("Creating cloud-init VM {} (ID: {}) from image {} on node {}", 
+        LOG.info("Creating cloud-init VM {} (ID: {}) from image {} on node {}", 
                  request.name(), vmId, request.imageSource(), creationNode);
         
         // Build CreateVMRequest WITHOUT main disk (following Ansible pattern)
@@ -602,7 +602,7 @@ public class VMService {
         
         if (request.sshKeys() != null) {
             // Pass SSH keys as-is - createVM will handle proper encoding
-            log.info("Setting SSH keys during VM creation (length: {})", request.sshKeys().length());
+            LOG.info("Setting SSH keys during VM creation (length: {})", request.sshKeys().length());
             builder.sshkeys(request.sshKeys());
         }
         
@@ -610,24 +610,24 @@ public class VMService {
         CreateVMRequest clientRequest = builder.build();
         
         // Create the VM without main disk
-        log.info("Creating VM {} without main disk", vmId);
+        LOG.info("Creating VM {} without main disk", vmId);
         CreateVMResponse response = createVM(creationNode, clientRequest, ticket);
         
         // Now import and attach the disk as scsi0
         try {
-            log.info("Importing disk from {} to VM {}", request.imageSource(), vmId);
+            LOG.info("Importing disk from {} to VM {}", request.imageSource(), vmId);
             
             // Build disk config with import-from
             DiskConfig importDisk = request.toDiskConfig();
             String diskString = importDisk.toProxmoxString();
-            log.info("Disk import config: {}", diskString);
+            LOG.info("Disk import config: {}", diskString);
             
             // Use the updateDisk method to import and attach the disk
             importDisk(creationNode, vmId, diskString, ticket);
             
             // Resize the disk if needed
             if (request.diskSizeGB() > 0) {
-                log.info("Resizing disk scsi0 to {}G for VM {}", request.diskSizeGB(), vmId);
+                LOG.info("Resizing disk scsi0 to {}G for VM {}", request.diskSizeGB(), vmId);
                 resizeDisk(creationNode, vmId, "scsi0", request.diskSizeGB() + "G", ticket);
             }
             
@@ -640,12 +640,12 @@ public class VMService {
             updateVMConfig(creationNode, vmId, bootOrderUpdate, ticket);
             
         } catch (Exception e) {
-            log.error("Failed to import disk for VM {}, cleaning up", vmId, e);
+            LOG.error("Failed to import disk for VM {}, cleaning up", vmId, e);
             // Clean up the VM if disk import fails
             try {
                 deleteVM(creationNode, vmId, ticket);
             } catch (Exception cleanupEx) {
-                log.error("Failed to clean up VM {} after disk import failure", vmId, cleanupEx);
+                LOG.error("Failed to clean up VM {} after disk import failure", vmId, cleanupEx);
             }
             throw new RuntimeException("Failed to import disk: " + e.getMessage(), e);
         }
@@ -653,7 +653,7 @@ public class VMService {
         // Cloud-init settings are now configured during VM creation
         // Only update password if it was provided (can't be set during creation)
         if (request.cloudInitPassword() != null) {
-            log.info("Setting cloud-init password for VM {}", vmId);
+            LOG.info("Setting cloud-init password for VM {}", vmId);
             CreateVMRequest passwordConfig = CreateVMRequestBuilder.builder()
                 .vmid(vmId)
                 .name("temp")
@@ -664,7 +664,7 @@ public class VMService {
         
         // Migrate VM if created on different node than target
         if (!creationNode.equals(targetNode)) {
-            log.info("Migrating VM {} from '{}' to target node '{}'", vmId, creationNode, targetNode);
+            LOG.info("Migrating VM {} from '{}' to target node '{}'", vmId, creationNode, targetNode);
             try {
                 com.coffeesprout.api.dto.MigrationRequest migrationRequest = new com.coffeesprout.api.dto.MigrationRequest(
                     targetNode,
@@ -678,20 +678,20 @@ public class VMService {
                 );
                 
                 migrationService.migrateVM(vmId, migrationRequest, ticket);
-                log.info("Successfully migrated VM {} to '{}'", vmId, targetNode);
+                LOG.info("Successfully migrated VM {} to '{}'", vmId, targetNode);
                 
                 // Update creationNode to targetNode for subsequent operations
                 creationNode = targetNode;
             } catch (Exception e) {
-                log.error("Failed to migrate VM {} to '{}': {}", vmId, targetNode, e.getMessage());
+                LOG.error("Failed to migrate VM {} to '{}': {}", vmId, targetNode, e.getMessage());
                 // Migration failed but VM exists - continue with warning
-                log.warn("VM {} created on '{}' but migration to '{}' failed", vmId, creationNode, targetNode);
+                LOG.warn("VM {} created on '{}' but migration to '{}' failed", vmId, creationNode, targetNode);
             }
         }
         
         // Start VM if requested
         if (request.start() != null && request.start()) {
-            log.info("Starting VM {}", vmId);
+            LOG.info("Starting VM {}", vmId);
             startVM(creationNode, vmId, ticket);
         }
         
