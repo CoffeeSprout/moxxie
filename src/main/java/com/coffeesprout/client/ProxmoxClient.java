@@ -259,7 +259,7 @@ public interface ProxmoxClient {
     @GET
     @Path("/nodes/{node}/qemu/{vmid}/config")
     @Produces(MediaType.APPLICATION_JSON)
-    com.fasterxml.jackson.databind.JsonNode getVMConfig(@PathParam("node") String node,
+    JsonNode getVMConfig(@PathParam("node") String node,
                                                         @PathParam("vmid") int vmid,
                                                         @CookieParam("PVEAuthCookie") String ticket,
                                                         @HeaderParam("CSRFPreventionToken") String csrfToken);
@@ -269,7 +269,7 @@ public interface ProxmoxClient {
     @Path("/nodes/{node}/qemu/{vmid}/config")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.APPLICATION_JSON)
-    com.fasterxml.jackson.databind.JsonNode updateVMConfig(@PathParam("node") String node,
+    JsonNode updateVMConfig(@PathParam("node") String node,
                                                            @PathParam("vmid") int vmid,
                                                            @CookieParam("PVEAuthCookie") String ticket,
                                                            @HeaderParam("CSRFPreventionToken") String csrfToken,
@@ -279,7 +279,7 @@ public interface ProxmoxClient {
     @GET
     @Path("/cluster/resources")
     @Produces(MediaType.APPLICATION_JSON)
-    com.fasterxml.jackson.databind.JsonNode getClusterResources(@CookieParam("PVEAuthCookie") String ticket,
+    JsonNode getClusterResources(@CookieParam("PVEAuthCookie") String ticket,
                                                                 @HeaderParam("CSRFPreventionToken") String csrfToken,
                                                                 @QueryParam("type") String type);
     
@@ -495,7 +495,7 @@ public interface ProxmoxClient {
     @GET
     @Path("/nodes/{node}/tasks/{upid}/status")
     @Produces(MediaType.APPLICATION_JSON)
-    com.fasterxml.jackson.databind.JsonNode getTaskStatus(@PathParam("node") String node,
+    JsonNode getTaskStatus(@PathParam("node") String node,
                                                           @PathParam("upid") String upid,
                                                           @CookieParam("PVEAuthCookie") String ticket);
     
@@ -503,7 +503,7 @@ public interface ProxmoxClient {
     @GET
     @Path("/nodes/{node}/tasks/{upid}/log")
     @Produces(MediaType.APPLICATION_JSON)
-    com.fasterxml.jackson.databind.JsonNode getTaskLog(@PathParam("node") String node,
+    JsonNode getTaskLog(@PathParam("node") String node,
                                                        @PathParam("upid") String upid,
                                                        @QueryParam("start") Integer start,
                                                        @QueryParam("limit") Integer limit,
@@ -526,7 +526,7 @@ public interface ProxmoxClient {
     @DELETE
     @Path("/nodes/{node}/tasks/{upid}")
     @Produces(MediaType.APPLICATION_JSON)
-    com.fasterxml.jackson.databind.JsonNode stopTask(@PathParam("node") String node,
+    JsonNode stopTask(@PathParam("node") String node,
                                                      @PathParam("upid") String upid,
                                                      @CookieParam("PVEAuthCookie") String ticket,
                                                      @HeaderParam("CSRFPreventionToken") String csrfToken);

@@ -106,13 +106,8 @@ public class NodePlacementService {
         }
         
         // Check avoided nodes
-        if (constraints.avoidNodes().contains(node.getName())) {
-            return false;
-        }
-        
         // TODO: Check required node tags when tag support is added to nodes
-        
-        return true;
+        return !constraints.avoidNodes().contains(node.getName());
     }
     
     private NodeInfo selectBestNode(

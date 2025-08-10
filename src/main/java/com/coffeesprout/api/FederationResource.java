@@ -221,7 +221,6 @@ public class FederationResource {
     public Response getCapabilities() {
         try {
             LocationInfo location = locationService.getLocationInfo();
-            ClusterResources resources = resourceProvider.getClusterResources().get();
             
             Map<String, Object> response = new HashMap<>();
             

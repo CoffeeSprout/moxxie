@@ -53,12 +53,11 @@ public class VMLocatorService {
             if (resources != null && resources.has("data")) {
                 var dataArray = resources.get("data");
                 for (var resource : dataArray) {
-                    if (resource.has("vmid") && resource.get("vmid").asInt() == vmId) {
-                        if (resource.has("node")) {
-                            String node = resource.get("node").asText();
-                            LOG.debug("Found VM {} on node {} via cluster resources", vmId, node);
-                            return Optional.of(node);
-                        }
+                    if (resource.has("vmid") && resource.get("vmid").asInt() == vmId 
+                            && resource.has("node")) {
+                        String node = resource.get("node").asText();
+                        LOG.debug("Found VM {} on node {} via cluster resources", vmId, node);
+                        return Optional.of(node);
                     }
                 }
             }

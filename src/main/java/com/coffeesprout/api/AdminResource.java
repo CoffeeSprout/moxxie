@@ -74,16 +74,12 @@ public class AdminResource {
             }
             
             // Build the tag-style configuration string for Proxmox
-            StringBuilder tagStyle = new StringBuilder();
+            StringBuilder tagStyle = new StringBuilder(256);
             
             // Add case sensitivity setting
-            tagStyle.append("case-sensitive=").append(config.tagStyle().caseSensitive() ? "1" : "0").append(';');
-            
-            // Add ordering
-            tagStyle.append("ordering=").append(config.tagStyle().ordering()).append(';');
-            
-            // Add shape
-            tagStyle.append("shape=").append(config.tagStyle().shape()).append(';');
+            tagStyle.append("case-sensitive=").append(config.tagStyle().caseSensitive() ? "1" : "0").append(';')
+                    .append("ordering=").append(config.tagStyle().ordering()).append(';')
+                    .append("shape=").append(config.tagStyle().shape()).append(';');
             
             // Add color mappings
             if (config.tagStyle().colorMap() != null && !config.tagStyle().colorMap().isEmpty()) {

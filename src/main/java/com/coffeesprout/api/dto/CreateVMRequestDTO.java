@@ -3,6 +3,7 @@ package com.coffeesprout.api.dto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import java.util.List;
 
 @Schema(description = "Request to create a new VM")
 public record CreateVMRequestDTO(

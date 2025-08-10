@@ -20,7 +20,7 @@ public class ProxmoxHealthCheck implements HealthCheck {
     @Override
     public HealthCheckResponse call() {
         try {
-            StatusResponse status = proxmoxClient.getStatus();
+            proxmoxClient.getStatus();
             return HealthCheckResponse.up("Proxmox API connection");
         } catch (Exception e) {
             return HealthCheckResponse.down("Proxmox API connection");

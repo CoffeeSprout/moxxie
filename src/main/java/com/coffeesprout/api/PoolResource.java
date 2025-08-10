@@ -113,10 +113,10 @@ public class PoolResource {
         try {
             List<PoolResourceSummary> summaries = poolService.getPoolResourceSummaries(null);
             
-            StringBuilder csv = new StringBuilder();
+            StringBuilder csv = new StringBuilder(2048);
             // Pool summary header
-            csv.append("Pool Summary\n");
-            csv.append("Pool Name,Total VMs,Running VMs,Stopped VMs,Total vCPUs,Running vCPUs,Total Memory (GB),Running Memory (GB),Total Storage (TB)\n");
+            csv.append("Pool Summary\n")
+               .append("Pool Name,Total VMs,Running VMs,Stopped VMs,Total vCPUs,Running vCPUs,Total Memory (GB),Running Memory (GB),Total Storage (TB)\n");
             
             for (PoolResourceSummary summary : summaries) {
                 csv.append(String.format("%s,%d,%d,%d,%d,%d,%.1f,%.1f,%.1f\n",
@@ -132,8 +132,8 @@ public class PoolResource {
                 ));
             }
             
-            csv.append("\n\nVM Details by Pool\n");
-            csv.append("Pool,VM ID,VM Name,vCPUs,Memory (GB),Storage (GB),Status,Node\n");
+            csv.append("\n\nVM Details by Pool\n")
+               .append("Pool,VM ID,VM Name,vCPUs,Memory (GB),Storage (GB),Status,Node\n");
             
             for (PoolResourceSummary summary : summaries) {
                 for (PoolResourceSummary.VMSummary vm : summary.vms()) {
@@ -183,21 +183,21 @@ public class PoolResource {
         try {
             PoolResourceSummary summary = poolService.getPoolResourceSummary(poolName, null);
             
-            StringBuilder csv = new StringBuilder();
+            StringBuilder csv = new StringBuilder(1024);
             // Pool summary
-            csv.append(String.format("Pool Summary: %s\n", poolName));
-            csv.append("Metric,Value\n");
-            csv.append(String.format("Total VMs,%d\n", summary.vmCount()));
-            csv.append(String.format("Running VMs,%d\n", summary.runningVMs()));
-            csv.append(String.format("Stopped VMs,%d\n", summary.stoppedVMs()));
-            csv.append(String.format("Total vCPUs,%d\n", summary.totalVcpus()));
-            csv.append(String.format("Running vCPUs,%d\n", summary.runningVcpus()));
-            csv.append(String.format("Total Memory,%s\n", summary.totalMemoryHuman()));
-            csv.append(String.format("Running Memory,%s\n", summary.runningMemoryHuman()));
-            csv.append(String.format("Total Storage,%s\n", summary.totalStorageHuman()));
+            csv.append(String.format("Pool Summary: %s\n", poolName))
+               .append("Metric,Value\n")
+               .append(String.format("Total VMs,%d\n", summary.vmCount()))
+               .append(String.format("Running VMs,%d\n", summary.runningVMs()))
+               .append(String.format("Stopped VMs,%d\n", summary.stoppedVMs()))
+               .append(String.format("Total vCPUs,%d\n", summary.totalVcpus()))
+               .append(String.format("Running vCPUs,%d\n", summary.runningVcpus()))
+               .append(String.format("Total Memory,%s\n", summary.totalMemoryHuman()))
+               .append(String.format("Running Memory,%s\n", summary.runningMemoryHuman()))
+               .append(String.format("Total Storage,%s\n", summary.totalStorageHuman()));
             
-            csv.append("\n\nVM Details\n");
-            csv.append("VM ID,VM Name,vCPUs,Memory (GB),Storage (GB),Status,Node\n");
+            csv.append("\n\nVM Details\n")
+               .append("VM ID,VM Name,vCPUs,Memory (GB),Storage (GB),Status,Node\n");
             
             for (PoolResourceSummary.VMSummary vm : summary.vms()) {
                 csv.append(String.format("%d,%s,%d,%.1f,%.1f,%s,%s\n",
