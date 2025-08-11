@@ -13,6 +13,12 @@ This document provides working examples of Moxxie's REST API endpoints. All exam
 - [Backup Operations](#backup-operations)
 - [Bulk Backup Operations](#bulk-backup-operations)
 - [VM Migration](#vm-migration)
+- [SSH Key Management](#ssh-key-management)
+- [Node Management](#node-management)
+- [Pool Management](#pool-management)
+- [Storage Management](#storage-management)
+- [Network Management](#network-management)
+- [Administrative Operations](#administrative-operations)
 
 ## VM Management
 
@@ -1194,3 +1200,178 @@ curl -X PUT http://localhost:8080/api/v1/vms/300/ssh-keys \
     "sshKeys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGLmQqfp8X5DUVxLruBsCmJ7m4mDGcr5V7e2BXMkNPDp user1@example.com\nssh-rsa AAAAB3NzaC1yc2EAAAA... user2@example.com"
   }'
 ```
+
+## Node Management
+
+Node management endpoints provide information about Proxmox cluster nodes, their status, and resource usage.
+
+### List All Nodes
+```bash
+# Get list of all nodes in the cluster
+curl -X GET http://localhost:8080/api/v1/nodes | jq .
+```
+
+### Get Node Status
+```bash
+# Get detailed status for a specific node
+curl -X GET http://localhost:8080/api/v1/nodes/hv7/status | jq .
+```
+
+**Response includes:**
+- CPU usage and model
+- Memory usage (used/total)
+- Storage usage
+- Uptime
+- Kernel version
+- PVE version
+
+### Get Node Resources
+```bash
+# Get resource allocation for a specific node
+curl -X GET http://localhost:8080/api/v1/nodes/hv7/resources | jq .
+```
+
+**Response includes:**
+- VMs running on the node
+- Storage pools available
+- Network bridges
+- Resource utilization summary
+
+## Pool Management
+
+Pool management endpoints allow organizing VMs into resource pools for better organization and access control.
+
+### List All Pools
+```bash
+# Get list of all resource pools
+curl -X GET http://localhost:8080/api/v1/pools | jq .
+```
+
+### Get Pool Resources
+```bash
+# Get all resources in all pools
+curl -X GET http://localhost:8080/api/v1/pools/resources | jq .
+
+# Get resources in a specific pool
+curl -X GET http://localhost:8080/api/v1/pools/moxxie-pool/resources | jq .
+```
+
+### Export Pool Resources to CSV
+```bash
+# Export all pool resources to CSV
+curl -X GET http://localhost:8080/api/v1/pools/resources/export/csv \
+  -o pool-resources.csv
+
+# Export specific pool resources to CSV
+curl -X GET http://localhost:8080/api/v1/pools/moxxie-pool/resources/export/csv \
+  -o moxxie-pool.csv
+```
+
+**CSV includes:**
+- VM ID, Name, Status
+- CPU cores, Memory
+- Disk size
+- Tags
+- Pool membership
+
+## Storage Management
+
+Enhanced storage management endpoints for viewing and managing storage content.
+
+### List Storage Pools
+```bash
+# Get all storage pools
+curl -X GET http://localhost:8080/api/v1/storage | jq .
+```
+
+### Get Storage Status
+```bash
+# Get status of a specific storage pool
+curl -X GET http://localhost:8080/api/v1/storage/local-zfs/status | jq .
+```
+
+**Response includes:**
+- Total space
+- Used space
+- Available space
+- Storage type
+- Content types supported
+
+### List Storage Content
+```bash
+# List all content in a storage pool
+curl -X GET http://localhost:8080/api/v1/storage/local-zfs/content | jq .
+
+# Filter by content type (images, vztmpl, iso, backup)
+curl -X GET "http://localhost:8080/api/v1/storage/local-zfs/content?content=backup" | jq .
+
+# Filter by VM ID
+curl -X GET "http://localhost:8080/api/v1/storage/local-zfs/content?vmid=100" | jq .
+```
+
+### Delete Storage Content
+```bash
+# Delete a specific volume (backup, ISO, etc.)
+curl -X DELETE http://localhost:8080/api/v1/storage/local-zfs/content/backup/vzdump-qemu-100-2024_01_15-10_30_00.vma.zst
+```
+
+## Network Management
+
+Network management endpoints for SDN and network configuration.
+
+### List Networks
+```bash
+# Get all networks/VNets
+curl -X GET http://localhost:8080/api/v1/networks | jq .
+```
+
+### Get Network Details
+```bash
+# Get details of a specific network
+curl -X GET http://localhost:8080/api/v1/networks/vnet100 | jq .
+```
+
+## Administrative Operations
+
+Administrative endpoints for system configuration and tag styling.
+
+### Configure Tag Styles
+```bash
+# Configure global tag styling for Proxmox UI
+curl -X POST http://localhost:8080/api/v1/admin/tag-style \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tagStyle": {
+      "caseSensitive": false,
+      "ordering": "config",
+      "shape": "full",
+      "colorMap": {
+        "moxxie": "#00aa00",
+        "env-prod": "#cc0000",
+        "env-dev": "#0066cc",
+        "always-on": "#ff0000",
+        "client-nixz": "#ff9900",
+        "k8s-control": "#9900ff",
+        "k8s-worker": "#cc00ff"
+      }
+    }
+  }'
+```
+
+### Configure Individual Tag Style
+```bash
+# Set style for a specific tag
+curl -X POST http://localhost:8080/api/v1/admin/tag/env-prod/style \
+  -H "Content-Type: application/json" \
+  -d '{
+    "color": "#cc0000",
+    "icon": "shield"
+  }'
+```
+
+**Tag Color Recommendations:**
+- Red (#cc0000): Critical/Production tags (env-prod, always-on)
+- Green (#00aa00): Moxxie managed
+- Blue (#0066cc): Development/Testing environments
+- Orange (#ff9900): Client tags
+- Purple (#9900ff, #cc00ff): Kubernetes nodes
