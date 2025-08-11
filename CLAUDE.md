@@ -4,10 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Moxxie is a Quarkus-based CLI application for managing Proxmox virtual environments. It uses:
-- **Quarkus** with Picocli for the CLI framework
-- **REST Client** for Proxmox API communication
-- **Jackson** for JSON/YAML serialization
+Moxxie is a Quarkus-based REST API service for managing Proxmox virtual environments. It provides:
+- **RESTful API** endpoints for VM, storage, network, and cluster management
+- **Quarkus REST Client** for Proxmox API communication
+- **Scheduler System** with Quartz for automated tasks
+- **Jackson** for JSON serialization
 - **Java 21** as the target platform
 
 ## Key Commands
@@ -96,21 +97,23 @@ java -jar target/moxxie-1.0.0-SNAPSHOT-runner.jar
 
 ## Architecture
 
-### CLI Structure
-- **MainCLI**: Entry point with subcommands (discover, list, provision)
-- **Command Pattern**: Each operation is implemented as a separate Command class
+### REST API Structure
+- **Resource Classes**: REST endpoints organized by domain (VMResource, StorageResource, etc.)
+- **Service Layer**: Business logic encapsulated in services with @ApplicationScoped
 - **Dependency Injection**: Uses Quarkus CDI for injecting REST clients and services
 
-### API Integration
-- **ProxmoxClient**: REST client interface for Proxmox API
-- **Model Classes**: DTOs for API requests/responses (LoginRequest, LoginResponse, Node, VM, etc.)
+### Proxmox Integration
+- **ProxmoxClient**: MicroProfile REST client interface for Proxmox API
+- **DTOs**: Data Transfer Objects for API requests/responses
+- **Authentication**: Automatic ticket management via @AutoAuthenticate interceptor
 - **Configuration**: Uses `application.properties` for REST client configuration
 
 ### Key Patterns
-- RESTClient interfaces use MicroProfile annotations
-- Form-encoded POST requests for VM creation/operations
+- RESTful endpoints with JAX-RS annotations
+- MicroProfile REST Client for Proxmox communication
+- Form-encoded POST requests for Proxmox operations
 - Cookie-based authentication with PVEAuthCookie
-- YAML output formatting for configuration files
+- Automatic authentication injection via @AuthTicket
 
 ### Authentication Pattern
 The application uses an `@AutoAuthenticate` interceptor that automatically injects authentication tickets into service methods. As of December 2024, the authentication system uses annotation-based parameter injection for improved clarity and type safety.
