@@ -1241,12 +1241,6 @@ curl -X GET http://localhost:8080/api/v1/nodes/hv7/resources | jq .
 
 Pool management endpoints allow organizing VMs into resource pools for better organization and access control.
 
-### List All Pools
-```bash
-# Get list of all resource pools
-curl -X GET http://localhost:8080/api/v1/pools | jq .
-```
-
 ### Get Pool Resources
 ```bash
 # Get all resources in all pools
@@ -1315,22 +1309,39 @@ curl -X GET "http://localhost:8080/api/v1/storage/local-zfs/content?vmid=100" | 
 curl -X DELETE http://localhost:8080/api/v1/storage/local-zfs/content/backup/vzdump-qemu-100-2024_01_15-10_30_00.vma.zst
 ```
 
+### Download Content from URL
+```bash
+# Download an ISO or other content from a URL to storage
+curl -X POST http://localhost:8080/api/v1/storage/local/download-url \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-12.2.0-amd64-netinst.iso",
+    "content": "iso",
+    "filename": "debian-12.2.0-amd64-netinst.iso",
+    "verifyCertificates": true
+  }'
+```
+
+### Upload Content
+```bash
+# Upload an ISO or other file to storage (multipart form data)
+curl -X POST http://localhost:8080/api/v1/storage/local/upload \
+  -F "content=iso" \
+  -F "file=@/path/to/debian.iso"
+```
+
 ## Network Management
 
 Network management endpoints for SDN and network configuration.
 
-### List Networks
+### List Network Interfaces
 ```bash
-# Get all networks/VNets
+# Get network interfaces from all nodes
 curl -X GET http://localhost:8080/api/v1/networks | jq .
-```
 
-### Get Network Details
-```bash
-# Get details of a specific network
-curl -X GET http://localhost:8080/api/v1/networks/vnet100 | jq .
+# Get network interfaces from a specific node
+curl -X GET "http://localhost:8080/api/v1/networks?node=hv7" | jq .
 ```
-
 ## Administrative Operations
 
 Administrative endpoints for system configuration and tag styling.
