@@ -4,6 +4,8 @@ This document provides working examples of Moxxie's REST API endpoints. All exam
 
 ## Table of Contents
 - [VM Management](#vm-management)
+- [UEFI/OVMF Support](#uefi-ovmf-support)
+- [VM Configuration Management](#vm-configuration-management) 
 - [Cluster Provisioning](#cluster-provisioning)
 - [Snapshot Management](#snapshot-management)
 - [Bulk Snapshot Operations](#bulk-snapshot-operations)
@@ -376,6 +378,179 @@ curl -X POST http://localhost:8080/api/v1/vms/9000/clone \
     "targetNode": "hv7",
     "fullClone": false,
     "targetStorage": "local-zfs"
+  }'
+```
+
+## UEFI/OVMF Support
+
+Moxxie supports modern UEFI/OVMF firmware for deploying operating systems like SCOS (CentOS Stream CoreOS) used by OKD 4.19+. This enables PXE boot with GRUB EFI and secure boot capabilities.
+
+### Create UEFI VM for OKD/FCOS
+
+```bash
+# Create OKD Bootstrap node with UEFI
+curl -X POST http://localhost:8080/api/v1/vms/cloudinit \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vmid": 10710,
+    "name": "okd-bootstrap",
+    "node": "storage01",
+    "cores": 4,
+    "memoryMB": 16384,
+    "imageSource": "local-zfs:9002/base-9002-disk-0.raw",
+    "targetStorage": "local-zfs",
+    "diskSizeGB": 120,
+    "cloudInitUser": "admin",
+    "sshKeys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... admin@example.com",
+    "searchDomain": "cluster.local",
+    "nameservers": "8.8.8.8,8.8.4.4",
+    "cpuType": "host",
+    "description": "OKD Bootstrap Node",
+    "tags": "okd,bootstrap,sdb",
+    "firmware": {
+      "type": "UEFI",
+      "machine": "Q35",
+      "efidisk": {
+        "storage": "local-zfs",
+        "efitype": "LARGE",
+        "preEnrolledKeys": false
+      },
+      "secureboot": false
+    },
+    "scsihw": "virtio-scsi-single",
+    "serial0": "socket",
+    "vgaType": "serial0"
+  }'
+
+# Create OKD Master node with UEFI
+curl -X POST http://localhost:8080/api/v1/vms/cloudinit \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vmid": 10711,
+    "name": "okd-master-1", 
+    "node": "hv5",
+    "cores": 4,
+    "memoryMB": 16384,
+    "imageSource": "local-zfs:9002/base-9002-disk-0.raw",
+    "targetStorage": "local-zfs",
+    "diskSizeGB": 120,
+    "firmware": {
+      "type": "UEFI",
+      "machine": "Q35",
+      "efidisk": {
+        "storage": "local-zfs",
+        "efitype": "LARGE",
+        "preEnrolledKeys": false
+      }
+    },
+    "scsihw": "virtio-scsi-single",
+    "serial0": "socket",
+    "vgaType": "serial0"
+  }'
+```
+
+### Create Traditional SeaBIOS VM
+
+```bash
+# Create VM with legacy BIOS for compatibility
+curl -X POST http://localhost:8080/api/v1/vms/cloudinit \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "debian-server",
+    "node": "hv7", 
+    "cores": 2,
+    "memoryMB": 4096,
+    "imageSource": "local-zfs:9001/base-9001-disk-0.raw",
+    "targetStorage": "local-zfs",
+    "diskSizeGB": 50,
+    "cloudInitUser": "debian",
+    "description": "Debian Server",
+    "firmware": {
+      "type": "SEABIOS",
+      "machine": "PC",
+      "secureboot": false
+    },
+    "scsihw": "virtio-scsi-pci",
+    "vgaType": "std"
+  }'
+```
+
+### UEFI with Secure Boot
+
+```bash
+# Create VM with secure boot enabled
+curl -X POST http://localhost:8080/api/v1/vms/cloudinit \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "secure-vm",
+    "node": "hv1",
+    "cores": 2,
+    "memoryMB": 4096,
+    "imageSource": "local-zfs:9003/base-9003-disk-0.raw",
+    "targetStorage": "local-zfs",
+    "firmware": {
+      "type": "UEFI",
+      "machine": "Q35",
+      "efidisk": {
+        "storage": "local-zfs",
+        "efitype": "SMALL",
+        "preEnrolledKeys": true
+      },
+      "secureboot": true
+    }
+  }'
+```
+
+## VM Configuration Management
+
+### Get VM Configuration
+
+```bash
+# Get full VM configuration including firmware settings
+curl -X GET http://localhost:8080/api/v1/vms/10710/config | jq .
+
+# Example response:
+{
+  "vmid": 10710,
+  "name": "okd-bootstrap",
+  "machine": "q35",
+  "bios": "ovmf",
+  "efidisk0": "local-zfs:1,efitype=4m,pre-enrolled-keys=0",
+  "cores": 4,
+  "memory": 16384,
+  "scsihw": "virtio-scsi-single",
+  "net0": "virtio,bridge=vmbr0,tag=107"
+}
+```
+
+### Update VM Configuration
+
+```bash
+# Update VM hardware configuration
+curl -X PUT http://localhost:8080/api/v1/vms/200/config \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cores": "4",
+    "memory": "8192",
+    "description": "Updated server configuration"
+  }'
+```
+
+### Update VM Firmware Settings
+
+```bash
+# Convert VM from SeaBIOS to UEFI (requires VM to be stopped)
+curl -X POST http://localhost:8080/api/v1/vms/200/firmware \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "UEFI",
+    "machine": "Q35",
+    "efidisk": {
+      "storage": "local-zfs", 
+      "efitype": "LARGE",
+      "preEnrolledKeys": false
+    },
+    "secureboot": false
   }'
 ```
 

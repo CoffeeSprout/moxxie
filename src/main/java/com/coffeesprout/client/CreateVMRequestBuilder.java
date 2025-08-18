@@ -37,6 +37,11 @@ public class CreateVMRequestBuilder {
     private String sshkeys;
     private String description;
     
+    // Firmware configuration
+    private String machine = "pc";
+    private String bios = "seabios";
+    private String efidisk0;
+    
     private CreateVMRequestBuilder() {}
     
     /**
@@ -249,6 +254,22 @@ public class CreateVMRequestBuilder {
         return this;
     }
     
+    // Firmware configuration
+    public CreateVMRequestBuilder machine(String machine) {
+        this.machine = machine;
+        return this;
+    }
+    
+    public CreateVMRequestBuilder bios(String bios) {
+        this.bios = bios;
+        return this;
+    }
+    
+    public CreateVMRequestBuilder efidisk0(String efidisk0) {
+        this.efidisk0 = efidisk0;
+        return this;
+    }
+    
     /**
      * Build the CreateVMRequest with validation
      */
@@ -327,6 +348,11 @@ public class CreateVMRequestBuilder {
         
         if (vga != null) request.setVga(vga);
         if (serial0 != null) request.setSerial0(serial0);
+        
+        // Set firmware config
+        if (machine != null) request.setMachine(machine);
+        if (bios != null) request.setBios(bios);
+        if (efidisk0 != null) request.setEfidisk0(efidisk0);
         
         // Set cloud-init config
         if (ide2 != null) request.setIde2(ide2);

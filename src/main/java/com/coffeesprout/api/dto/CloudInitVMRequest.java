@@ -1,6 +1,7 @@
 package com.coffeesprout.api.dto;
 
 import jakarta.validation.constraints.*;
+import jakarta.validation.Valid;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import com.coffeesprout.validation.ValidImageSource;
 import java.util.List;
@@ -101,7 +102,20 @@ public record CloudInitVMRequest(
     String tags,
     
     @Schema(description = "Additional disk options (SSD, discard, etc)")
-    DiskOptions diskOptions
+    DiskOptions diskOptions,
+    
+    @Schema(description = "Firmware and machine type configuration")
+    @Valid
+    FirmwareConfig firmware,
+    
+    @Schema(description = "SCSI hardware type", example = "virtio-scsi-single", defaultValue = "virtio-scsi-pci")
+    String scsihw,
+    
+    @Schema(description = "Serial console configuration", example = "socket")
+    String serial0,
+    
+    @Schema(description = "VGA hardware type", example = "serial0", defaultValue = "std")
+    String vgaType
 ) {
     
     /**

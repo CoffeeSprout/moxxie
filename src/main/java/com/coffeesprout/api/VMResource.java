@@ -1312,4 +1312,149 @@ public class VMResource {
         
         return Response.accepted(response).build();
     }
+    
+    @GET
+    @Path("/{vmId}/config")
+    @SafeMode(false)  // Read operation
+    @Operation(summary = "Get VM configuration", description = "Get detailed VM configuration including hardware, firmware, and network settings")
+    @APIResponses({
+        @APIResponse(responseCode = "200", description = "VM configuration retrieved successfully",
+            content = @Content(schema = @Schema(implementation = Object.class))),
+        @APIResponse(responseCode = "404", description = "VM not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "500", description = "Failed to retrieve VM configuration",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public Response getVMConfig(
+            @Parameter(description = "VM ID", required = true)
+            @PathParam("vmId") int vmId) {
+        
+        // Find VM and get its node
+        VMResponse vm = findVmById(vmId);
+        
+        // Get VM configuration from service
+        Map<String, Object> config = vmService.getVMConfig(vm.node(), vmId, null);
+        
+        return Response.ok(config).build();
+    }
+    
+    @PUT
+    @Path("/{vmId}/config")
+    @SafeMode(operation = SafeMode.Operation.WRITE)
+    @Operation(summary = "Update VM configuration", description = "Update VM configuration including firmware, hardware, and other settings")
+    @APIResponses({
+        @APIResponse(responseCode = "200", description = "VM configuration updated successfully",
+            content = @Content(schema = @Schema(implementation = TaskResponse.class))),
+        @APIResponse(responseCode = "404", description = "VM not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "400", description = "Invalid configuration",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "500", description = "Failed to update VM configuration",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response updateVMConfig(
+            @Parameter(description = "VM ID", required = true)
+            @PathParam("vmId") int vmId,
+            @RequestBody(description = "VM configuration update", required = true)
+            Map<String, Object> configUpdate) {
+        
+        // Find VM and get its node
+        VMResponse vm = findVmById(vmId);
+        
+        try {
+            // Convert config map to form data for Proxmox API
+            StringBuilder formData = new StringBuilder();
+            for (Map.Entry<String, Object> entry : configUpdate.entrySet()) {
+                if (formData.length() > 0) {
+                    formData.append("&");
+                }
+                formData.append(entry.getKey()).append("=")
+                        .append(java.net.URLEncoder.encode(String.valueOf(entry.getValue()), "UTF-8"));
+            }
+            
+            // Update VM configuration using Proxmox client directly
+            var response = proxmoxClient.updateVMConfig(
+                vm.node(), 
+                vmId, 
+                ticketManager.getTicket(), 
+                ticketManager.getCsrfToken(),
+                formData.toString()
+            );
+            
+            TaskResponse taskResponse = new TaskResponse(
+                response.path("data").asText(""),
+                "VM configuration update initiated successfully"
+            );
+            
+            return Response.ok(taskResponse).build();
+            
+        } catch (Exception e) {
+            LOG.error("Failed to update VM {} configuration: {}", vmId, e.getMessage());
+            throw ProxmoxException.vmOperationFailed("config update", vmId, vm.name(), 
+                e.getMessage(), "Check the configuration parameters and try again");
+        }
+    }
+    
+    @POST
+    @Path("/{vmId}/firmware")
+    @SafeMode(operation = SafeMode.Operation.WRITE)
+    @Operation(summary = "Update VM firmware configuration", description = "Update VM firmware settings including UEFI/OVMF and machine type")
+    @APIResponses({
+        @APIResponse(responseCode = "200", description = "Firmware configuration updated successfully",
+            content = @Content(schema = @Schema(implementation = TaskResponse.class))),
+        @APIResponse(responseCode = "404", description = "VM not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "400", description = "Invalid firmware configuration",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @APIResponse(responseCode = "500", description = "Failed to update firmware configuration",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response updateVMFirmware(
+            @Parameter(description = "VM ID", required = true)
+            @PathParam("vmId") int vmId,
+            @RequestBody(description = "Firmware configuration", required = true)
+            @Valid com.coffeesprout.api.dto.FirmwareConfig firmwareConfig) {
+        
+        // Find VM and get its node
+        VMResponse vm = findVmById(vmId);
+        
+        try {
+            // Validate firmware configuration
+            firmwareConfig.validate();
+            
+            // Build configuration update request
+            CreateVMRequestBuilder builder = CreateVMRequestBuilder.builder()
+                .vmid(vmId)
+                .name("temp")  // Name is required but not used for updates
+                .machine(firmwareConfig.machine().getValue())
+                .bios(firmwareConfig.type().getProxmoxValue());
+            
+            // Add EFI disk configuration if UEFI
+            if (firmwareConfig.type() == com.coffeesprout.api.dto.FirmwareConfig.FirmwareType.UEFI 
+                && firmwareConfig.efidisk() != null) {
+                builder.efidisk0(firmwareConfig.efidisk().toProxmoxString());
+            }
+            
+            CreateVMRequest request = builder.build();
+            vmService.updateVMConfig(vm.node(), vmId, request, null);
+            
+            TaskResponse response = new TaskResponse(
+                "firmware-update-" + vmId,
+                "VM firmware configuration updated successfully"
+            );
+            
+            return Response.ok(response).build();
+            
+        } catch (IllegalArgumentException e) {
+            LOG.error("Invalid firmware configuration for VM {}: {}", vmId, e.getMessage());
+            throw ProxmoxException.invalidConfiguration("firmware", e.getMessage(), 
+                "Ensure UEFI requires q35 machine type and proper EFI disk configuration");
+        } catch (Exception e) {
+            LOG.error("Failed to update VM {} firmware configuration: {}", vmId, e.getMessage());
+            throw ProxmoxException.vmOperationFailed("firmware update", vmId, vm.name(), 
+                e.getMessage(), "Check the firmware configuration and VM state");
+        }
+    }
 }

@@ -99,6 +99,7 @@ public class MoxxieIntegrationTest {
     @BeforeEach
     void checkEnabled() {
         Assumptions.assumeTrue(TESTS_ENABLED, "Integration tests are disabled");
+        Assumptions.assumeTrue(selectedNode != null, "No node selected for testing");
     }
     
     @AfterEach
@@ -187,7 +188,10 @@ public class MoxxieIntegrationTest {
             List.of(TEST_TAG),     // tags
             "scsi0",               // bootOrder
             null,                  // cpuType
-            null                   // vgaType
+            null,                  // vgaType
+            null,                  // firmware
+            null,                  // scsihw
+            null                   // serial0
         );
         
         Response response = given()
@@ -494,7 +498,10 @@ public class MoxxieIntegrationTest {
             List.of(TEST_TAG),  // tags
             "scsi0",            // bootOrder
             null,               // cpuType
-            null                // vgaType
+            null,               // vgaType
+            null,               // firmware
+            null,               // scsihw
+            null                // serial0
         );
         
         Response response = given()

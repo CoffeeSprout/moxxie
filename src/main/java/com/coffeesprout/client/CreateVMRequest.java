@@ -128,6 +128,16 @@ public class CreateVMRequest {
     
     @FormParam("description")
     private String description; // VM description
+    
+    // UEFI/OVMF firmware configuration
+    @FormParam("machine")
+    private String machine; // Machine type (pc, q35)
+    
+    @FormParam("bios")
+    private String bios; // Firmware type (seabios, ovmf)
+    
+    @FormParam("efidisk0")
+    private String efidisk0; // EFI disk configuration for UEFI
 
     public int getVmid() {
         return vmid;
@@ -402,6 +412,27 @@ public class CreateVMRequest {
         this.description = description;
     }
     
+    public String getMachine() {
+        return machine;
+    }
+    public void setMachine(String machine) {
+        this.machine = machine;
+    }
+    
+    public String getBios() {
+        return bios;
+    }
+    public void setBios(String bios) {
+        this.bios = bios;
+    }
+    
+    public String getEfidisk0() {
+        return efidisk0;
+    }
+    public void setEfidisk0(String efidisk0) {
+        this.efidisk0 = efidisk0;
+    }
+    
     @Override
     public String toString() {
         return "CreateVMRequest{" +
@@ -432,6 +463,9 @@ public class CreateVMRequest {
                 ", ipconfig0='" + ipconfig0 + '\'' +
                 ", sshkeys='" + (sshkeys != null ? "[REDACTED]" : null) + '\'' +
                 ", description='" + description + '\'' +
+                ", machine='" + machine + '\'' +
+                ", bios='" + bios + '\'' +
+                ", efidisk0='" + efidisk0 + '\'' +
                 '}';
     }
 }

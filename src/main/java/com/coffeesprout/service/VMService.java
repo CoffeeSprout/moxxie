@@ -3,6 +3,7 @@ package com.coffeesprout.service;
 import com.coffeesprout.client.*;
 import com.coffeesprout.api.dto.CloudInitVMRequest;
 import com.coffeesprout.api.dto.DiskConfig;
+import com.coffeesprout.api.dto.FirmwareConfig;
 import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.api.exception.ProxmoxException;
 import com.coffeesprout.util.TagUtils;
@@ -530,7 +531,25 @@ public class VMService {
             .memory(request.memoryMB())
             .cpu(request.cpuType() != null && !request.cpuType().isEmpty() ? 
                  request.cpuType() : "x86-64-v2-AES")
-            .vga("std");
+            .vga(request.vgaType() != null ? request.vgaType() : "std");
+        
+        // Handle firmware configuration
+        if (request.firmware() != null) {
+            applyFirmwareConfiguration(builder, request.firmware());
+        } else {
+            // Default to SeaBIOS for backward compatibility
+            builder.machine("pc").bios("seabios");
+        }
+        
+        // Handle SCSI hardware configuration
+        if (request.scsihw() != null) {
+            builder.scsihw(request.scsihw());
+        }
+        
+        // Handle serial console configuration
+        if (request.serial0() != null) {
+            builder.serial0(request.serial0());
+        }
         
         // Handle multiple networks
         List<com.coffeesprout.api.dto.NetworkConfig> networks = request.networks();
@@ -696,5 +715,67 @@ public class VMService {
         }
         
         return response;
+    }
+    
+    /**
+     * Apply firmware configuration to the VM request builder
+     */
+    private void applyFirmwareConfiguration(CreateVMRequestBuilder builder, FirmwareConfig firmware) {
+        // Validate firmware configuration
+        firmware.validate();
+        
+        LOG.info("Applying firmware configuration: {} with machine type {}", 
+                 firmware.type(), firmware.machine());
+        
+        // Set machine type and BIOS
+        builder.machine(firmware.machine().getValue())
+               .bios(firmware.type().getProxmoxValue());
+        
+        // Configure EFI disk for UEFI
+        if (firmware.type() == FirmwareConfig.FirmwareType.UEFI && firmware.efidisk() != null) {
+            String efidiskConfig = firmware.efidisk().toProxmoxString();
+            LOG.info("Setting EFI disk configuration: {}", efidiskConfig);
+            builder.efidisk0(efidiskConfig);
+        }
+    }
+    
+    /**
+     * Create EFI disk after VM creation (for UEFI VMs)
+     * Note: In Proxmox, EFI disk is usually created during VM creation via efidisk0 parameter,
+     * but this method is available for post-creation setup if needed.
+     */
+    private void createEFIDisk(String node, int vmId, FirmwareConfig.EFIDiskConfig efidiskConfig, @AuthTicket String ticket) {
+        if (efidiskConfig == null) {
+            return;
+        }
+        
+        LOG.info("Creating EFI disk for VM {} on node {}", vmId, node);
+        
+        try {
+            // Create EFI disk using updateVMConfig
+            CreateVMRequest efiDiskRequest = CreateVMRequestBuilder.builder()
+                .vmid(vmId)
+                .name("temp")
+                .efidisk0(efidiskConfig.toProxmoxString())
+                .build();
+                
+            updateVMConfig(node, vmId, efiDiskRequest, ticket);
+            LOG.info("Successfully created EFI disk for VM {}", vmId);
+            
+        } catch (Exception e) {
+            LOG.error("Failed to create EFI disk for VM {}: {}", vmId, e.getMessage());
+            throw new RuntimeException("Failed to create EFI disk: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Validate and get default firmware configuration
+     */
+    public static FirmwareConfig getDefaultFirmwareConfig(String targetStorage, boolean useUEFI) {
+        if (useUEFI) {
+            return FirmwareConfig.defaultUEFI(targetStorage);
+        } else {
+            return FirmwareConfig.defaultSeaBIOS();
+        }
     }
 }

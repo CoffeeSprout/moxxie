@@ -78,7 +78,17 @@ public record CreateVMRequestDTO(
     String cpuType,
     
     @Schema(description = "VGA hardware type (e.g., 'std', 'serial0', 'qxl', 'virtio')", example = "std", defaultValue = "std")
-    String vgaType
+    String vgaType,
+    
+    @Schema(description = "Firmware and machine type configuration")
+    @Valid
+    FirmwareConfig firmware,
+    
+    @Schema(description = "SCSI hardware type (e.g., 'virtio-scsi-pci', 'virtio-scsi-single')", example = "virtio-scsi-pci", defaultValue = "virtio-scsi-pci")
+    String scsihw,
+    
+    @Schema(description = "Serial console configuration", example = "socket")
+    String serial0
 ) {
     @Schema(description = "Network configuration for the VM")
     public record NetworkConfig(

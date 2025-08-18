@@ -36,6 +36,12 @@ public class CloudInitVMRequestBuilder {
     private String tags;
     private CloudInitVMRequest.DiskOptions diskOptions;
     
+    // Firmware and hardware configuration
+    private FirmwareConfig firmware;
+    private String scsihw = "virtio-scsi-pci";
+    private String serial0;
+    private String vgaType = "std";
+    
     // Private constructor - use static factory methods
     private CloudInitVMRequestBuilder() {}
     
@@ -217,6 +223,27 @@ public class CloudInitVMRequestBuilder {
         return this;
     }
     
+    // Firmware and hardware configuration methods
+    public CloudInitVMRequestBuilder firmware(FirmwareConfig firmware) {
+        this.firmware = firmware;
+        return this;
+    }
+    
+    public CloudInitVMRequestBuilder scsihw(String scsihw) {
+        this.scsihw = scsihw;
+        return this;
+    }
+    
+    public CloudInitVMRequestBuilder serial0(String serial0) {
+        this.serial0 = serial0;
+        return this;
+    }
+    
+    public CloudInitVMRequestBuilder vgaType(String vgaType) {
+        this.vgaType = vgaType;
+        return this;
+    }
+    
     /**
      * Convenience method to skip cloud-init configuration (for FCOS)
      */
@@ -277,7 +304,11 @@ public class CloudInitVMRequestBuilder {
             start,
             description,
             tags,
-            diskOptions
+            diskOptions,
+            firmware,
+            scsihw,
+            serial0,
+            vgaType
         );
     }
 }
