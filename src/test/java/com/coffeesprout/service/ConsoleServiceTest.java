@@ -3,10 +3,13 @@ package com.coffeesprout.service;
 import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.client.*;
 import com.coffeesprout.config.MoxxieConfig;
+import java.util.Optional;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
 import io.quarkus.test.InjectMock;
+import io.quarkus.test.junit.mockito.InjectSpy;
+import io.quarkus.test.junit.QuarkusMock;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Disabled;
@@ -20,15 +23,11 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @QuarkusTest
-@Disabled("Temporarily disabled due to InjectMock issues - needs migration to new Quarkus mock approach")
+@Disabled("Complex ProxmoxClient REST client mocking - requires component test refactoring")
 class ConsoleServiceTest {
 
     @Inject
     ConsoleService consoleService;
-    
-    @InjectMock
-    @RestClient
-    ProxmoxClient proxmoxClient;
     
     @InjectMock
     VMService vmService;
@@ -37,7 +36,9 @@ class ConsoleServiceTest {
     TicketManager ticketManager;
     
     @InjectMock
-    MoxxieConfig config;
+    VMLocatorService vmLocatorService;
+    
+    private ProxmoxClient proxmoxClient;
     
     private final String TEST_TICKET = "PVE:user@pve:TOKEN";
     private final String TEST_CSRF = "csrf-token";
@@ -46,34 +47,25 @@ class ConsoleServiceTest {
     
     @BeforeEach
     void setUp() {
+        // Mock ProxmoxClient using QuarkusMock
+        proxmoxClient = mock(ProxmoxClient.class);
+        QuarkusMock.installMockForType(proxmoxClient, ProxmoxClient.class);
+        
         when(ticketManager.getCsrfToken()).thenReturn(TEST_CSRF);
         
-        // Mock config
-        MoxxieConfig.Proxmox proxmoxConfig = mock(MoxxieConfig.Proxmox.class);
-        when(proxmoxConfig.url()).thenReturn("https://10.0.0.10:8006/api2/json");
-        when(config.proxmox()).thenReturn(proxmoxConfig);
+        // Mock default VM for most tests
+        VMResponse testVM = new VMResponse(
+            TEST_VM_ID, "test-vm", TEST_NODE, "running", 2, 2147483648L,
+            0L, 0L, "qemu", List.of(), null, 0
+        );
+        when(vmLocatorService.findVM(eq(TEST_VM_ID), isNull()))
+            .thenReturn(Optional.of(testVM));
     }
     
     @Test
     void testCreateVNCConsoleAccess() {
         // Arrange
-        VMResponse testVM = new VMResponse(
-            TEST_VM_ID,         // vmid
-            "test-vm",          // name
-            TEST_NODE,          // node
-            "running",          // status
-            2,                  // cpus
-            2147483648L,        // maxmem
-            0L,                 // maxdisk
-            0L,                 // uptime
-            "qemu",             // type
-            List.of(),          // tags
-            null,               // pool
-            0                   // template
-        );
-        
-        List<VMResponse> vmList = Arrays.asList(testVM);
-        when(vmService.listVMsWithFilters(any(), any(), any(), any(), anyString())).thenReturn(vmList);
+        // VM is already mocked in setUp()
         
         ProxmoxConsoleResponse proxmoxResponse = new ProxmoxConsoleResponse();
         ProxmoxConsoleResponse.ProxmoxConsoleData data = new ProxmoxConsoleResponse.ProxmoxConsoleData();
@@ -84,7 +76,7 @@ class ConsoleServiceTest {
         data.setUser("user@pve");
         proxmoxResponse.setData(data);
         
-        when(proxmoxClient.createVNCProxy(eq(TEST_NODE), eq(TEST_VM_ID), anyString(), eq(TEST_CSRF)))
+        when(proxmoxClient.createVNCProxy(eq(TEST_NODE), eq(TEST_VM_ID), isNull(), eq(TEST_CSRF)))
             .thenReturn(proxmoxResponse);
         
         ConsoleRequest request = new ConsoleRequest(ConsoleType.VNC, true);
@@ -108,23 +100,7 @@ class ConsoleServiceTest {
     @Test
     void testCreateSPICEConsoleAccess() {
         // Arrange
-        VMResponse testVM = new VMResponse(
-            TEST_VM_ID,         // vmid
-            "test-vm",          // name
-            TEST_NODE,          // node
-            "running",          // status
-            2,                  // cpus
-            2147483648L,        // maxmem
-            0L,                 // maxdisk
-            0L,                 // uptime
-            "qemu",             // type
-            List.of(),          // tags
-            null,               // pool
-            0                   // template
-        );
-        
-        List<VMResponse> vmList = Arrays.asList(testVM);
-        when(vmService.listVMsWithFilters(any(), any(), any(), any(), anyString())).thenReturn(vmList);
+        // VM is already mocked in setUp()
         
         ProxmoxConsoleResponse proxmoxResponse = new ProxmoxConsoleResponse();
         ProxmoxConsoleResponse.ProxmoxConsoleData data = new ProxmoxConsoleResponse.ProxmoxConsoleData();
@@ -133,7 +109,7 @@ class ConsoleServiceTest {
         data.setPassword("spice-password");
         proxmoxResponse.setData(data);
         
-        when(proxmoxClient.createSPICEProxy(eq(TEST_NODE), eq(TEST_VM_ID), anyString(), eq(TEST_CSRF)))
+        when(proxmoxClient.createSPICEProxy(eq(TEST_NODE), eq(TEST_VM_ID), isNull(), eq(TEST_CSRF)))
             .thenReturn(proxmoxResponse);
         
         ConsoleRequest request = new ConsoleRequest(ConsoleType.SPICE, true);
@@ -154,7 +130,7 @@ class ConsoleServiceTest {
     @Test
     void testCreateConsoleAccessVMNotFound() {
         // Arrange
-        when(vmService.listVMs(anyString())).thenReturn(Arrays.asList());
+        when(vmLocatorService.findVM(eq(999), isNull())).thenReturn(Optional.empty());
         
         ConsoleRequest request = new ConsoleRequest(ConsoleType.VNC, true);
         
@@ -167,23 +143,7 @@ class ConsoleServiceTest {
     @Test
     void testGetWebSocketDetails() {
         // Arrange
-        VMResponse testVM = new VMResponse(
-            TEST_VM_ID,         // vmid
-            "test-vm",          // name
-            TEST_NODE,          // node
-            "running",          // status
-            2,                  // cpus
-            2147483648L,        // maxmem
-            0L,                 // maxdisk
-            0L,                 // uptime
-            "qemu",             // type
-            List.of(),          // tags
-            null,               // pool
-            0                   // template
-        );
-        
-        List<VMResponse> vmList = Arrays.asList(testVM);
-        when(vmService.listVMsWithFilters(any(), any(), any(), any(), anyString())).thenReturn(vmList);
+        // VM is already mocked in setUp()
         
         // Act
         ConsoleWebSocketResponse response = consoleService.getWebSocketDetails(TEST_VM_ID, "console-ticket", TEST_TICKET);
@@ -201,23 +161,7 @@ class ConsoleServiceTest {
     @Test
     void testGenerateSpiceFile() {
         // Arrange
-        VMResponse testVM = new VMResponse(
-            TEST_VM_ID,         // vmid
-            "test-vm",          // name
-            TEST_NODE,          // node
-            "running",          // status
-            2,                  // cpus
-            2147483648L,        // maxmem
-            0L,                 // maxdisk
-            0L,                 // uptime
-            "qemu",             // type
-            List.of(),          // tags
-            null,               // pool
-            0                   // template
-        );
-        
-        List<VMResponse> vmList = Arrays.asList(testVM);
-        when(vmService.listVMsWithFilters(any(), any(), any(), any(), anyString())).thenReturn(vmList);
+        // VM is already mocked in setUp()
         
         ProxmoxConsoleResponse proxmoxResponse = new ProxmoxConsoleResponse();
         ProxmoxConsoleResponse.ProxmoxConsoleData data = new ProxmoxConsoleResponse.ProxmoxConsoleData();
@@ -225,7 +169,7 @@ class ConsoleServiceTest {
         data.setPassword("spice-password");
         proxmoxResponse.setData(data);
         
-        when(proxmoxClient.createSPICEProxy(eq(TEST_NODE), eq(TEST_VM_ID), anyString(), eq(TEST_CSRF)))
+        when(proxmoxClient.createSPICEProxy(eq(TEST_NODE), eq(TEST_VM_ID), isNull(), eq(TEST_CSRF)))
             .thenReturn(proxmoxResponse);
         
         // Act
@@ -246,23 +190,7 @@ class ConsoleServiceTest {
     @Test
     void testConsoleWithCustomNode() {
         // Arrange
-        VMResponse testVM = new VMResponse(
-            TEST_VM_ID,         // vmid
-            "test-vm",          // name
-            TEST_NODE,          // node
-            "running",          // status
-            2,                  // cpus
-            2147483648L,        // maxmem
-            0L,                 // maxdisk
-            0L,                 // uptime
-            "qemu",             // type
-            List.of(),          // tags
-            null,               // pool
-            0                   // template
-        );
-        
-        List<VMResponse> vmList = Arrays.asList(testVM);
-        when(vmService.listVMsWithFilters(any(), any(), any(), any(), anyString())).thenReturn(vmList);
+        // VM is already mocked in setUp()
         
         ProxmoxConsoleResponse proxmoxResponse = new ProxmoxConsoleResponse();
         ProxmoxConsoleResponse.ProxmoxConsoleData data = new ProxmoxConsoleResponse.ProxmoxConsoleData();
@@ -270,7 +198,7 @@ class ConsoleServiceTest {
         proxmoxResponse.setData(data);
         
         String customNode = "pve-node2";
-        when(proxmoxClient.createTermProxy(eq(customNode), eq(TEST_VM_ID), anyString(), eq(TEST_CSRF)))
+        when(proxmoxClient.createTermProxy(eq(customNode), eq(TEST_VM_ID), isNull(), eq(TEST_CSRF)))
             .thenReturn(proxmoxResponse);
         
         ConsoleRequest request = new ConsoleRequest(ConsoleType.TERMINAL, false);
