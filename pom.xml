@@ -17,7 +17,7 @@
         <surefire-plugin.version>3.5.3</surefire-plugin.version>
         <!-- PMD Configuration -->
         <pmd.version>3.27.0</pmd.version>
-        <pmd.core.version>7.16.0</pmd.core.version>
+        <pmd.core.version>7.17.0</pmd.core.version>
     </properties>
 
     <dependencyManagement>
