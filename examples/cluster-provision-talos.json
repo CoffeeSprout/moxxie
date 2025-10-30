@@ -26,7 +26,7 @@
             "vlanTag": 100
           }
         ],
-        "imageSource": "util-iso:iso/talos-v1.6.0-amd64.qcow2",
+        "imageSource": "local-zfs:base-9002-disk-0",
         "cloudInit": {
           "user": "talos",
           "sshKeys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGLmQqfp8X5DUVxLruBsCmJ7m4mDGcr5V7e2BXMkNPDp admin@talos",
@@ -65,7 +65,7 @@
             "vlanTag": 100
           }
         ],
-        "imageSource": "util-iso:iso/talos-v1.6.0-amd64.qcow2",
+        "imageSource": "local-zfs:base-9002-disk-0",
         "cloudInit": {
           "user": "talos",
           "sshKeys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGLmQqfp8X5DUVxLruBsCmJ7m4mDGcr5V7e2BXMkNPDp admin@talos",

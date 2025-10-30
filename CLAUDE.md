@@ -174,6 +174,96 @@ For comprehensive API examples with working curl commands, see [API_EXAMPLES.md]
 - Scheduler configuration
 - Backup lifecycle management
 
+### Common DTO Field Reference
+
+To ensure consistency when writing API examples and code, here are the exact field names for commonly used DTOs:
+
+#### CloudInitVMRequest
+- `vmid` - VM ID (optional, auto-generated if not provided)
+- `name` - VM name (required)
+- `node` - Target node for new VM (required)
+- `templateNode` - Node where template is located (optional)
+- `cores` - CPU cores (required)
+- `memoryMB` - Memory in MB (required)
+- `imageSource` - Template disk reference like `local-zfs:base-9001-disk-0` (required)
+- `targetStorage` - Storage for new VM disk (required)
+- `diskSizeGB` - Disk size in GB
+- `cloudInitUser` - Cloud-init username
+- `cloudInitPassword` - Cloud-init password
+- `sshKeys` - SSH public keys (newline-separated)
+- `ipConfigs` - **Array** of IP config strings (e.g., `["ip=dhcp"]`, `["ip=10.0.0.1/24,gw=10.0.0.1"]`)
+- `networks` - **Array** of NetworkConfig objects
+- `searchDomain` - DNS search domain
+- `nameservers` - Comma-separated nameservers
+- `cpuType` - CPU type (e.g., `host`, `kvm64`)
+- `qemuAgent` - Enable QEMU guest agent
+- `start` - Start VM after creation
+- `description` - VM description
+- `tags` - Comma-separated tags
+- `diskOptions` - Disk options object
+- `firmware` - Firmware configuration object
+- `scsihw` - SCSI hardware type
+- `serial0` - Serial device
+- `vgaType` - VGA type
+
+#### NetworkConfig
+- `model` - Network model (e.g., `virtio`, `e1000`)
+- `bridge` - Bridge name (e.g., `vmbr0`)
+- `vlan` - VLAN tag (integer)
+- `firewall` - Enable firewall (boolean)
+
+#### DiskConfig
+- `diskInterface` - Disk interface type (e.g., `SCSI`, `VIRTIO`, `IDE`, `SATA`)
+- `slot` - Slot number (integer)
+- `storage` - Storage pool name
+- `sizeGB` - Disk size in GB
+- `ssd` - Mark as SSD (boolean)
+- `iothread` - Enable IO thread (boolean)
+- `discard` - Enable discard/TRIM (boolean)
+- `cache` - Cache mode (e.g., `NONE`, `WRITEBACK`, `WRITETHROUGH`)
+- `backup` - Include in backup (boolean)
+
+#### VMSelector (for bulk operations and scheduler)
+- `type` - Selector type: `ALL`, `VM_IDS`, `NAME_PATTERN`, `TAG_EXPRESSION`
+- `value` - Selector value:
+  - `ALL`: Use `*`
+  - `VM_IDS`: Comma-separated IDs (e.g., `"8200,8201,8202"`)
+  - `NAME_PATTERN`: Wildcard pattern (e.g., `"web-*"`, `"*-prod"`)
+  - `TAG_EXPRESSION`: Boolean expression (e.g., `"env-prod AND client-acme"`)
+
+#### CreateSnapshotRequest
+- `name` - Snapshot name (required)
+- `description` - Snapshot description
+- `includeVmState` - Include RAM state (boolean)
+- `ttlHours` - Time-to-live in hours (integer, 1-8760)
+
+#### BackupRequest
+- `storage` - Storage pool name (required)
+- `mode` - Backup mode: `snapshot`, `suspend`, `stop`
+- `compress` - Compression: `none`, `lzo`, `gzip`, `zstd`
+- `notes` - Backup notes
+- `protectBackup` - Protect from deletion (boolean)
+- `removeOlder` - Remove backups older than N days (integer)
+- `notificationMode` - Notification mode: `always`, `failure`
+
+#### ScheduledJobRequest
+- `name` - Job name (required)
+- `description` - Job description
+- `taskType` - Task type (e.g., `snapshot_create`, `snapshot_delete`, `backup_create`)
+- `cronExpression` - Cron expression (required)
+- `enabled` - Job enabled (boolean)
+- `maxRetries` - Maximum retry attempts (integer)
+- `retryDelaySeconds` - Delay between retries in seconds
+- `timeoutSeconds` - Task timeout in seconds
+- `parameters` - Map of task-specific parameters
+- `vmSelectors` - **Array** of VMSelector objects
+
+**Important Conventions:**
+- **Arrays vs Singular**: Always use `networks` (array), `ipConfigs` (array), `vmSelectors` (array), even for single items
+- **Image Source Format**: Must reference template VM disk like `local-zfs:base-9001-disk-0`, NOT ISO paths
+- **Field Names**: Use `diskInterface` not `interfaceType`, `ipConfigs` not `ipConfig`, `networks` not `network`
+- **Endpoint URLs**: Use `/api/v1/vms/cloud-init` (with hyphen) not `/api/v1/vms/cloudinit`
+
 ## Scheduler System
 
 Moxxie includes a flexible task scheduling system built on Quartz. For detailed information on implementing new scheduled tasks, see the [Scheduler Task Implementation Guide](./SCHEDULER_TASK_IMPLEMENTATION_GUIDE.md).

@@ -29,7 +29,7 @@
             "bridge": "sdbdev"
           }
         ],
-        "imageSource": "local-zfs:9001/debian-12-template",
+        "imageSource": "local-zfs:base-9001-disk-0",
         "cloudInit": {
           "user": "admin",
           "sshKeys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGLmQqfp8X5DUVxLruBsCmJ7m4mDGcr5V7e2BXMkNPDp admin@okd",
@@ -83,7 +83,7 @@
             "bridge": "sdbdev"
           }
         ],
-        "imageSource": "local-zfs:9003/scos-template"
+        "imageSource": "local-zfs:base-9003-disk-0"
       },
       "placement": {
         "targetNodes": ["storage01"]
@@ -118,7 +118,7 @@
             "bridge": "sdbdev"
           }
         ],
-        "imageSource": "local-zfs:9003/scos-template"
+        "imageSource": "local-zfs:base-9003-disk-0"
       },
       "placement": {
         "antiAffinity": "SOFT"
@@ -153,7 +153,7 @@
             "bridge": "sdbdev"
           }
         ],
-        "imageSource": "local-zfs:9003/scos-template"
+        "imageSource": "local-zfs:base-9003-disk-0"
       },
       "placement": {
         "antiAffinity": "SOFT"

@@ -76,14 +76,16 @@ curl -X POST http://localhost:8080/api/v1/vms \
     "node": "hv6",
     "cores": 8,
     "memoryMB": 16384,
-    "network": {
-      "bridge": "vmbr0",
-      "vlan": 100
-    },
+    "networks": [
+      {
+        "bridge": "vmbr0",
+        "vlan": 100
+      }
+    ],
     "bootOrder": "order=net0;scsi0",
     "disks": [
       {
-        "interfaceType": "SCSI",
+        "diskInterface": "SCSI",
         "slot": 0,
         "storage": "local-zfs",
         "sizeGB": 200,
@@ -104,12 +106,14 @@ curl -X POST http://localhost:8080/api/v1/vms \
     "node": "hv6",
     "cores": 16,
     "memoryMB": 65536,
-    "network": {
-      "bridge": "vmbr0"
-    },
+    "networks": [
+      {
+        "bridge": "vmbr0"
+      }
+    ],
     "disks": [
       {
-        "interfaceType": "SCSI",
+        "diskInterface": "SCSI",
         "slot": 0,
         "storage": "local-zfs",
         "sizeGB": 100,
@@ -118,7 +122,7 @@ curl -X POST http://localhost:8080/api/v1/vms \
         "cache": "NONE"
       },
       {
-        "interfaceType": "SCSI",
+        "diskInterface": "SCSI",
         "slot": 1,
         "storage": "local-zfs",
         "sizeGB": 1000,
@@ -139,9 +143,11 @@ curl -X POST http://localhost:8080/api/v1/vms \
     "cores": 2,
     "memoryMB": 4096,
     "diskGB": 50,
-    "network": {
-      "bridge": "vmbr0"
-    }
+    "networks": [
+      {
+        "bridge": "vmbr0"
+      }
+    ]
   }'
 
 # Create VM with custom CPU and VGA types
@@ -156,7 +162,7 @@ curl -X POST http://localhost:8080/api/v1/vms \
     "vgaType": "virtio",
     "disks": [
       {
-        "interfaceType": "SCSI",
+        "diskInterface": "SCSI",
         "slot": 0,
         "storage": "local-zfs",
         "sizeGB": 100,
@@ -164,9 +170,11 @@ curl -X POST http://localhost:8080/api/v1/vms \
         "iothread": true
       }
     ],
-    "network": {
-      "bridge": "vmbr0"
-    },
+    "networks": [
+      {
+        "bridge": "vmbr0"
+      }
+    ],
     "tags": ["high-performance"]
   }'
 
@@ -178,28 +186,31 @@ When creating VMs from templates, the `imageSource` must reference the actual di
 
 **Common Mistake:** Using paths like `local:iso/talos-amd64.qcow2` or `iso/talos-amd64.qcow2` will fail with "unable to parse directory volume name" error.
 
-# Create VM from cloud-init image
+# Create VM from cloud-init template (template VM 9001 with Debian 12)
 curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
   -H "Content-Type: application/json" \
   -d '{
     "vmid": 200,
     "name": "k8s-control-01",
     "node": "hv7",
+    "templateNode": "storage01",
     "cores": 4,
     "memoryMB": 8192,
-    "imageSource": "util-iso:images/debian-12-generic-amd64.qcow2",
+    "imageSource": "local-zfs:base-9001-disk-0",
     "targetStorage": "local-zfs",
     "diskSizeGB": 50,
     "cloudInitUser": "debian",
     "cloudInitPassword": "temppassword123",
     "sshKeys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGLmQqfp8X5DUVxLruBsCmJ7m4mDGcr5V7e2BXMkNPDp user@example.com",
-    "ipConfig": "ip=192.168.1.100/24,gw=192.168.1.1",
+    "ipConfigs": ["ip=192.168.1.100/24,gw=192.168.1.1"],
     "nameservers": "8.8.8.8,8.8.4.4",
     "searchDomain": "cluster.local",
-    "network": {
-      "model": "virtio",
-      "bridge": "vmbr0"
-    },
+    "networks": [
+      {
+        "model": "virtio",
+        "bridge": "vmbr0"
+      }
+    ],
     "diskOptions": {
       "ssd": true,
       "iothread": true,
@@ -210,25 +221,28 @@ curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
     "start": true
   }'
 
-# Create VM from cloud image with DHCP
+# Create VM from cloud-init template with DHCP (template VM 9001 with Debian 12)
 curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
   -H "Content-Type: application/json" \
   -d '{
     "vmid": 201,
     "name": "debian-test",
     "node": "hv7",
+    "templateNode": "storage01",
     "cores": 2,
     "memoryMB": 4096,
-    "imageSource": "util-iso:images/debian-12-cloud.qcow2",
+    "imageSource": "local-zfs:base-9001-disk-0",
     "targetStorage": "local-zfs",
     "diskSizeGB": 20,
     "cloudInitUser": "admin",
     "cloudInitPassword": "temppass123",
-    "ipConfig": "ip=dhcp",
-    "network": {
-      "model": "virtio",
-      "bridge": "vmbr0"
-    },
+    "ipConfigs": ["ip=dhcp"],
+    "networks": [
+      {
+        "model": "virtio",
+        "bridge": "vmbr0"
+      }
+    ],
     "qemuAgent": true,
     "start": false
   }'
@@ -238,7 +252,8 @@ curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
 
 ```bash
 # Step 1: Download cloud image to storage
-curl -X POST http://localhost:8080/api/v1/storage/util-iso/download-url \
+# Note: 'node' query parameter is required
+curl -X POST "http://localhost:8080/api/v1/storage/util-iso/download-url?node=storage01" \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2",
@@ -247,26 +262,29 @@ curl -X POST http://localhost:8080/api/v1/storage/util-iso/download-url \
     "checksumAlgorithm": "sha512"
   }'
 
-# Step 2: Create VM from the downloaded image
-# NOTE: SSH keys omitted due to Proxmox API bug - use password auth
+# Step 2: After downloading, create a template VM from the image (do this via Proxmox UI or CLI)
+# Step 3: Create VMs from the template (template VM 9001)
 curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
   -H "Content-Type: application/json" \
   -d '{
     "vmid": 300,
     "name": "k8s-worker-01",
     "node": "hv7",
+    "templateNode": "storage01",
     "cores": 8,
     "memoryMB": 16384,
-    "imageSource": "util-iso:images/debian-12-generic-amd64.qcow2",
+    "imageSource": "local-zfs:base-9001-disk-0",
     "targetStorage": "local-zfs",
     "diskSizeGB": 100,
     "cloudInitUser": "debian",
-    "cloudInitPassword": "changeme123",
-    "ipConfig": "ip=dhcp",
-    "network": {
-      "model": "virtio",
-      "bridge": "vmbr0"
-    },
+    "sshKeys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGLmQqfp8X5DUVxLruBsCmJ7m4mDGcr5V7e2BXMkNPDp user@example.com",
+    "ipConfigs": ["ip=dhcp"],
+    "networks": [
+      {
+        "model": "virtio",
+        "bridge": "vmbr0"
+      }
+    ],
     "diskOptions": {
       "ssd": true,
       "iothread": true
@@ -289,12 +307,14 @@ curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
     "imageSource": "local-zfs:base-9002-disk-0",
     "targetStorage": "local-zfs",
     "diskSizeGB": 20,
-    "ipConfig": "ip=172.17.1.250/16,gw=172.17.1.1",
+    "ipConfigs": ["ip=172.17.1.250/16,gw=172.17.1.1"],
     "nameservers": "1.1.1.1",
-    "network": {
-      "model": "virtio",
-      "bridge": "workshop"
-    },
+    "networks": [
+      {
+        "model": "virtio",
+        "bridge": "workshop"
+      }
+    ],
     "qemuAgent": true,
     "start": true
   }'
@@ -389,7 +409,7 @@ Moxxie supports modern UEFI/OVMF firmware for deploying operating systems like S
 
 ```bash
 # Create OKD Bootstrap node with UEFI
-curl -X POST http://localhost:8080/api/v1/vms/cloudinit \
+curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
   -H "Content-Type: application/json" \
   -d '{
     "vmid": 10710,
@@ -423,11 +443,11 @@ curl -X POST http://localhost:8080/api/v1/vms/cloudinit \
   }'
 
 # Create OKD Master node with UEFI
-curl -X POST http://localhost:8080/api/v1/vms/cloudinit \
+curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
   -H "Content-Type: application/json" \
   -d '{
     "vmid": 10711,
-    "name": "okd-master-1", 
+    "name": "okd-master-1",
     "node": "hv5",
     "cores": 4,
     "memoryMB": 16384,
@@ -453,11 +473,11 @@ curl -X POST http://localhost:8080/api/v1/vms/cloudinit \
 
 ```bash
 # Create VM with legacy BIOS for compatibility
-curl -X POST http://localhost:8080/api/v1/vms/cloudinit \
+curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
   -H "Content-Type: application/json" \
   -d '{
     "name": "debian-server",
-    "node": "hv7", 
+    "node": "hv7",
     "cores": 2,
     "memoryMB": 4096,
     "imageSource": "local-zfs:9001/base-9001-disk-0.raw",
@@ -479,7 +499,7 @@ curl -X POST http://localhost:8080/api/v1/vms/cloudinit \
 
 ```bash
 # Create VM with secure boot enabled
-curl -X POST http://localhost:8080/api/v1/vms/cloudinit \
+curl -X POST http://localhost:8080/api/v1/vms/cloud-init \
   -H "Content-Type: application/json" \
   -d '{
     "name": "secure-vm",
@@ -1487,20 +1507,22 @@ curl -X DELETE http://localhost:8080/api/v1/storage/local-zfs/content/backup/vzd
 ### Download Content from URL
 ```bash
 # Download an ISO or other content from a URL to storage
-curl -X POST http://localhost:8080/api/v1/storage/local/download-url \
+# Note: 'node' query parameter is required
+curl -X POST "http://localhost:8080/api/v1/storage/local/download-url?node=storage01" \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-12.2.0-amd64-netinst.iso",
-    "content": "iso",
     "filename": "debian-12.2.0-amd64-netinst.iso",
-    "verifyCertificates": true
+    "checksum": "sha256:a1b2c3d4e5f6...",
+    "checksumAlgorithm": "sha256"
   }'
 ```
 
 ### Upload Content
 ```bash
 # Upload an ISO or other file to storage (multipart form data)
-curl -X POST http://localhost:8080/api/v1/storage/local/upload \
+# Note: 'node' query parameter is required
+curl -X POST "http://localhost:8080/api/v1/storage/local/upload?node=storage01" \
   -F "content=iso" \
   -F "file=@/path/to/debian.iso"
 ```
