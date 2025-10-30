@@ -11,7 +11,7 @@
         "memoryMB": 4096,
         "disks": [
           {
-            "diskInterface": "SCSI",
+            "interfaceType": "SCSI",
             "slot": 0,
             "storage": "local-zfs",
             "sizeGB": 20

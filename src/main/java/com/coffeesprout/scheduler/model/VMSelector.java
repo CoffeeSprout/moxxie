@@ -17,7 +17,7 @@ public record VMSelector(
             "- ALL: Use '*' or leave empty\n" +
             "- VM_IDS: Comma-separated VM IDs (e.g., '8200,8201,8202')\n" +
             "- NAME_PATTERN: Wildcard pattern (e.g., 'web-*', '*-prod')\n" +
-            "- TAG_EXPRESSION: Tag expression (e.g., 'env:prod AND client:acme')",
+            "- TAG_EXPRESSION: Tag expression (e.g., 'env-prod AND client-acme')",
             required = true,
             example = "8200,8201,8202")
     @NotNull(message = "Selector value is required")

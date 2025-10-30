@@ -85,7 +85,7 @@ curl -X POST http://localhost:8080/api/v1/vms \
     "bootOrder": "order=net0;scsi0",
     "disks": [
       {
-        "diskInterface": "SCSI",
+        "interfaceType": "SCSI",
         "slot": 0,
         "storage": "local-zfs",
         "sizeGB": 200,
@@ -113,7 +113,7 @@ curl -X POST http://localhost:8080/api/v1/vms \
     ],
     "disks": [
       {
-        "diskInterface": "SCSI",
+        "interfaceType": "SCSI",
         "slot": 0,
         "storage": "local-zfs",
         "sizeGB": 100,
@@ -122,7 +122,7 @@ curl -X POST http://localhost:8080/api/v1/vms \
         "cache": "NONE"
       },
       {
-        "diskInterface": "SCSI",
+        "interfaceType": "SCSI",
         "slot": 1,
         "storage": "local-zfs",
         "sizeGB": 1000,
@@ -162,7 +162,7 @@ curl -X POST http://localhost:8080/api/v1/vms \
     "vgaType": "virtio",
     "disks": [
       {
-        "diskInterface": "SCSI",
+        "interfaceType": "SCSI",
         "slot": 0,
         "storage": "local-zfs",
         "sizeGB": 100,
@@ -611,7 +611,7 @@ curl -X POST http://localhost:8080/api/v1/clusters/provision \
         "template": {
           "cores": 2,
           "memoryMB": 4096,
-          "disks": [{"diskInterface": "SCSI", "slot": 0, "storage": "local-zfs", "sizeGB": 20}],
+          "disks": [{"interfaceType": "SCSI", "slot": 0, "storage": "local-zfs", "sizeGB": 20}],
           "networks": [{"model": "virtio", "bridge": "vmbr0"}],
           "imageSource": "local-zfs:base-9001-disk-0",
           "cloudInit": {
@@ -650,7 +650,7 @@ curl -X POST http://localhost:8080/api/v1/clusters/provision \
           "memoryMB": 8192,
           "disks": [
             {
-              "diskInterface": "SCSI",
+              "interfaceType": "SCSI",
               "slot": 0,
               "storage": "local-zfs",
               "sizeGB": 50,
@@ -658,7 +658,7 @@ curl -X POST http://localhost:8080/api/v1/clusters/provision \
               "iothread": true
             }
           ],
-          "networks": [{"model": "virtio", "bridge": "vmbr0", "vlanTag": 100}],
+          "networks": [{"model": "virtio", "bridge": "vmbr0", "vlan": 100}],
           "imageSource": "local-zfs:base-9002-disk-0",
           "cloudInit": {
             "user": "talos",
@@ -678,7 +678,7 @@ curl -X POST http://localhost:8080/api/v1/clusters/provision \
           "memoryMB": 16384,
           "disks": [
             {
-              "diskInterface": "SCSI",
+              "interfaceType": "SCSI",
               "slot": 0,
               "storage": "local-zfs",
               "sizeGB": 100,
@@ -686,7 +686,7 @@ curl -X POST http://localhost:8080/api/v1/clusters/provision \
               "iothread": true
             }
           ],
-          "networks": [{"model": "virtio", "bridge": "vmbr0", "vlanTag": 100}],
+          "networks": [{"model": "virtio", "bridge": "vmbr0", "vlan": 100}],
           "imageSource": "local-zfs:base-9002-disk-0",
           "cloudInit": {
             "user": "talos",

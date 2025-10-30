@@ -209,11 +209,11 @@ To ensure consistency when writing API examples and code, here are the exact fie
 #### NetworkConfig
 - `model` - Network model (e.g., `virtio`, `e1000`)
 - `bridge` - Bridge name (e.g., `vmbr0`)
-- `vlan` - VLAN tag (integer)
+- `vlan` - VLAN tag (integer) - Note: field is `vlan`, NOT `vlanTag`
 - `firewall` - Enable firewall (boolean)
 
 #### DiskConfig
-- `diskInterface` - Disk interface type (e.g., `SCSI`, `VIRTIO`, `IDE`, `SATA`)
+- `interfaceType` - Disk interface type (e.g., `SCSI`, `VIRTIO`, `IDE`, `SATA`)
 - `slot` - Slot number (integer)
 - `storage` - Storage pool name
 - `sizeGB` - Disk size in GB
@@ -230,6 +230,7 @@ To ensure consistency when writing API examples and code, here are the exact fie
   - `VM_IDS`: Comma-separated IDs (e.g., `"8200,8201,8202"`)
   - `NAME_PATTERN`: Wildcard pattern (e.g., `"web-*"`, `"*-prod"`)
   - `TAG_EXPRESSION`: Boolean expression (e.g., `"env-prod AND client-acme"`)
+- `excludeExpression` - (Scheduler jobs only) Optional tag expression to exclude VMs
 
 #### CreateSnapshotRequest
 - `name` - Snapshot name (required)
@@ -261,7 +262,7 @@ To ensure consistency when writing API examples and code, here are the exact fie
 **Important Conventions:**
 - **Arrays vs Singular**: Always use `networks` (array), `ipConfigs` (array), `vmSelectors` (array), even for single items
 - **Image Source Format**: Must reference template VM disk like `local-zfs:base-9001-disk-0`, NOT ISO paths
-- **Field Names**: Use `diskInterface` not `interfaceType`, `ipConfigs` not `ipConfig`, `networks` not `network`
+- **Field Names**: Use `interfaceType` not `diskInterface`, `vlan` not `vlanTag`, `ipConfigs` not `ipConfig`, `networks` not `network`
 - **Endpoint URLs**: Use `/api/v1/vms/cloud-init` (with hyphen) not `/api/v1/vms/cloudinit`
 
 ## Scheduler System

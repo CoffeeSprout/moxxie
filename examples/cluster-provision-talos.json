@@ -11,7 +11,7 @@
         "memoryMB": 8192,
         "disks": [
           {
-            "diskInterface": "SCSI",
+            "interfaceType": "SCSI",
             "slot": 0,
             "storage": "local-zfs",
             "sizeGB": 50,
@@ -23,7 +23,7 @@
           {
             "model": "virtio",
             "bridge": "vmbr0",
-            "vlanTag": 100
+            "vlan": 100
           }
         ],
         "imageSource": "local-zfs:base-9002-disk-0",
@@ -50,7 +50,7 @@
         "memoryMB": 16384,
         "disks": [
           {
-            "diskInterface": "SCSI",
+            "interfaceType": "SCSI",
             "slot": 0,
             "storage": "local-zfs",
             "sizeGB": 100,
@@ -62,7 +62,7 @@
           {
             "model": "virtio",
             "bridge": "vmbr0",
-            "vlanTag": 100
+            "vlan": 100
           }
         ],
         "imageSource": "local-zfs:base-9002-disk-0",
