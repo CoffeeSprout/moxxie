@@ -1,5 +1,6 @@
 package com.coffeesprout.service;
 
+import com.coffeesprout.api.exception.ProxmoxException;
 import com.coffeesprout.client.*;
 import com.coffeesprout.config.MoxxieConfig;
 import com.coffeesprout.config.SDNConfig;
@@ -98,7 +99,12 @@ public class SDNService {
                     return vlan;
                 }
             }
-            throw new NoAvailableVlanException("No available VLANs in range " + sdnConfig.vlanRangeStart() + "-" + sdnConfig.vlanRangeEnd());
+            throw ProxmoxException.resourceLimitExceeded(
+                "VLAN",
+                allocatedVlans.size(),
+                sdnConfig.vlanRangeEnd() - sdnConfig.vlanRangeStart() + 1
+            ).withDetail("vlanRangeStart", String.valueOf(sdnConfig.vlanRangeStart()))
+             .withDetail("vlanRangeEnd", String.valueOf(sdnConfig.vlanRangeEnd()));
         });
     }
     
@@ -172,7 +178,7 @@ public class SDNService {
             
         } catch (Exception e) {
             LOG.errorf(e, "Failed to create VNet %s", vnetId);
-            throw new SDNException("Failed to create VNet: " + e.getMessage(), e);
+            throw ProxmoxException.internalError("create VNet", e);
         }
     }
     
@@ -190,7 +196,7 @@ public class SDNService {
             
         } catch (Exception e) {
             LOG.errorf(e, "Failed to apply SDN configuration");
-            throw new SDNException("Failed to apply SDN configuration: " + e.getMessage(), e);
+            throw ProxmoxException.internalError("apply SDN configuration", e);
         }
     }
     
@@ -202,7 +208,7 @@ public class SDNService {
             return proxmoxClient.listSDNZones(ticket);
         } catch (Exception e) {
             LOG.errorf(e, "Failed to list SDN zones");
-            throw new SDNException("Failed to list SDN zones: " + e.getMessage(), e);
+            throw ProxmoxException.internalError("list SDN zones", e);
         }
     }
     
@@ -214,7 +220,7 @@ public class SDNService {
             return proxmoxClient.listVNets(zone, ticket);
         } catch (Exception e) {
             LOG.errorf(e, "Failed to list VNets");
-            throw new SDNException("Failed to list VNets: " + e.getMessage(), e);
+            throw ProxmoxException.internalError("list VNets", e);
         }
     }
     
@@ -238,7 +244,7 @@ public class SDNService {
             
         } catch (Exception e) {
             LOG.errorf(e, "Failed to delete VNet %s", vnetId);
-            throw new SDNException("Failed to delete VNet: " + e.getMessage(), e);
+            throw ProxmoxException.internalError("delete VNet", e);
         }
     }
     
@@ -283,21 +289,4 @@ public class SDNService {
         LOG.info("Initializing SDN allocations (in-memory for now)");
     }
     
-    /**
-     * Exception thrown when no VLANs are available
-     */
-    public static class NoAvailableVlanException extends RuntimeException {
-        public NoAvailableVlanException(String message) {
-            super(message);
-        }
-    }
-    
-    /**
-     * General SDN exception
-     */
-    public static class SDNException extends RuntimeException {
-        public SDNException(String message, Throwable cause) {
-            super(message, cause);
-        }
-    }
 }

@@ -1,5 +1,6 @@
 package com.coffeesprout.service;
 
+import com.coffeesprout.api.exception.ProxmoxException;
 import com.coffeesprout.client.*;
 import com.coffeesprout.config.MoxxieConfig;
 import io.quarkus.test.junit.QuarkusTest;
@@ -260,16 +261,16 @@ class SDNServiceTest {
     
     @Test
     void testSDNException() {
-        // Test SDN exception handling
+        // Test SDN exception handling - now uses ProxmoxException
         when(proxmoxClient.listSDNZones(anyString()))
             .thenThrow(new RuntimeException("Connection failed"));
-        
-        SDNService.SDNException exception = assertThrows(
-            SDNService.SDNException.class,
+
+        ProxmoxException exception = assertThrows(
+            ProxmoxException.class,
             () -> sdnService.listZones(null)
         );
-        
-        assertTrue(exception.getMessage().contains("Failed to list SDN zones"));
+
+        assertEquals("INTERNAL_ERROR", exception.getErrorCode());
         assertNotNull(exception.getCause());
     }
 }

@@ -1,5 +1,6 @@
 package com.coffeesprout.service;
 
+import com.coffeesprout.api.exception.ProxmoxException;
 import com.coffeesprout.config.MoxxieConfig;
 import com.coffeesprout.client.LoginResponse;
 import jakarta.annotation.PostConstruct;
@@ -39,6 +40,9 @@ public class TicketManager {
     
     @PostConstruct
     void init() {
+        // Validate password configuration
+        validatePasswordConfiguration();
+
         // Eagerly authenticate on startup if credentials are configured
         if (config.proxmox().password() != null && !config.proxmox().password().isEmpty()) {
             try {
@@ -48,6 +52,34 @@ public class TicketManager {
                 LOG.warn("Failed to authenticate on startup, will retry on first request: {}", e.getMessage());
             }
         }
+    }
+
+    /**
+     * Validates password configuration at startup to fail-fast on misconfiguration.
+     * Prevents running with missing or insecure default passwords.
+     */
+    private void validatePasswordConfiguration() {
+        String password = config.proxmox().password();
+
+        // Check if password is missing
+        if (password == null || password.isEmpty()) {
+            throw new IllegalStateException(
+                "Proxmox password is not configured. " +
+                "Set MOXXIE_PROXMOX_PASSWORD environment variable. " +
+                "For development, create a .env file with your credentials."
+            );
+        }
+
+        // Check if using old default password (security risk)
+        if ("changeme".equals(password)) {
+            throw new IllegalStateException(
+                "Default password 'changeme' detected! " +
+                "Set a secure password via MOXXIE_PROXMOX_PASSWORD environment variable. " +
+                "Never use default passwords in any environment."
+            );
+        }
+
+        LOG.debug("Password configuration validated successfully");
     }
     
     /**
@@ -151,7 +183,7 @@ public class TicketManager {
             currentCsrfToken = null;
             ticketExpiry = null;
             LOG.error("Failed to refresh authentication ticket: {}", e.getMessage());
-            throw new RuntimeException("Authentication failed: " + e.getMessage(), e);
+            throw ProxmoxException.unauthorized("Authentication failed: " + e.getMessage());
         }
     }
 }

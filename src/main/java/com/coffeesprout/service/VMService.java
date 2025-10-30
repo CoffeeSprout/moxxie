@@ -143,7 +143,7 @@ public class VMService {
             return vms;
         } catch (Exception e) {
             LOG.error("Error listing VMs with filters", e);
-            throw new RuntimeException("Failed to list VMs: " + e.getMessage(), e);
+            throw ProxmoxException.internalError("list VMs", e);
         }
     }
 
@@ -192,7 +192,7 @@ public class VMService {
             LOG.info("Successfully resized disk {} for VM {}", disk, vmId);
         } catch (Exception e) {
             LOG.error("Failed to resize disk for VM {}", vmId, e);
-            throw new RuntimeException("Failed to resize disk: " + e.getMessage(), e);
+            throw ProxmoxException.vmOperationFailed("resize disk", vmId, e.getMessage());
         }
     }
     
@@ -374,7 +374,7 @@ public class VMService {
         try {
             formData.append(name).append("=").append(java.net.URLEncoder.encode(value, "UTF-8"));
         } catch (Exception e) {
-            throw new RuntimeException("Failed to encode form parameter", e);
+            throw ProxmoxException.internalError("encode form parameter: " + name, e);
         }
     }
     
@@ -384,11 +384,12 @@ public class VMService {
         
         // Use the updateDisk method from ProxmoxClient which is designed for disk import
         ConfigResponse response = proxmoxClient.updateDisk(node, vmId, diskConfig, ticket, ticketManager.getCsrfToken());
-        
+
         if (response == null) {
-            throw new RuntimeException("Failed to import disk - no response from Proxmox");
+            throw ProxmoxException.vmOperationFailed("import disk", vmId,
+                "No response from Proxmox");
         }
-        
+
         LOG.info("Disk import initiated successfully for VM {}", vmId);
     }
     
@@ -424,10 +425,10 @@ public class VMService {
             proxmoxClient.updateVMConfig(node, vmId, ticket, ticketManager.getCsrfToken(), formData);
             
             LOG.info("Successfully set SSH keys on VM {}", vmId);
-            
+
         } catch (Exception e) {
             LOG.error("Failed to set SSH keys on VM {}", vmId, e);
-            throw new RuntimeException("Failed to set SSH keys: " + e.getMessage(), e);
+            throw ProxmoxException.vmOperationFailed("set SSH keys", vmId, e.getMessage());
         }
     }
     

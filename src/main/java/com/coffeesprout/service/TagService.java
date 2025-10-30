@@ -1,5 +1,6 @@
 package com.coffeesprout.service;
 
+import com.coffeesprout.api.exception.ProxmoxException;
 import com.coffeesprout.service.AuthTicket;
 import com.coffeesprout.service.AutoAuthenticate;
 import com.coffeesprout.client.ProxmoxClient;
@@ -44,11 +45,12 @@ public class TagService {
         try {
             Optional<String> nodeOpt = vmLocatorService.findNodeForVM(vmId, ticket);
             if (nodeOpt.isEmpty()) {
-                LOG.warn("Could not find node for VM {}", vmId);
-                return new HashSet<>();
+                LOG.error("Could not find node for VM {}", vmId);
+                throw ProxmoxException.notFound("VM", String.valueOf(vmId),
+                    "VM may not exist or is not accessible");
             }
             String node = nodeOpt.get();
-            
+
             // Get VM config which includes tags
             var config = proxmoxClient.getVMConfig(
                 node,
@@ -56,12 +58,15 @@ public class TagService {
                 ticket,
                 ticketManager.getCsrfToken()
             );
-            
+
             String tagsString = config.path("data").path("tags").asText("");
             return TagUtils.parseVMTags(tagsString);
+        } catch (ProxmoxException e) {
+            // Re-throw ProxmoxException as-is
+            throw e;
         } catch (Exception e) {
-            LOG.error("Error getting tags for VM " + vmId, e);
-            return new HashSet<>();
+            LOG.error("Error getting tags for VM {}", vmId, e);
+            throw ProxmoxException.vmOperationFailed("get tags", vmId, e.getMessage());
         }
     }
     
@@ -69,19 +74,20 @@ public class TagService {
         try {
             Optional<String> nodeOpt = vmLocatorService.findNodeForVM(vmId, ticket);
             if (nodeOpt.isEmpty()) {
-                LOG.warn("Could not find node for VM {}", vmId);
-                return;
+                LOG.error("Could not find node for VM {}", vmId);
+                throw ProxmoxException.notFound("VM", String.valueOf(vmId),
+                    "VM may not exist or is not accessible");
             }
             String node = nodeOpt.get();
-            
+
             Set<String> currentTags = getVMTags(vmId, ticket);
             currentTags.add(tag);
-            
+
             String tagsString = TagUtils.tagsToString(currentTags);
-            
+
             // URL-encode the tags value to handle special characters
             String encodedTags = java.net.URLEncoder.encode(tagsString, java.nio.charset.StandardCharsets.UTF_8);
-            
+
             // Update VM config with new tags
             proxmoxClient.updateVMConfig(
                 node,
@@ -90,10 +96,14 @@ public class TagService {
                 ticketManager.getCsrfToken(),
                 "tags=" + encodedTags
             );
-            
-            LOG.info("Added tag '" + tag + "' to VM " + vmId);
+
+            LOG.info("Added tag '{}' to VM {}", tag, vmId);
+        } catch (ProxmoxException e) {
+            // Re-throw ProxmoxException as-is
+            throw e;
         } catch (Exception e) {
-            LOG.error("Error adding tag to VM " + vmId, e);
+            LOG.error("Error adding tag '{}' to VM {}", tag, vmId, e);
+            throw ProxmoxException.vmOperationFailed("add tag", vmId, e.getMessage());
         }
     }
     
@@ -101,19 +111,20 @@ public class TagService {
         try {
             Optional<String> nodeOpt = vmLocatorService.findNodeForVM(vmId, ticket);
             if (nodeOpt.isEmpty()) {
-                LOG.warn("Could not find node for VM {}", vmId);
-                return;
+                LOG.error("Could not find node for VM {}", vmId);
+                throw ProxmoxException.notFound("VM", String.valueOf(vmId),
+                    "VM may not exist or is not accessible");
             }
             String node = nodeOpt.get();
-            
+
             Set<String> currentTags = getVMTags(vmId, ticket);
             currentTags.remove(tag);
-            
+
             String tagsString = TagUtils.tagsToString(currentTags);
-            
+
             // URL-encode the tags value to handle special characters
             String encodedTags = java.net.URLEncoder.encode(tagsString, java.nio.charset.StandardCharsets.UTF_8);
-            
+
             // Update VM config with new tags
             proxmoxClient.updateVMConfig(
                 node,
@@ -122,10 +133,14 @@ public class TagService {
                 ticketManager.getCsrfToken(),
                 "tags=" + encodedTags
             );
-            
-            LOG.info("Removed tag '" + tag + "' from VM " + vmId);
+
+            LOG.info("Removed tag '{}' from VM {}", tag, vmId);
+        } catch (ProxmoxException e) {
+            // Re-throw ProxmoxException as-is
+            throw e;
         } catch (Exception e) {
-            LOG.error("Error removing tag from VM " + vmId, e);
+            LOG.error("Error removing tag '{}' from VM {}", tag, vmId, e);
+            throw ProxmoxException.vmOperationFailed("remove tag", vmId, e.getMessage());
         }
     }
     
@@ -155,10 +170,13 @@ public class TagService {
                 "tags=" + encodedTags
             );
             
-            LOG.info("Updated tags for VM " + vmId + " to: " + tagsString);
+            LOG.info("Updated tags for VM {} to: {}", vmId, tagsString);
+        } catch (ProxmoxException e) {
+            // Re-throw ProxmoxException as-is
+            throw e;
         } catch (Exception e) {
-            LOG.error("Error updating tags for VM " + vmId, e);
-            throw new RuntimeException("Failed to update VM tags: " + e.getMessage(), e);
+            LOG.error("Error updating tags for VM {}", vmId, e);
+            throw ProxmoxException.vmOperationFailed("update tags", vmId, e.getMessage());
         }
     }
     
@@ -173,7 +191,7 @@ public class TagService {
                 ticketManager.getCsrfToken(),
                 "vm"
             );
-            
+
             if (resources != null && resources.has("data")) {
                 var dataArray = resources.get("data");
                 for (var resource : dataArray) {
@@ -183,10 +201,11 @@ public class TagService {
                     }
                 }
             }
+            return allTags;
         } catch (Exception e) {
             LOG.error("Error getting all unique tags", e);
+            throw ProxmoxException.internalError("get all unique tags", e);
         }
-        return allTags;
     }
     
     /**
