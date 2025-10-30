@@ -510,7 +510,6 @@ public class NodeMaintenanceService {
             .anyMatch(d -> d.node().equals(node) && "in_progress".equals(d.status()));
     }
 
-    @Transactional
     private void updateNodeMaintenanceRecord(String node, String drainId, String status, List<VMResponse> vms) {
         NodeMaintenance maintenance = NodeMaintenance.findActiveByNode(node)
             .orElseGet(() -> {
