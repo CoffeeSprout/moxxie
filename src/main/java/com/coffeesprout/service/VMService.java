@@ -32,21 +32,24 @@ public class VMService {
     @Inject
     @RestClient
     ProxmoxClient proxmoxClient;
-    
+
     @Inject
     TicketManager ticketManager;
-    
+
     @Inject
     TagService tagService;
-    
+
     @Inject
     MigrationService migrationService;
-    
+
     @Inject
     VMIdService vmIdService;
-    
+
     @Inject
     ObjectMapper objectMapper;
+
+    @Inject
+    AnsibleCallbackService ansibleCallbackService;
 
     @SafeMode(false)  // Read operation
     public List<VMResponse> listVMs(@AuthTicket String ticket) {
@@ -714,7 +717,30 @@ public class VMService {
             LOG.info("Starting VM {}", vmId);
             startVM(creationNode, vmId, ticket);
         }
-        
+
+        // Trigger Ansible callback if enabled
+        try {
+            // Build VM response for callback
+            VMResponse vmResponse = new VMResponse(
+                vmId,
+                request.name(),
+                creationNode,
+                request.start() != null && request.start() ? "running" : "stopped",
+                request.cores(),
+                (long)request.memoryMB() * 1024 * 1024, // Convert MB to bytes
+                0L, // maxdisk - not available during creation
+                0L, // uptime - 0 for new VM
+                "qemu",
+                request.tags() != null ? List.of(request.tags().split(",")) : List.of(),
+                null, // pool
+                0 // template - regular VM
+            );
+            ansibleCallbackService.triggerPostCreationCallback(vmResponse, null);
+        } catch (Exception e) {
+            LOG.error("Failed to trigger Ansible callback for VM {}, but VM creation succeeded", vmId, e);
+            // Don't fail the VM creation if callback fails
+        }
+
         return response;
     }
     

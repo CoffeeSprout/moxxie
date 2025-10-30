@@ -174,6 +174,72 @@ For comprehensive API examples with working curl commands, see [API_EXAMPLES.md]
 - Scheduler configuration
 - Backup lifecycle management
 
+## Ansible Integration
+
+Moxxie provides comprehensive Ansible integration for GitOps workflows and automated VM configuration. See [ANSIBLE_INTEGRATION.md](./ANSIBLE_INTEGRATION.md) for complete documentation including:
+
+- **Dynamic Inventory Export** - Generate Ansible inventory from Moxxie-managed VMs (JSON/INI formats)
+- **Post-Creation Callbacks** - Automatically trigger Ansible playbooks after VM creation
+- **Multiple Callback Methods** - Support for Ansible Tower/AWX and generic webhooks
+- **Advanced Filtering** - Filter inventory by tags, client, environment, node, status
+- **Automatic Grouping** - VMs grouped by tags, nodes, and status
+
+**Quick Start:**
+
+```bash
+# Get dynamic inventory
+curl http://localhost:8080/api/v1/ansible/inventory | jq .
+
+# Filter by client
+curl "http://localhost:8080/api/v1/ansible/inventory?client=acme&format=ini" > inventory.ini
+
+# Enable Ansible callbacks (application.properties or env vars)
+moxxie.ansible.enabled=true
+moxxie.ansible.callback-type=webhook
+moxxie.ansible.webhook.url=https://automation.example.com/webhook
+```
+
+For practical examples and GitOps workflows, see [examples/ansible-integration-examples.sh](./examples/ansible-integration-examples.sh).
+
+## Node Maintenance and Drain Workflows
+
+Moxxie provides automated node drain and maintenance workflows for safe hypervisor maintenance. See [NODE_MAINTENANCE.md](./NODE_MAINTENANCE.md) for complete documentation including:
+
+- **Soft Drain Mode** - For routine maintenance/reboots (skips maint-ok VMs)
+- **Hard Drain Mode** - For hardware failures (evacuates ALL VMs)
+- **Tag-Aware Migration** - Respects `always-on` and `maint-ok` tags
+- **State Verification** - Auto-restarts always-on VMs if they end up stopped
+- **Progress Tracking** - Real-time status of individual VM migrations
+- **Undrain Support** - Migrate VMs back after maintenance
+
+**Quick Start:**
+
+```bash
+# Soft drain for maintenance (skips maint-ok VMs)
+curl -X POST http://localhost:8080/api/v1/nodes/hv7/drain \
+  -H "Content-Type: application/json" \
+  -d '{"drainMode": "soft", "parallel": true, "maxConcurrent": 3}'
+
+# Hard drain for hardware failure (evacuates ALL)
+curl -X POST http://localhost:8080/api/v1/nodes/hv7/drain \
+  -H "Content-Type: application/json" \
+  -d '{"drainMode": "hard", "parallel": true}'
+
+# Check drain progress
+curl http://localhost:8080/api/v1/nodes/hv7/drain/{drainId}/status | jq .
+
+# Enable maintenance mode
+curl -X POST "http://localhost:8080/api/v1/nodes/hv7/maintenance?reason=Updates"
+
+# Undrain after maintenance
+curl -X POST http://localhost:8080/api/v1/nodes/hv7/undrain
+```
+
+**VM Tag Behavior:**
+- `always-on` - MUST use live migration, auto-restarted if stopped
+- `maint-ok` - Skipped in soft drain, offline migration OK in hard drain
+- No tags - Default live migration behavior
+
 ### Common DTO Field Reference
 
 To ensure consistency when writing API examples and code, here are the exact field names for commonly used DTOs:
