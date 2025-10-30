@@ -1,7 +1,8 @@
 package com.coffeesprout.api.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * Response DTO for individual storage content items
@@ -23,7 +24,7 @@ public record StorageContentResponse(
     Integer vmid,
     String verification
 ) {
-    
+
     /**
      * Create a StorageContentResponse from raw data
      */

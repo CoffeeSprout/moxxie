@@ -1,79 +1,77 @@
 package com.coffeesprout.api;
 
+import java.util.Map;
+
 import com.coffeesprout.api.dto.CloudInitVMRequest;
 import com.coffeesprout.api.dto.FirmwareConfig;
 import com.coffeesprout.client.CreateVMResponse;
-import com.coffeesprout.service.VMService;
-import com.coffeesprout.service.VMIdService;
-import com.coffeesprout.service.TagService;
+import com.coffeesprout.service.BackupService;
 import com.coffeesprout.service.SDNService;
 import com.coffeesprout.service.SnapshotService;
-import com.coffeesprout.service.BackupService;
+import com.coffeesprout.service.TagService;
 import com.coffeesprout.service.TicketManager;
-import io.quarkus.test.junit.QuarkusTest;
+import com.coffeesprout.service.VMIdService;
+import com.coffeesprout.service.VMService;
 import io.quarkus.test.InjectMock;
+import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
-import jakarta.inject.Inject;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.BeforeEach;
-import org.mockito.Mockito;
-
-import java.util.Map;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-import static org.hamcrest.Matchers.*;
 
 /**
  * Integration tests for UEFI/OVMF functionality in VMResource
  */
 @QuarkusTest
 public class VMResourceUEFITest {
-    
+
     @InjectMock
     VMService vmService;
-    
+
     @InjectMock
     VMIdService vmIdService;
-    
+
     @InjectMock
     TagService tagService;
-    
+
     @InjectMock
     SDNService sdnService;
-    
+
     @InjectMock
     SnapshotService snapshotService;
-    
+
     @InjectMock
     BackupService backupService;
-    
+
     @InjectMock
     TicketManager ticketManager;
-    
+
     @BeforeEach
     void setUp() {
         // Mock ticket manager
         when(ticketManager.getTicket()).thenReturn("PVE:mock-ticket");
         when(ticketManager.getCsrfToken()).thenReturn("mock-csrf-token");
     }
-    
+
     @Test
     @DisplayName("Create VM with UEFI firmware configuration")
     void testCreateVMWithUEFIFirmware() {
         // Mock VM ID allocation
         when(vmIdService.getNextAvailableVmId(anyString())).thenReturn(10710);
-        
+
         // Mock successful VM creation
         CreateVMResponse mockResponse = new CreateVMResponse();
         mockResponse.setVmid(10710);
         mockResponse.setStatus("created");
-        
+
         when(vmService.createCloudInitVM(org.mockito.ArgumentMatchers.any(CloudInitVMRequest.class), isNull()))
             .thenReturn(mockResponse);
-        
+
         String requestBody = """
             {
                 "name": "okd-bootstrap",
@@ -105,7 +103,7 @@ public class VMResourceUEFITest {
                 "vgaType": "serial0"
             }
             """;
-        
+
         given()
             .contentType(ContentType.JSON)
             .body(requestBody)
@@ -115,7 +113,7 @@ public class VMResourceUEFITest {
             .statusCode(201)
             .body("vmid", equalTo(10710))
             .body("status", equalTo("created"));
-        
+
         // Verify the service was called with correct firmware configuration
         verify(vmService).createCloudInitVM(argThat(request -> {
             FirmwareConfig firmware = request.firmware();
@@ -129,21 +127,21 @@ public class VMResourceUEFITest {
                    !firmware.secureboot();
         }), isNull());
     }
-    
+
     @Test
     @DisplayName("Create VM with SeaBIOS firmware configuration")
     void testCreateVMWithSeaBIOSFirmware() {
         // Mock VM ID allocation
         when(vmIdService.getNextAvailableVmId(anyString())).thenReturn(200);
-        
+
         // Mock successful VM creation
         CreateVMResponse mockResponse = new CreateVMResponse();
         mockResponse.setVmid(200);
         mockResponse.setStatus("created");
-        
+
         when(vmService.createCloudInitVM(org.mockito.ArgumentMatchers.any(CloudInitVMRequest.class), isNull()))
             .thenReturn(mockResponse);
-        
+
         String requestBody = """
             {
                 "name": "debian-server",
@@ -164,7 +162,7 @@ public class VMResourceUEFITest {
                 "vgaType": "std"
             }
             """;
-        
+
         given()
             .contentType(ContentType.JSON)
             .body(requestBody)
@@ -174,7 +172,7 @@ public class VMResourceUEFITest {
             .statusCode(201)
             .body("vmid", equalTo(200))
             .body("status", equalTo("created"));
-        
+
         // Verify the service was called with correct firmware configuration
         verify(vmService).createCloudInitVM(argThat(request -> {
             FirmwareConfig firmware = request.firmware();
@@ -185,21 +183,21 @@ public class VMResourceUEFITest {
                    !firmware.secureboot();
         }), isNull());
     }
-    
+
     @Test
     @DisplayName("Create VM without firmware configuration uses defaults")
     void testCreateVMWithoutFirmware() {
         // Mock VM ID allocation
         when(vmIdService.getNextAvailableVmId(anyString())).thenReturn(300);
-        
+
         // Mock successful VM creation
         CreateVMResponse mockResponse = new CreateVMResponse();
         mockResponse.setVmid(300);
         mockResponse.setStatus("created");
-        
+
         when(vmService.createCloudInitVM(org.mockito.ArgumentMatchers.any(CloudInitVMRequest.class), isNull()))
             .thenReturn(mockResponse);
-        
+
         String requestBody = """
             {
                 "name": "simple-vm",
@@ -211,7 +209,7 @@ public class VMResourceUEFITest {
                 "diskSizeGB": 20
             }
             """;
-        
+
         given()
             .contentType(ContentType.JSON)
             .body(requestBody)
@@ -221,20 +219,20 @@ public class VMResourceUEFITest {
             .statusCode(201)
             .body("vmid", equalTo(300))
             .body("status", equalTo("created"));
-        
+
         // Verify the service was called with null firmware (defaults will be applied)
-        verify(vmService).createCloudInitVM(argThat(request -> 
+        verify(vmService).createCloudInitVM(argThat(request ->
             request.firmware() == null
         ), isNull());
     }
-    
+
     @Test
     @DisplayName("Reject invalid UEFI configuration - missing EFI disk")
     void testRejectInvalidUEFIConfiguration() {
         // Mock validation failure
         when(vmService.createCloudInitVM(org.mockito.ArgumentMatchers.any(CloudInitVMRequest.class), isNull()))
             .thenThrow(new IllegalArgumentException("EFI disk configuration is required for UEFI firmware"));
-        
+
         String requestBody = """
             {
                 "name": "invalid-uefi-vm",
@@ -251,7 +249,7 @@ public class VMResourceUEFITest {
                 }
             }
             """;
-        
+
         given()
             .contentType(ContentType.JSON)
             .body(requestBody)
@@ -261,14 +259,14 @@ public class VMResourceUEFITest {
             .statusCode(400)
             .body("error", equalTo("VALIDATION_ERROR"));
     }
-    
+
     @Test
     @DisplayName("Reject invalid UEFI configuration - wrong machine type")
     void testRejectUEFIWithWrongMachineType() {
         // Mock validation failure
         when(vmService.createCloudInitVM(org.mockito.ArgumentMatchers.any(CloudInitVMRequest.class), isNull()))
             .thenThrow(new IllegalArgumentException("UEFI firmware requires q35 machine type, not pc"));
-        
+
         String requestBody = """
             {
                 "name": "invalid-machine-vm",
@@ -290,7 +288,7 @@ public class VMResourceUEFITest {
                 }
             }
             """;
-        
+
         given()
             .contentType(ContentType.JSON)
             .body(requestBody)
@@ -300,7 +298,7 @@ public class VMResourceUEFITest {
             .statusCode(400)
             .body("error", equalTo("VALIDATION_ERROR"));
     }
-    
+
     @Test
     @DisplayName("Get VM configuration endpoint")
     void testGetVMConfiguration() {
@@ -308,10 +306,10 @@ public class VMResourceUEFITest {
         com.coffeesprout.api.dto.VMResponse vm = new com.coffeesprout.api.dto.VMResponse(
             10710, "okd-bootstrap", "storage01", "stopped", 4, 16384L, 120000L, 0L, "qemu", null, null, 0
         );
-        
+
         when(vmService.listVMs(isNull()))
             .thenReturn(java.util.List.of(vm));
-        
+
         // Mock VM configuration
         Map<String, Object> config = Map.of(
             "vmid", 10710,
@@ -323,10 +321,10 @@ public class VMResourceUEFITest {
             "memory", 16384,
             "scsihw", "virtio-scsi-single"
         );
-        
+
         when(vmService.getVMConfig(eq("storage01"), eq(10710), isNull()))
             .thenReturn(config);
-        
+
         given()
         .when()
             .get("/api/v1/vms/10710/config")
@@ -337,5 +335,5 @@ public class VMResourceUEFITest {
             .body("bios", equalTo("ovmf"))
             .body("efidisk0", equalTo("local-zfs:1,efitype=4m,pre-enrolled-keys=0"));
     }
-    
+
 }

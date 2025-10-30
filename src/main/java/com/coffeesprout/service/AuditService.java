@@ -1,11 +1,5 @@
 package com.coffeesprout.service;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import jakarta.interceptor.InvocationContext;
-import jakarta.ws.rs.core.Context;
-import jakarta.ws.rs.core.SecurityContext;
-import org.jboss.logging.Logger;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,37 +7,45 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.interceptor.InvocationContext;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.SecurityContext;
+
+import org.jboss.logging.Logger;
+
 @ApplicationScoped
 public class AuditService {
-    
+
     private static final Logger LOG = Logger.getLogger(AuditService.class);
-    
+
     @Inject
     SafetyConfig safetyConfig;
-    
+
     // In-memory storage for audit entries (in production, use a database)
     private final List<AuditEntry> auditEntries = new ArrayList<>();
     private final Map<String, AtomicLong> statistics = new ConcurrentHashMap<>();
-    
+
     @Context
     SecurityContext securityContext;
-    
+
     public AuditService() {
         statistics.put("totalOperations", new AtomicLong(0));
         statistics.put("blockedOperations", new AtomicLong(0));
         statistics.put("overriddenOperations", new AtomicLong(0));
     }
-    
+
     public void logAllowed(InvocationContext context, SafetyDecision decision) {
         if (!safetyConfig.auditLog()) {
             return;
         }
-        
+
         statistics.get("totalOperations").incrementAndGet();
-        
+
         String operation = buildOperationString(context);
         String user = getCurrentUser();
-        
+
         AuditEntry entry = new AuditEntry(
             Instant.now(),
             operation,
@@ -53,7 +55,7 @@ public class AuditService {
             user,
             getClientIp()
         );
-        
+
         synchronized (auditEntries) {
             auditEntries.add(entry);
             // Keep only last 1000 entries
@@ -61,17 +63,17 @@ public class AuditService {
                 auditEntries.remove(0);
             }
         }
-        
+
         LOG.info("Safety allowed: " + operation + " - " + decision.getReason());
     }
-    
+
     public void logBlocked(InvocationContext context, SafetyDecision decision) {
         statistics.get("totalOperations").incrementAndGet();
         statistics.get("blockedOperations").incrementAndGet();
-        
+
         String operation = buildOperationString(context);
         String user = getCurrentUser();
-        
+
         AuditEntry entry = new AuditEntry(
             Instant.now(),
             operation,
@@ -81,7 +83,7 @@ public class AuditService {
             user,
             getClientIp()
         );
-        
+
         synchronized (auditEntries) {
             auditEntries.add(entry);
             // Keep only last 1000 entries
@@ -89,19 +91,19 @@ public class AuditService {
                 auditEntries.remove(0);
             }
         }
-        
+
         LOG.warn("Safety blocked: " + operation + " - " + decision.getReason());
     }
-    
+
     public void logWarning(String message, InvocationContext context) {
         if (!safetyConfig.auditLog()) {
             return;
         }
-        
+
         String operation = buildOperationString(context);
         LOG.warn("Safety warning: " + operation + " - " + message);
     }
-    
+
     public List<AuditEntry> getAuditEntries(Instant startTime) {
         synchronized (auditEntries) {
             return auditEntries.stream()
@@ -109,7 +111,7 @@ public class AuditService {
                 .toList();
         }
     }
-    
+
     public SafetyStatistics getStatistics() {
         Instant lastBlocked = null;
         synchronized (auditEntries) {
@@ -120,7 +122,7 @@ public class AuditService {
                 }
             }
         }
-        
+
         return new SafetyStatistics(
             statistics.get("totalOperations").get(),
             statistics.get("blockedOperations").get(),
@@ -128,11 +130,11 @@ public class AuditService {
             lastBlocked
         );
     }
-    
+
     private String buildOperationString(InvocationContext context) {
         String methodName = context.getMethod().getName();
         String className = context.getTarget().getClass().getSimpleName();
-        
+
         // Try to get HTTP method from annotations
         String httpMethod = "";
         if (context.getMethod().isAnnotationPresent(jakarta.ws.rs.GET.class)) {
@@ -144,10 +146,10 @@ public class AuditService {
         } else if (context.getMethod().isAnnotationPresent(jakarta.ws.rs.DELETE.class)) {
             httpMethod = "DELETE ";
         }
-        
+
         return httpMethod + className + "." + methodName;
     }
-    
+
     private Integer extractVmId(InvocationContext context) {
         Object[] args = context.getParameters();
         if (args != null && args.length > 0) {
@@ -159,19 +161,19 @@ public class AuditService {
         }
         return null;
     }
-    
+
     private String getCurrentUser() {
         if (securityContext != null && securityContext.getUserPrincipal() != null) {
             return securityContext.getUserPrincipal().getName();
         }
         return "anonymous";
     }
-    
+
     private String getClientIp() {
         // In a real implementation, extract from HTTP request context
         return "unknown";
     }
-    
+
     public record AuditEntry(
         Instant timestamp,
         String operation,
@@ -181,7 +183,7 @@ public class AuditService {
         String user,
         String clientIp
     ) {}
-    
+
     public record SafetyStatistics(
         long totalOperations,
         long blockedOperations,

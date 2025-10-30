@@ -9,14 +9,14 @@ public record NodeStatusResponse(
     @JsonProperty("cpu_info") CpuInfo cpuInfo,
     @JsonProperty("load_average") double[] loadAverage
 ) {
-    
+
     public record MemoryInfo(
         @JsonProperty("total") long total,
         @JsonProperty("used") long used,
         @JsonProperty("free") long free,
         @JsonProperty("usage_percentage") double usagePercentage
     ) {}
-    
+
     public record CpuInfo(
         @JsonProperty("cpus") int cpus,
         @JsonProperty("cores") int cores,

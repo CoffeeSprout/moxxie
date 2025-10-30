@@ -1,5 +1,8 @@
 package com.coffeesprout.api;
 
+import java.time.Instant;
+import java.util.List;
+
 import com.coffeesprout.service.AuditService;
 import com.coffeesprout.service.SafetyConfig;
 import io.quarkus.test.InjectMock;
@@ -7,12 +10,9 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
-
-import java.time.Instant;
-import java.util.List;
+import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
@@ -40,7 +40,7 @@ class SafetyControllerTest {
         // Given
         when(safetyConfig.enabled()).thenReturn(true);
         when(safetyConfig.mode()).thenReturn(SafetyConfig.Mode.STRICT);
-        
+
         AuditService.SafetyStatistics stats = new AuditService.SafetyStatistics(
             1500L, 42L, 10L, Instant.parse("2024-01-15T10:30:00Z")
         );
@@ -158,7 +158,7 @@ class SafetyControllerTest {
         .then()
             .statusCode(200)
             .body("entries", hasSize(1));
-        
+
         verify(auditService).getAuditEntries(Instant.parse(startTime));
     }
 
@@ -206,7 +206,7 @@ class SafetyControllerTest {
         // Given
         when(safetyConfig.enabled()).thenReturn(false);
         when(safetyConfig.mode()).thenReturn(SafetyConfig.Mode.AUDIT);
-        
+
         AuditService.SafetyStatistics stats = new AuditService.SafetyStatistics(
             0L, 0L, 0L, null
         );

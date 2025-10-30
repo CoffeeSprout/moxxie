@@ -1,14 +1,17 @@
 package com.coffeesprout.api;
 
-import com.coffeesprout.api.dto.*;
-import com.coffeesprout.service.BackupAnalyticsService;
-import com.coffeesprout.service.SafeMode;
-import io.smallrye.common.annotation.RunOnVirtualThread;
+import java.util.List;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
+import com.coffeesprout.api.dto.*;
+import com.coffeesprout.service.BackupAnalyticsService;
+import com.coffeesprout.service.SafeMode;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -19,24 +22,22 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-
 @Path("/api/v1/backups/analytics")
 @Produces(MediaType.APPLICATION_JSON)
 @ApplicationScoped
 @RunOnVirtualThread
 @Tag(name = "Backup Analytics", description = "Backup storage analytics and reporting endpoints")
 public class BackupAnalyticsResource {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(BackupAnalyticsResource.class);
-    
+
     @Inject
     BackupAnalyticsService analyticsService;
-    
+
     @GET
     @Path("/vms")
     @SafeMode(false)  // Read operation
-    @Operation(summary = "Get storage usage per VM", 
+    @Operation(summary = "Get storage usage per VM",
                description = "Calculate backup storage usage for each VM with breakdown by storage location")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "VM storage usage calculated successfully",
@@ -55,11 +56,11 @@ public class BackupAnalyticsResource {
                     .build();
         }
     }
-    
+
     @GET
     @Path("/clients")
     @SafeMode(false)  // Read operation
-    @Operation(summary = "Get storage usage per client", 
+    @Operation(summary = "Get storage usage per client",
                description = "Calculate backup storage usage grouped by client tags")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Client storage usage calculated successfully",
@@ -78,11 +79,11 @@ public class BackupAnalyticsResource {
                     .build();
         }
     }
-    
+
     @GET
     @Path("/storage")
     @SafeMode(false)  // Read operation
-    @Operation(summary = "Get usage per storage location", 
+    @Operation(summary = "Get usage per storage location",
                description = "Calculate backup storage usage for each storage location")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Storage location usage calculated successfully",
@@ -101,11 +102,11 @@ public class BackupAnalyticsResource {
                     .build();
         }
     }
-    
+
     @GET
     @Path("/trends")
     @SafeMode(false)  // Read operation
-    @Operation(summary = "Get storage growth trends", 
+    @Operation(summary = "Get storage growth trends",
                description = "Analyze backup storage growth over time")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Storage trends calculated successfully",
@@ -116,7 +117,7 @@ public class BackupAnalyticsResource {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public Response getStorageTrends(
-            @Parameter(description = "Time period for trend analysis", 
+            @Parameter(description = "Time period for trend analysis",
                       required = false,
                       example = "daily",
                       schema = @Schema(enumeration = {"daily", "weekly", "monthly"}))
@@ -128,7 +129,7 @@ public class BackupAnalyticsResource {
                         .entity(new ErrorResponse("Invalid period. Must be one of: daily, weekly, monthly"))
                         .build();
             }
-            
+
             StorageTrend trends = analyticsService.getStorageTrends(period, null);
             return Response.ok(trends).build();
         } catch (Exception e) {

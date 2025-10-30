@@ -36,7 +36,7 @@ public class BackupJobData {
     private String stopwait;
     private String tmpdir;
     private String next_run;  // ISO timestamp
-    
+
     // Getters and setters
     public String getId() {
         return id;

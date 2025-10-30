@@ -8,7 +8,7 @@ import jakarta.validation.constraints.NotBlank;
 public record MigrationRequest(
     @NotBlank(message = "Target node is required")
     String targetNode,
-    
+
     Boolean allowOfflineMigration,  // Default false - fail if online migration not possible
     Boolean withLocalDisks,         // Default null (auto-detect) - explicitly set true/false to override
     Boolean force,                  // Default false - force migration of VMs with local devices

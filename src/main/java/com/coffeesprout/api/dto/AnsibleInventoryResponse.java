@@ -1,10 +1,10 @@
 package com.coffeesprout.api.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import io.quarkus.runtime.annotations.RegisterForReflection;
-
 import java.util.List;
 import java.util.Map;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 
 /**
  * Ansible dynamic inventory response in JSON format.

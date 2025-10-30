@@ -1,16 +1,17 @@
 package com.coffeesprout.api;
 
-import com.coffeesprout.api.dto.InfoResponse;
-import com.coffeesprout.config.MoxxieConfig;
-import com.coffeesprout.model.LocationInfo;
-import com.coffeesprout.service.LocationService;
-import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+
+import com.coffeesprout.api.dto.InfoResponse;
+import com.coffeesprout.config.MoxxieConfig;
+import com.coffeesprout.model.LocationInfo;
+import com.coffeesprout.service.LocationService;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -27,7 +28,7 @@ public class InfoResource {
 
     @Inject
     MoxxieConfig config;
-    
+
     @Inject
     LocationService locationService;
 
@@ -39,7 +40,7 @@ public class InfoResource {
     })
     public InfoResponse getInfo() {
         LocationInfo location = locationService.getLocationInfo();
-        
+
         return new InfoResponse(
             location.instanceId(),
             location.fullLocation(),

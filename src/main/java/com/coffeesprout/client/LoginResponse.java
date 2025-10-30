@@ -29,7 +29,7 @@ public class LoginResponse {
         public void setCsrfPreventionToken(String csrfPreventionToken) {
             this.csrfPreventionToken = csrfPreventionToken;
         }
-        
+
         @Override
         public String toString() {
             return "Data{" +
@@ -38,7 +38,7 @@ public class LoginResponse {
                     '}';
         }
     }
-    
+
     @Override
     public String toString() {
         return "LoginResponse{" +

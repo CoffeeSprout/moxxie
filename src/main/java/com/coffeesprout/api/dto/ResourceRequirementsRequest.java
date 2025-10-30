@@ -1,37 +1,37 @@
 package com.coffeesprout.api.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
-
 import java.util.List;
 
+import jakarta.validation.constraints.Min;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class ResourceRequirementsRequest {
-    
+
     @JsonProperty("cpu_cores")
     @Min(1)
     private Integer cpuCores;
-    
+
     @JsonProperty("memory_gb")
     @Min(1)
     private Double memoryGB;
-    
+
     @JsonProperty("storage_gb")
     @Min(1)
     private Double storageGB;
-    
+
     @JsonProperty("storage_type")
     private String storageType;
-    
+
     @JsonProperty("location")
     private String location;
-    
+
     @JsonProperty("high_availability")
     private Boolean highAvailability;
-    
+
     @JsonProperty("preferred_nodes")
     private List<String> preferredNodes;
-    
+
     @JsonProperty("excluded_nodes")
     private List<String> excludedNodes;
 

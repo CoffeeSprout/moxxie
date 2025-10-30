@@ -1,57 +1,57 @@
 package com.coffeesprout.api.dto;
 
+import java.time.Instant;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.quarkus.runtime.annotations.RegisterForReflection;
-
-import java.time.Instant;
 
 @RegisterForReflection
 public record TaskStatusDetailResponse(
     @JsonProperty("upid")
     String upid,
-    
+
     @JsonProperty("node")
     String node,
-    
+
     @JsonProperty("pid")
     Integer pid,
-    
+
     @JsonProperty("pstart")
     Long pstart,
-    
+
     @JsonProperty("starttime")
     Long starttime,
-    
+
     @JsonProperty("type")
     String type,
-    
+
     @JsonProperty("id")
     String id,
-    
+
     @JsonProperty("user")
     String user,
-    
+
     @JsonProperty("status")
     String status,
-    
+
     @JsonProperty("exitstatus")
     String exitstatus,
-    
+
     @JsonProperty("finished")
     Boolean finished,
-    
+
     @JsonProperty("progress")
     Double progress,
-    
+
     @JsonProperty("description")
     String description,
-    
+
     @JsonProperty("started_at")
     Instant startedAt,
-    
+
     @JsonProperty("finished_at")
     Instant finishedAt,
-    
+
     @JsonProperty("duration_seconds")
     Long durationSeconds
 ) {
@@ -61,11 +61,11 @@ public record TaskStatusDetailResponse(
         if (upid == null) {
             throw new IllegalArgumentException("UPID cannot be null");
         }
-        
+
         Instant startedAt = starttime != null ? Instant.ofEpochSecond(starttime) : null;
         Instant finishedAt = endtime != null ? Instant.ofEpochSecond(endtime) : null;
         Long duration = null;
-        
+
         if (starttime != null) {
             if (endtime != null) {
                 duration = endtime - starttime;
@@ -73,12 +73,12 @@ public record TaskStatusDetailResponse(
                 duration = Instant.now().getEpochSecond() - starttime;
             }
         }
-        
+
         // Parse UPID components
         String[] parts = upid != null ? upid.split(":") : new String[0];
         Integer pid = null;
         Long pstart = null;
-        
+
         // PID and pstart are hex values
         try {
             if (parts.length > 2 && !parts[2].isEmpty()) {
@@ -90,23 +90,23 @@ public record TaskStatusDetailResponse(
         } catch (NumberFormatException e) {
             // Ignore parse errors
         }
-        
+
         String taskId = (parts.length > 6 && !parts[6].isEmpty()) ? parts[6] : null;
         String user = (parts.length > 7 && !parts[7].isEmpty()) ? parts[7] : null;
-        
+
         // Generate human-readable description
         String description = generateDescription(type, status, exitstatus, finished);
-        
+
         return new TaskStatusDetailResponse(
             upid, node, pid, pstart, starttime, type, taskId, user,
             status, exitstatus, finished, progress, description,
             startedAt, finishedAt, duration
         );
     }
-    
+
     private static String generateDescription(String type, String status, String exitstatus, Boolean finished) {
         StringBuilder desc = new StringBuilder();
-        
+
         // Task type description
         switch (type) {
             case "qmcreate":
@@ -160,7 +160,7 @@ public record TaskStatusDetailResponse(
             default:
                 desc.append("Task ").append(type);
         }
-        
+
         // Status
         if (Boolean.TRUE.equals(finished)) {
             desc.append(" - ");
@@ -174,7 +174,7 @@ public record TaskStatusDetailResponse(
         } else {
             desc.append(" - ").append(status != null ? status : "Running");
         }
-        
+
         return desc.toString();
     }
 }

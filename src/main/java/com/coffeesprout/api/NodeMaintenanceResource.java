@@ -1,16 +1,17 @@
 package com.coffeesprout.api;
 
-import com.coffeesprout.api.dto.NodeDrainRequest;
-import com.coffeesprout.api.dto.NodeDrainResponse;
-import com.coffeesprout.api.dto.NodeMaintenanceResponse;
-import com.coffeesprout.service.NodeMaintenanceService;
-import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
+import com.coffeesprout.api.dto.NodeDrainRequest;
+import com.coffeesprout.api.dto.NodeDrainResponse;
+import com.coffeesprout.api.dto.NodeMaintenanceResponse;
+import com.coffeesprout.service.NodeMaintenanceService;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;

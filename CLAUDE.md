@@ -486,6 +486,119 @@ private static final String VM_PATH = "/api/v1/vms";
 private static final String SNAPSHOT_PATH = "/api/v1/vms";
 ```
 
+#### Lessons Learned from PMD Fixes
+
+**Last PMD Cleanup: October 2025** - Fixed 104 Priority 1 violations (AvoidThrowingRawExceptionTypes)
+
+To prevent regression and maintain code quality, follow these guidelines:
+
+**1. Exception Handling - Use ProxmoxException, Never RuntimeException**
+
+```java
+// ❌ BAD - Generic RuntimeException
+throw new RuntimeException("VM not found: " + vmId);
+throw new RuntimeException("Failed to X: " + e.getMessage(), e);
+
+// ✅ GOOD - Specific ProxmoxException with context
+throw ProxmoxException.notFound("VM", String.valueOf(vmId));
+throw ProxmoxException.internalError("perform operation X", e);
+```
+
+**Available ProxmoxException Factory Methods:**
+- `notFound(resourceType, identifier)` - Resource not found (404)
+- `notFound(resourceType, identifier, suggestion)` - With helpful suggestion
+- `conflict(resource, reason)` - State conflicts like "already exists" (409)
+- `forbidden(resource, action, suggestion)` - Access denied (403)
+- `prerequisiteFailed(operation, prerequisite, suggestion)` - Missing prerequisites (412)
+- `invalidConfiguration(component, issue, suggestion)` - Config errors (400)
+- `operationNotSupported(operation, reason)` - Unsupported operation (400)
+- `resourceLimitExceeded(resource, current, max)` - Resource limits (400)
+- `validation(field, value, constraint)` - Validation failures (400)
+- `internalError(operation, cause)` - Generic failures (500)
+- `vmOperationFailed(operation, vmId, reason)` - VM-specific failures
+
+**Benefits:**
+- Proper HTTP status codes for REST API
+- Structured error details with error codes
+- Actionable suggestions for resolution
+- Consistent error format across endpoints
+
+**2. Use Constants - Never Magic Numbers**
+
+```java
+// ❌ BAD
+if (vmId < 100 || vmId > 999999999) { ... }
+if (slot >= 31) { ... }
+
+// ✅ GOOD
+if (vmId < VMConstants.Resources.MIN_VM_ID ||
+    vmId > VMConstants.Resources.MAX_VM_ID) { ... }
+if (slot >= VMConstants.Disk.MAX_SCSI_DEVICES) { ... }
+```
+
+Use `VMConstants` and `ProxmoxConstants` classes for all hardcoded values.
+
+**3. Code Formatting with Spotless**
+
+The project now uses Spotless Maven plugin for automatic code formatting:
+
+```bash
+# Apply formatting (remove unused imports, organize imports, format code)
+./mvnw spotless:apply
+
+# Check formatting without applying
+./mvnw spotless:check
+```
+
+Spotless automatically:
+- Removes unused imports
+- Organizes imports (java, javax, jakarta, then others)
+- Formats annotations consistently
+- Trims trailing whitespace
+- Ensures files end with newline
+- Maintains 4-space indentation
+
+**4. Control Statement Braces**
+
+```java
+// ❌ BAD - No braces on single-line statements
+if (vm != null) doSomething();
+
+// ✅ GOOD - Always use braces
+if (vm != null) {
+    doSomething();
+}
+```
+
+Single-line statements without braces can lead to bugs when adding more lines.
+
+**5. Common PMD Issues to Avoid**
+
+| Issue | Solution |
+|-------|----------|
+| Magic numbers | Use constants from VMConstants/ProxmoxConstants |
+| Raw RuntimeException | Use ProxmoxException factory methods |
+| Unused imports | Run `./mvnw spotless:apply` |
+| Missing braces | Always use braces, even for single-line |
+| Duplicate literals | Extract to constants |
+| Complex methods | Break into smaller methods (< 30 lines) |
+| Exception as flow control | Use conditional logic instead |
+
+**Before Committing Code:**
+```bash
+# 1. Format code
+./mvnw spotless:apply
+
+# 2. Run PMD check
+./mvnw pmd:pmd
+
+# 3. Review violations and fix
+# Focus on Priority 1 (High) and Priority 2 (Medium-High) violations
+
+# 4. Compile and test
+./mvnw clean verify
+```
+
 ## Code Patterns and Best Practices
 
 ### Builder Pattern for Complex Objects

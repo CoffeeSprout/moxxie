@@ -1,5 +1,10 @@
 package com.coffeesprout.service;
 
+import java.util.List;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+
 import com.coffeesprout.client.Node;
 import com.coffeesprout.client.NodeStatus;
 import com.coffeesprout.client.NodeStatusResponse;
@@ -9,13 +14,9 @@ import com.coffeesprout.client.StoragePool;
 import com.coffeesprout.client.StorageResponse;
 import com.coffeesprout.client.VM;
 import com.coffeesprout.client.VMsResponse;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
 
 @ApplicationScoped
 @AutoAuthenticate

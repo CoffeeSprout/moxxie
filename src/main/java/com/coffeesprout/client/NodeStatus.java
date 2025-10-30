@@ -2,8 +2,6 @@ package com.coffeesprout.client;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 public class NodeStatus {
 
     private Memory memory;

@@ -24,114 +24,114 @@ public class StorageContent {
     public static class VerificationInfo {
         private String state; // ok, failed, none
         private Long time;
-        
+
         public String getState() {
             return state;
         }
-        
+
         public void setState(String state) {
             this.state = state;
         }
-        
+
         public Long getTime() {
             return time;
         }
-        
+
         public void setTime(Long time) {
             this.time = time;
         }
     }
-    
+
     // Getters and setters
     public String getVolid() {
         return volid;
     }
-    
+
     public void setVolid(String volid) {
         this.volid = volid;
     }
-    
+
     public String getContent() {
         return content;
     }
-    
+
     public void setContent(String content) {
         this.content = content;
     }
-    
+
     public Long getSize() {
         return size;
     }
-    
+
     public void setSize(Long size) {
         this.size = size;
     }
-    
+
     public String getFormat() {
         return format;
     }
-    
+
     public void setFormat(String format) {
         this.format = format;
     }
-    
+
     public String getNotes() {
         return notes;
     }
-    
+
     public void setNotes(String notes) {
         this.notes = notes;
     }
-    
+
     public Integer getProtectedFlag() {
         return protectedFlag;
     }
-    
+
     public void setProtectedFlag(Integer protectedFlag) {
         this.protectedFlag = protectedFlag;
     }
-    
+
     public Long getCtime() {
         return ctime;
     }
-    
+
     public void setCtime(Long ctime) {
         this.ctime = ctime;
     }
-    
+
     public Integer getVmid() {
         return vmid;
     }
-    
+
     public void setVmid(Integer vmid) {
         this.vmid = vmid;
     }
-    
+
     public VerificationInfo getVerification() {
         return verification;
     }
-    
+
     public void setVerification(VerificationInfo verification) {
         this.verification = verification;
     }
-    
+
     public String getSubtype() {
         return subtype;
     }
-    
+
     public void setSubtype(String subtype) {
         this.subtype = subtype;
     }
-    
+
     // Helper methods
     public boolean isProtected() {
         return protectedFlag != null && protectedFlag == 1;
     }
-    
+
     public boolean isBackup() {
         return "backup".equals(content);
     }
-    
+
     public String getFilename() {
         if (volid != null && volid.contains(":")) {
             String[] parts = volid.split(":", 2);
@@ -141,7 +141,7 @@ public class StorageContent {
         }
         return null;
     }
-    
+
     public String getStorageId() {
         if (volid != null && volid.contains(":")) {
             return volid.split(":", 2)[0];

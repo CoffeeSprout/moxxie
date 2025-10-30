@@ -1,18 +1,18 @@
 package com.coffeesprout.api;
 
+import java.util.List;
+import java.util.Set;
+
 import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.service.*;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
-import org.junit.jupiter.api.Disabled;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
-
-import java.util.List;
-import java.util.Set;
+import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
@@ -40,7 +40,7 @@ class VMResourceSafeModeTest {
     @BeforeEach
     void setUp() {
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
-        
+
         // Setup test VM
         testVM = new VMResponse(
             100,                // vmid
@@ -56,7 +56,7 @@ class VMResourceSafeModeTest {
             null,               // pool
             0                   // template
         );
-        
+
         // Default safety config
         when(safetyConfig.enabled()).thenReturn(true);
         when(safetyConfig.mode()).thenReturn(SafetyConfig.Mode.STRICT);
@@ -82,7 +82,7 @@ class VMResourceSafeModeTest {
             .body("error", is("SAFE_MODE_VIOLATION"))
             .body("message", containsString("VM not tagged as Moxxie-managed"))
             .body("details.suggestion", containsString("force=true"));
-        
+
         verify(vmService, never()).deleteVM(anyString(), anyInt(), any());
         verify(auditService).logBlocked(any(), argThat(decision -> decision instanceof SafetyDecision));
     }
@@ -102,7 +102,7 @@ class VMResourceSafeModeTest {
             .delete("/api/v1/vms/100")
         .then()
             .statusCode(204);
-        
+
         verify(vmService).deleteVM("node1", 100, null);
         verify(auditService).logAllowed(any(), argThat(decision -> decision instanceof SafetyDecision));
     }
@@ -123,9 +123,9 @@ class VMResourceSafeModeTest {
             .delete("/api/v1/vms/100")
         .then()
             .statusCode(204);
-        
+
         verify(vmService).deleteVM("node1", 100, null);
-        verify(auditService).logAllowed(any(), argThat(decision -> 
+        verify(auditService).logAllowed(any(), argThat(decision ->
             decision.getReason().contains("Manual override")));
     }
 
@@ -136,7 +136,7 @@ class VMResourceSafeModeTest {
         when(safetyConfig.mode()).thenReturn(SafetyConfig.Mode.PERMISSIVE);
         when(vmService.listVMsWithFilters(null, null, null, null, null)).thenReturn(List.of(testVM));
         when(tagService.getVMTags(eq(100), any())).thenReturn(Set.of("production"));
-        
+
         // When & Then - should block destructive operation
         given()
             .contentType(ContentType.JSON)
@@ -145,7 +145,7 @@ class VMResourceSafeModeTest {
         .then()
             .statusCode(403)
             .body("error", is("SAFE_MODE_VIOLATION"));
-        
+
         verify(vmService, never()).stopVM(anyString(), anyInt(), any());
     }
 
@@ -179,7 +179,7 @@ class VMResourceSafeModeTest {
             .post("/api/v1/vms/100/start")
         .then()
             .statusCode(202);
-        
+
         verify(vmService).startVM("node1", 100, null);
     }
 
@@ -199,7 +199,7 @@ class VMResourceSafeModeTest {
             .delete("/api/v1/vms/100")
         .then()
             .statusCode(204);
-        
+
         verify(vmService).deleteVM("node1", 100, null);
         verify(auditService).logWarning(eq("Operating on non-Moxxie VM"), any());
     }
@@ -220,7 +220,7 @@ class VMResourceSafeModeTest {
             .statusCode(200)
             .body("vmId", is(100))
             .body("name", is("test-vm"));
-        
+
         // Should not interact with tag service for read operations
         verify(tagService, never()).getVMTags(anyInt(), any());
     }
@@ -237,7 +237,7 @@ class VMResourceSafeModeTest {
                 "memoryMB": 2048
             }
             """;
-        
+
         var response = new com.coffeesprout.client.CreateVMResponse();
         response.setStatus("UPID:node1:12345");
         when(vmService.createVM(eq("node1"), any(), any())).thenReturn(response);
@@ -252,7 +252,7 @@ class VMResourceSafeModeTest {
         .then()
             .statusCode(201)
             .header("Location", containsString("/api/v1/vms/"));
-        
+
         verify(tagService).addTag(anyInt(), eq("moxxie"), any());
     }
 
@@ -261,7 +261,7 @@ class VMResourceSafeModeTest {
     void testTagOperationsRespectSafeMode() {
         // Given
         when(tagService.getVMTags(eq(100), any())).thenReturn(Set.of("production"));
-        
+
         var tagRequest = """
             {
                 "tag": "new-tag"
@@ -277,7 +277,7 @@ class VMResourceSafeModeTest {
         .then()
             .statusCode(403)
             .body("error", is("SAFE_MODE_VIOLATION"));
-        
+
         verify(tagService, never()).addTag(eq(100), eq("new-tag"), any());
     }
 
@@ -287,7 +287,7 @@ class VMResourceSafeModeTest {
         // Given
         when(tagService.getVMTags(eq(100), any())).thenReturn(Set.of("production"));
         doNothing().when(tagService).addTag(eq(100), eq("new-tag"), any());
-        
+
         var tagRequest = """
             {
                 "tag": "new-tag"
@@ -303,7 +303,7 @@ class VMResourceSafeModeTest {
             .post("/api/v1/vms/100/tags")
         .then()
             .statusCode(200);
-        
+
         verify(tagService).addTag(eq(100), eq("new-tag"), any());
     }
 
@@ -322,7 +322,7 @@ class VMResourceSafeModeTest {
             .delete("/api/v1/vms/100")
         .then()
             .statusCode(204);
-        
+
         verify(vmService).deleteVM("node1", 100, null);
         verify(tagService, never()).getVMTags(anyInt(), any());
     }
@@ -344,7 +344,7 @@ class VMResourceSafeModeTest {
         .then()
             .statusCode(403)
             .body("error", is("SAFE_MODE_VIOLATION"));
-        
+
         verify(vmService, never()).deleteVM(anyString(), anyInt(), any());
     }
 }

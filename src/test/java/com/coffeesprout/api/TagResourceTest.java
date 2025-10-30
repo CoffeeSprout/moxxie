@@ -1,19 +1,19 @@
 package com.coffeesprout.api;
 
-import com.coffeesprout.api.dto.VMResponse;
-import com.coffeesprout.service.TagService;
-import com.coffeesprout.service.VMService;
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.InjectMock;
-import io.restassured.RestAssured;
-import io.restassured.http.ContentType;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Disabled;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import com.coffeesprout.api.dto.VMResponse;
+import com.coffeesprout.service.TagService;
+import com.coffeesprout.service.VMService;
+import io.quarkus.test.InjectMock;
+import io.quarkus.test.junit.QuarkusTest;
+import io.restassured.RestAssured;
+import io.restassured.http.ContentType;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
@@ -22,23 +22,23 @@ import static org.mockito.Mockito.*;
 
 @QuarkusTest
 class TagResourceTest {
-    
+
     @InjectMock
     TagService tagService;
-    
+
     @InjectMock
     VMService vmService;
-    
+
     @BeforeEach
     void setUp() {
         RestAssured.basePath = "/api/v1";
     }
-    
+
     @Test
     void testGetAllTags() {
         Set<String> mockTags = Set.of("moxxie", "client-nixz", "env-prod", "always-on");
         when(tagService.getAllUniqueTags(any())).thenReturn(mockTags);
-        
+
         given()
             .when()
             .get("/tags")
@@ -48,21 +48,21 @@ class TagResourceTest {
             .body("tags", hasSize(4))
             .body("tags", hasItems("moxxie", "client-nixz", "env-prod", "always-on"));
     }
-    
+
     @Test
     void testGetVMsByTag() {
         // Mock tag service returning VM IDs
         when(tagService.getVMsByTag(eq("client-nixz"), any())).thenReturn(List.of(101, 102));
-        
+
         // Mock VM service returning full VM info
         List<VMResponse> mockVMs = List.of(
-            new VMResponse(101, "nixz-web-01", "pve1", "running", 4, 8192L, 100L, 3600L, "qemu", 
+            new VMResponse(101, "nixz-web-01", "pve1", "running", 4, 8192L, 100L, 3600L, "qemu",
                 List.of("moxxie", "client-nixz"), null, 0),
-            new VMResponse(102, "nixz-db-01", "pve1", "running", 8, 16384L, 200L, 7200L, "qemu", 
+            new VMResponse(102, "nixz-db-01", "pve1", "running", 8, 16384L, 200L, 7200L, "qemu",
                 List.of("moxxie", "client-nixz", "env-prod"), null, 0)
         );
         when(vmService.listVMs(null)).thenReturn(mockVMs);
-        
+
         given()
             .when()
             .get("/tags/client-nixz/vms")
@@ -75,7 +75,7 @@ class TagResourceTest {
             .body("[1].vmid", is(102))
             .body("[1].tags", hasItems("client-nixz", "env-prod"));
     }
-    
+
     @Test
     void testGetVMsByTagEmpty() {
         given()
@@ -84,7 +84,7 @@ class TagResourceTest {
             .then()
             .statusCode(404); // Path param is empty
     }
-    
+
     @Test
     void testBulkAddTagsByVmIds() {
         Map<Integer, String> mockResults = Map.of(
@@ -92,17 +92,17 @@ class TagResourceTest {
             102, "success",
             103, "error: VM not found"
         );
-        
+
         when(tagService.bulkAddTags(eq(List.of(101, 102, 103)), any(), any()))
             .thenReturn(mockResults);
-        
+
         String requestBody = """
             {
                 "action": "ADD",
                 "tags": ["client-nixz", "env-test"]
             }
             """;
-        
+
         given()
             .contentType(ContentType.JSON)
             .queryParam("vmIds", "101,102,103")
@@ -116,26 +116,26 @@ class TagResourceTest {
             .body("results.102", is("success"))
             .body("results.103", is("error: VM not found"));
     }
-    
+
     @Test
     void testBulkAddTagsByNamePattern() {
         when(tagService.findVMsByNamePattern(eq("nixz-*"), any())).thenReturn(List.of(101, 102));
-        
+
         Map<Integer, String> mockResults = Map.of(
             101, "success",
             102, "success"
         );
-        
+
         when(tagService.bulkAddTags(eq(List.of(101, 102)), any(), any()))
             .thenReturn(mockResults);
-        
+
         String requestBody = """
             {
                 "action": "ADD",
                 "tags": ["bulk-test"]
             }
             """;
-        
+
         given()
             .contentType(ContentType.JSON)
             .queryParam("namePattern", "nixz-*")
@@ -146,7 +146,7 @@ class TagResourceTest {
             .statusCode(200)
             .body("message", containsString("Added 1 tags to 2/2 VMs successfully"));
     }
-    
+
     @Test
     @Disabled("Test fails after scheduler implementation changes")
     void testBulkRemoveTags() {
@@ -154,17 +154,17 @@ class TagResourceTest {
             101, "success",
             102, "success"
         );
-        
+
         when(tagService.bulkRemoveTags(eq(List.of(101, 102)), any(), any()))
             .thenReturn(mockResults);
-        
+
         String requestBody = """
             {
                 "action": "REMOVE",
                 "tags": ["env-test"]
             }
             """;
-        
+
         given()
             .contentType(ContentType.JSON)
             .queryParam("vmIds", "101,102")
@@ -175,7 +175,7 @@ class TagResourceTest {
             .statusCode(200)
             .body("message", containsString("Removed 1 tags from 2/2 VMs successfully"));
     }
-    
+
     @Test
     void testBulkOperationNoVmsSpecified() {
         String requestBody = """
@@ -184,7 +184,7 @@ class TagResourceTest {
                 "tags": ["test"]
             }
             """;
-        
+
         given()
             .contentType(ContentType.JSON)
             .body(requestBody)
@@ -194,7 +194,7 @@ class TagResourceTest {
             .statusCode(400)
             .body("error", containsString("Either vmIds or namePattern must be provided"));
     }
-    
+
     @Test
     @Disabled("Test fails after scheduler implementation changes")
     void testBulkOperationNoTags() {
@@ -204,7 +204,7 @@ class TagResourceTest {
                 "tags": []
             }
             """;
-        
+
         given()
             .contentType(ContentType.JSON)
             .queryParam("vmIds", "101")
@@ -215,7 +215,7 @@ class TagResourceTest {
             .statusCode(400)
             .body("error", containsString("Tags list cannot be empty"));
     }
-    
+
     @Test
     void testBulkOperationInvalidTag() {
         String requestBody = """
@@ -224,7 +224,7 @@ class TagResourceTest {
                 "tags": ["valid-tag", "invalid tag with spaces"]
             }
             """;
-        
+
         given()
             .contentType(ContentType.JSON)
             .queryParam("vmIds", "101")
@@ -235,7 +235,7 @@ class TagResourceTest {
             .statusCode(400)
             .body("error", containsString("Invalid tag format"));
     }
-    
+
     @Test
     void testBulkOperationInvalidVmId() {
         String requestBody = """
@@ -244,7 +244,7 @@ class TagResourceTest {
                 "tags": ["test"]
             }
             """;
-        
+
         given()
             .contentType(ContentType.JSON)
             .queryParam("vmIds", "101,invalid,103")
@@ -255,18 +255,18 @@ class TagResourceTest {
             .statusCode(400)
             .body("error", containsString("Invalid VM ID: invalid"));
     }
-    
+
     @Test
     void testBulkOperationNoVmsMatchPattern() {
         when(tagService.findVMsByNamePattern(eq("nomatch-*"), any())).thenReturn(List.of());
-        
+
         String requestBody = """
             {
                 "action": "ADD",
                 "tags": ["test"]
             }
             """;
-        
+
         given()
             .contentType(ContentType.JSON)
             .queryParam("namePattern", "nomatch-*")

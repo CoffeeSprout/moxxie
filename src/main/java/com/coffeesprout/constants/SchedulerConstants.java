@@ -5,17 +5,17 @@ package com.coffeesprout.constants;
  * Centralizes scheduler-related constants and configuration values.
  */
 public final class SchedulerConstants {
-    
+
     private SchedulerConstants() {
         // Prevent instantiation
     }
-    
+
     /**
      * Quartz job and trigger groups
      */
     public static final String JOB_GROUP = "moxxie-jobs";
     public static final String TRIGGER_GROUP = "moxxie-triggers";
-    
+
     /**
      * Job data map keys
      */
@@ -24,10 +24,10 @@ public final class SchedulerConstants {
         public static final String JOB_NAME = "jobName";
         public static final String EXECUTION_ID = "executionId";
         public static final String MANUAL_TRIGGER = "manualTrigger";
-        
+
         private JobDataKeys() {}
     }
-    
+
     /**
      * Task types
      */
@@ -39,23 +39,23 @@ public final class SchedulerConstants {
         public static final String VM_START = "vm_start";
         public static final String VM_STOP = "vm_stop";
         public static final String TEST_TASK = "test_task";
-        
+
         private TaskTypes() {}
     }
-    
+
     /**
      * Default job configuration
      */
     public static final int DEFAULT_MAX_RETRIES = 3;
     public static final int DEFAULT_RETRY_DELAY_SECONDS = 300;
     public static final int DEFAULT_TIMEOUT_SECONDS = 3600;
-    
+
     /**
      * Cleanup configuration
      */
     public static final int EXECUTION_RETENTION_DAYS = 30;
     public static final String CLEANUP_CRON = "0 0 2 * * ?"; // 2 AM daily
-    
+
     /**
      * VM Selector types
      */
@@ -66,7 +66,7 @@ public final class SchedulerConstants {
         public static final String NAME_PATTERN = "NAME_PATTERN";
         public static final String NODE = "NODE";
         public static final String POOL = "POOL";
-        
+
         private SelectorTypes() {}
     }
 }

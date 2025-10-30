@@ -1,15 +1,18 @@
 package com.coffeesprout.api;
 
-import com.coffeesprout.api.dto.ErrorResponse;
-import com.coffeesprout.api.dto.PoolResourceSummary;
-import com.coffeesprout.service.PoolService;
-import com.coffeesprout.service.SafeMode;
-import io.smallrye.common.annotation.RunOnVirtualThread;
+import java.util.List;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
+import com.coffeesprout.api.dto.ErrorResponse;
+import com.coffeesprout.api.dto.PoolResourceSummary;
+import com.coffeesprout.service.PoolService;
+import com.coffeesprout.service.SafeMode;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -20,24 +23,22 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-
 @Path("/api/v1/pools")
 @Produces(MediaType.APPLICATION_JSON)
 @ApplicationScoped
 @RunOnVirtualThread
 @Tag(name = "Pools", description = "Resource pool management endpoints")
 public class PoolResource {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(PoolResource.class);
-    
+
     @Inject
     PoolService poolService;
-    
+
     @GET
     @Path("/resources")
     @SafeMode(false)  // Read operation
-    @Operation(summary = "Get resource summaries for all pools", 
+    @Operation(summary = "Get resource summaries for all pools",
                description = "Returns aggregated resource usage (vCPUs, memory, storage) for all VM pools")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Pool resource summaries retrieved successfully",
@@ -58,11 +59,11 @@ public class PoolResource {
                     .build();
         }
     }
-    
+
     @GET
     @Path("/{poolName}/resources")
     @SafeMode(false)  // Read operation
-    @Operation(summary = "Get resource summary for a specific pool", 
+    @Operation(summary = "Get resource summary for a specific pool",
                description = "Returns aggregated resource usage (vCPUs, memory, storage) for a specific VM pool")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Pool resource summary retrieved successfully",
@@ -94,12 +95,12 @@ public class PoolResource {
                     .build();
         }
     }
-    
+
     @GET
     @Path("/resources/export/csv")
     @Produces("text/csv")
     @SafeMode(false)  // Read operation
-    @Operation(summary = "Export all pool resources to CSV", 
+    @Operation(summary = "Export all pool resources to CSV",
                description = "Export resource summaries for all pools in CSV format for Excel")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "CSV export generated successfully",
@@ -112,12 +113,12 @@ public class PoolResource {
     public Response exportAllPoolsCSV() {
         try {
             List<PoolResourceSummary> summaries = poolService.getPoolResourceSummaries(null);
-            
+
             StringBuilder csv = new StringBuilder(2048);
             // Pool summary header
             csv.append("Pool Summary\n")
                .append("Pool Name,Total VMs,Running VMs,Stopped VMs,Total vCPUs,Running vCPUs,Total Memory (GB),Running Memory (GB),Total Storage (TB)\n");
-            
+
             for (PoolResourceSummary summary : summaries) {
                 csv.append(String.format("%s,%d,%d,%d,%d,%d,%.1f,%.1f,%.1f\n",
                     summary.poolName(),
@@ -131,10 +132,10 @@ public class PoolResource {
                     summary.totalStorageBytes() / (1024.0 * 1024 * 1024 * 1024)
                 ));
             }
-            
+
             csv.append("\n\nVM Details by Pool\n")
                .append("Pool,VM ID,VM Name,vCPUs,Memory (GB),Storage (GB),Status,Node\n");
-            
+
             for (PoolResourceSummary summary : summaries) {
                 for (PoolResourceSummary.VMSummary vm : summary.vms()) {
                     csv.append(String.format("%s,%d,%s,%d,%.1f,%.1f,%s,%s\n",
@@ -149,7 +150,7 @@ public class PoolResource {
                     ));
                 }
             }
-            
+
             return Response.ok(csv.toString())
                     .header("Content-Disposition", "attachment; filename=\"pool-resources-export.csv\"")
                     .build();
@@ -160,12 +161,12 @@ public class PoolResource {
                     .build();
         }
     }
-    
+
     @GET
     @Path("/{poolName}/resources/export/csv")
     @Produces("text/csv")
     @SafeMode(false)  // Read operation
-    @Operation(summary = "Export specific pool resources to CSV", 
+    @Operation(summary = "Export specific pool resources to CSV",
                description = "Export resource summary for a specific pool in CSV format for Excel")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "CSV export generated successfully",
@@ -182,7 +183,7 @@ public class PoolResource {
             @PathParam("poolName") String poolName) {
         try {
             PoolResourceSummary summary = poolService.getPoolResourceSummary(poolName, null);
-            
+
             StringBuilder csv = new StringBuilder(1024);
             // Pool summary
             csv.append(String.format("Pool Summary: %s\n", poolName))
@@ -195,10 +196,10 @@ public class PoolResource {
                .append(String.format("Total Memory,%s\n", summary.totalMemoryHuman()))
                .append(String.format("Running Memory,%s\n", summary.runningMemoryHuman()))
                .append(String.format("Total Storage,%s\n", summary.totalStorageHuman()));
-            
+
             csv.append("\n\nVM Details\n")
                .append("VM ID,VM Name,vCPUs,Memory (GB),Storage (GB),Status,Node\n");
-            
+
             for (PoolResourceSummary.VMSummary vm : summary.vms()) {
                 csv.append(String.format("%d,%s,%d,%.1f,%.1f,%s,%s\n",
                     vm.vmid(),
@@ -210,7 +211,7 @@ public class PoolResource {
                     vm.node()
                 ));
             }
-            
+
             return Response.ok(csv.toString())
                     .header("Content-Disposition", String.format("attachment; filename=\"%s-resources-export.csv\"", poolName))
                     .build();

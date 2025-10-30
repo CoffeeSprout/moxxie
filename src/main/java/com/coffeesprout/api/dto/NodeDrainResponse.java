@@ -1,10 +1,9 @@
 package com.coffeesprout.api.dto;
 
-import io.quarkus.runtime.annotations.RegisterForReflection;
-
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
+
+import io.quarkus.runtime.annotations.RegisterForReflection;
 
 /**
  * Response for node drain/undrain operations with progress tracking.

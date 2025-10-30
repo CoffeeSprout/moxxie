@@ -1,10 +1,11 @@
 package com.coffeesprout.service;
 
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+
 import com.coffeesprout.client.LoginResponse;
 import com.coffeesprout.client.ProxmoxClient;
 import com.coffeesprout.config.MoxxieConfig;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +18,7 @@ public class AuthService {
     @Inject
     @RestClient
     ProxmoxClient proxmoxClient;
-    
+
     @Inject
     MoxxieConfig config;
 

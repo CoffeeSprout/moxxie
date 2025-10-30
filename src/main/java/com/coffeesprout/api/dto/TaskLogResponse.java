@@ -1,24 +1,24 @@
 package com.coffeesprout.api.dto;
 
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.quarkus.runtime.annotations.RegisterForReflection;
-
-import java.util.List;
 
 @RegisterForReflection
 public record TaskLogResponse(
     @JsonProperty("upid")
     String upid,
-    
+
     @JsonProperty("total_lines")
     Integer totalLines,
-    
+
     @JsonProperty("start_line")
     Integer startLine,
-    
+
     @JsonProperty("lines")
     List<TaskLogEntry> lines,
-    
+
     @JsonProperty("complete")
     Boolean complete
 ) {
@@ -26,10 +26,10 @@ public record TaskLogResponse(
     public record TaskLogEntry(
         @JsonProperty("line_number")
         Integer lineNumber,
-        
+
         @JsonProperty("timestamp")
         String timestamp,
-        
+
         @JsonProperty("message")
         String message
     ) {
@@ -44,8 +44,8 @@ public record TaskLogResponse(
             return new TaskLogEntry(lineNumber, null, logLine);
         }
     }
-    
-    public static TaskLogResponse create(String upid, Integer total, Integer start, 
+
+    public static TaskLogResponse create(String upid, Integer total, Integer start,
                                          List<String> logLines, Boolean complete) {
         List<TaskLogEntry> entries = null;
         if (logLines != null) {
@@ -54,7 +54,7 @@ public record TaskLogResponse(
                 entries.add(TaskLogEntry.fromLogLine(start + i, logLines.get(i)));
             }
         }
-        
+
         return new TaskLogResponse(upid, total, start, entries, complete);
     }
 }

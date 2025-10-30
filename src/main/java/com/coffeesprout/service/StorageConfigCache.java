@@ -1,32 +1,33 @@
 package com.coffeesprout.service;
 
-import com.coffeesprout.client.StorageResponse;
-import com.coffeesprout.config.MigrationConfig;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.time.Instant;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+
+import com.coffeesprout.client.StorageResponse;
+import com.coffeesprout.config.MigrationConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Cache for Proxmox storage configuration to reduce API calls during bulk migrations
  */
 @ApplicationScoped
 public class StorageConfigCache {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(StorageConfigCache.class);
-    
+
     @Inject
     MigrationConfig migrationConfig;
-    
+
     private StorageResponse cachedResponse;
     private Instant cacheExpiry;
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
-    
+
     /**
      * Get cached storage configuration or null if cache is expired/empty
      */
@@ -42,7 +43,7 @@ public class StorageConfigCache {
             lock.readLock().unlock();
         }
     }
-    
+
     /**
      * Update the cache with fresh storage configuration
      */
@@ -50,7 +51,7 @@ public class StorageConfigCache {
         if (response == null) {
             return;
         }
-        
+
         lock.writeLock().lock();
         try {
             this.cachedResponse = response;
@@ -60,7 +61,7 @@ public class StorageConfigCache {
             lock.writeLock().unlock();
         }
     }
-    
+
     /**
      * Clear the cache
      */
@@ -74,7 +75,7 @@ public class StorageConfigCache {
             lock.writeLock().unlock();
         }
     }
-    
+
     /**
      * Check if cache is valid
      */

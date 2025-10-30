@@ -35,10 +35,10 @@ public class VMStatusResponse {
         private String qmpstatus;
         private String pid;
         private boolean running;
-        
+
         @JsonProperty("ha")
         private Object haStatus;
-        
+
         @JsonProperty("agent")
         private int agentStatus;
 

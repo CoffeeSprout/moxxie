@@ -1,8 +1,8 @@
 package com.coffeesprout.api.dto;
 
-import io.quarkus.runtime.annotations.RegisterForReflection;
-
 import java.time.LocalDateTime;
+
+import io.quarkus.runtime.annotations.RegisterForReflection;
 
 /**
  * Response containing node maintenance status and history.

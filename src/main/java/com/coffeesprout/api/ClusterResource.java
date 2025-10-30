@@ -1,10 +1,8 @@
 package com.coffeesprout.api;
 
-import com.coffeesprout.api.dto.cluster.*;
-import com.coffeesprout.api.dto.ErrorResponse;
-import com.coffeesprout.api.exception.ProxmoxException;
-import com.coffeesprout.service.ClusterProvisioningService;
-import io.smallrye.common.annotation.RunOnVirtualThread;
+import java.net.URI;
+import java.util.Collection;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -13,6 +11,12 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
+
+import com.coffeesprout.api.dto.ErrorResponse;
+import com.coffeesprout.api.dto.cluster.*;
+import com.coffeesprout.api.exception.ProxmoxException;
+import com.coffeesprout.service.ClusterProvisioningService;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -24,27 +28,24 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.URI;
-import java.util.Collection;
-
 @Path("/api/v1/clusters")
 @Produces(MediaType.APPLICATION_JSON)
 @ApplicationScoped
 @RunOnVirtualThread
 @Tag(name = "Clusters", description = "Cluster provisioning and management endpoints")
 public class ClusterResource {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(ClusterResource.class);
-    
+
     @Inject
     ClusterProvisioningService clusterProvisioningService;
-    
+
     @Context
     UriInfo uriInfo;
-    
+
     @POST
     @Path("/provision")
-    @Operation(summary = "Provision a new cluster", 
+    @Operation(summary = "Provision a new cluster",
                description = "Provisions a complete cluster with multiple nodes based on the provided specification. " +
                            "This is an asynchronous operation that returns immediately with an operation ID for tracking.")
     @APIResponses({
@@ -62,26 +63,26 @@ public class ClusterResource {
             @RequestBody(description = "Cluster provisioning specification", required = true,
                 content = @Content(schema = @Schema(implementation = ClusterSpec.class)))
             @Valid ClusterSpec spec) {
-        
+
         LOG.info("=== CLUSTER PROVISION ENDPOINT CALLED ===");
         LOG.info("Received cluster provisioning request for '{}'", spec != null ? spec.name() : "null spec");
-        
+
         String baseUrl = uriInfo.getBaseUri().toString().replaceAll("/$", "");
-        
+
         // Call the service synchronously (it will start async provisioning internally)
         ClusterProvisioningResponse response = clusterProvisioningService.provisionCluster(spec, baseUrl)
             .await().indefinitely();
-        
+
         URI operationUri = uriInfo.getAbsolutePathBuilder()
             .replacePath("/api/v1/clusters/operations/{operationId}")
             .build(response.operationId());
-        
+
         return Response.status(Response.Status.ACCEPTED)
             .entity(response)
             .location(operationUri)
             .build();
     }
-    
+
     @GET
     @Path("/operations/{operationId}")
     @Operation(summary = "Get cluster provisioning operation status",
@@ -95,19 +96,19 @@ public class ClusterResource {
     public Response getOperationStatus(
             @Parameter(description = "Operation ID", required = true)
             @PathParam("operationId") String operationId) {
-        
+
         ClusterProvisioningState state = clusterProvisioningService.getOperationState(operationId);
-        
+
         if (state == null) {
             throw ProxmoxException.notFound("Operation", operationId);
         }
-        
+
         String baseUrl = uriInfo.getBaseUri().toString().replaceAll("/$", "");
         ClusterProvisioningResponse response = ClusterProvisioningResponse.fromState(state, baseUrl);
-        
+
         return Response.ok(response).build();
     }
-    
+
     @GET
     @Path("/operations")
     @Operation(summary = "List all cluster provisioning operations",
@@ -119,14 +120,14 @@ public class ClusterResource {
     public Response getAllOperations() {
         Collection<ClusterProvisioningState> operations = clusterProvisioningService.getAllOperations();
         String baseUrl = uriInfo.getBaseUri().toString().replaceAll("/$", "");
-        
+
         var responses = operations.stream()
             .map(state -> ClusterProvisioningResponse.fromState(state, baseUrl))
             .toList();
-        
+
         return Response.ok(responses).build();
     }
-    
+
     @POST
     @Path("/operations/{operationId}/cancel")
     @Operation(summary = "Cancel a cluster provisioning operation",
@@ -142,22 +143,22 @@ public class ClusterResource {
     public Response cancelOperation(
             @Parameter(description = "Operation ID", required = true)
             @PathParam("operationId") String operationId) {
-        
+
         ClusterProvisioningState state = clusterProvisioningService.getOperationState(operationId);
-        
+
         if (state == null) {
             throw ProxmoxException.notFound("Operation", operationId);
         }
-        
+
         boolean cancelled = clusterProvisioningService.cancelOperation(operationId);
-        
+
         if (cancelled) {
             return Response.ok(new MessageResponse("Operation cancelled successfully")).build();
         } else {
             throw ProxmoxException.conflict("Operation", "Cannot be cancelled in current state: " + state.getStatus());
         }
     }
-    
+
     @Schema(description = "Simple message response")
     public record MessageResponse(
         @Schema(description = "Response message")

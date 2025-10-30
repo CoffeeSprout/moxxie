@@ -1,7 +1,6 @@
 package com.coffeesprout.api;
 
 import io.quarkus.test.junit.QuarkusTest;
-import io.restassured.RestAssured;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
@@ -9,7 +8,7 @@ import static org.hamcrest.Matchers.*;
 
 @QuarkusTest
 class HealthResourceTest {
-    
+
     @Test
     void testHealthEndpoint() {
         given()
@@ -27,7 +26,7 @@ class HealthResourceTest {
                 .body("location.coordinates.longitude", equalTo(4.9041F))
                 .body("instance_id", equalTo("moxxie-test-instance"));
     }
-    
+
     @Test
     void testHealthEndpointHeaders() {
         given()

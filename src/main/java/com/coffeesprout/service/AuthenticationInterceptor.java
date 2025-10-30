@@ -1,16 +1,17 @@
 package com.coffeesprout.service;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.interceptor.AroundInvoke;
 import jakarta.interceptor.Interceptor;
 import jakarta.interceptor.InvocationContext;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
 
 /**
  * Interceptor that automatically injects authentication tickets into service method calls.
@@ -21,18 +22,18 @@ import java.lang.reflect.Parameter;
 @AutoAuthenticate
 @Priority(Interceptor.Priority.APPLICATION)
 public class AuthenticationInterceptor {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(AuthenticationInterceptor.class);
-    
+
     @Inject
     TicketManager ticketManager;
-    
+
     @AroundInvoke
     public Object injectAuthenticationTicket(InvocationContext context) throws Exception {
         Object[] parameters = context.getParameters();
         Method method = context.getMethod();
         Parameter[] methodParameters = method.getParameters();
-        
+
         // Find parameter annotated with @AuthTicket
         int ticketIndex = -1;
         for (int i = 0; i < methodParameters.length; i++) {
@@ -50,7 +51,7 @@ public class AuthenticationInterceptor {
                 break;
             }
         }
-        
+
         // Fall back to position-based convention for backward compatibility
         if (ticketIndex == -1) {
             LOG.debug("No @AuthTicket annotation found on method {}.{}, falling back to position-based convention",
@@ -63,16 +64,16 @@ public class AuthenticationInterceptor {
                 }
             }
         }
-        
+
         if (ticketIndex >= 0) {
             // Get a valid ticket from the manager
             String ticket = ticketManager.getTicket();
             parameters[ticketIndex] = ticket;
             context.setParameters(parameters);
-            LOG.trace("Injected authentication ticket into parameter at position {} for method {}.{}", 
+            LOG.trace("Injected authentication ticket into parameter at position {} for method {}.{}",
                      ticketIndex, method.getDeclaringClass().getSimpleName(), method.getName());
         }
-        
+
         try {
             return context.proceed();
         } catch (Exception e) {
@@ -80,26 +81,26 @@ public class AuthenticationInterceptor {
             if (isAuthenticationError(e) && ticketIndex >= 0) {
                 LOG.debug("Authentication error detected, refreshing ticket and retrying");
                 ticketManager.forceRefresh();
-                
+
                 // Re-inject the new ticket
                 parameters[ticketIndex] = ticketManager.getTicket();
                 context.setParameters(parameters);
-                
+
                 // Retry the call
                 return context.proceed();
             }
             throw e;
         }
     }
-    
+
     private boolean isAuthenticationError(Exception e) {
         // Check if the exception indicates an authentication error
         String message = e.getMessage();
         if (message == null) {
             return false;
         }
-        
-        return message.contains("401") || 
+
+        return message.contains("401") ||
                message.contains("Unauthorized") ||
                message.contains("authentication") ||
                message.contains("Authentication");

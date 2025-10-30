@@ -1,17 +1,18 @@
 package com.coffeesprout.service;
 
+import java.util.*;
+import java.util.stream.Collectors;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+
 import com.coffeesprout.api.dto.AnsibleInventoryResponse;
 import com.coffeesprout.api.dto.AnsibleInventoryResponse.Group;
 import com.coffeesprout.api.dto.AnsibleInventoryResponse.HostVars;
 import com.coffeesprout.api.dto.AnsibleInventoryResponse.Meta;
 import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.util.TagUtils;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
-
-import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Service for generating Ansible dynamic inventory from Moxxie-managed VMs.

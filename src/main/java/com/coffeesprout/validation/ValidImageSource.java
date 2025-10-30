@@ -1,8 +1,9 @@
 package com.coffeesprout.validation;
 
+import java.lang.annotation.*;
+
 import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
-import java.lang.annotation.*;
 
 /**
  * Validates that the imageSource field is in the correct format for cloud-init VM creation.
@@ -14,8 +15,8 @@ import java.lang.annotation.*;
 @Documented
 public @interface ValidImageSource {
     String message() default "Invalid imageSource format";
-    
+
     Class<?>[] groups() default {};
-    
+
     Class<? extends Payload>[] payload() default {};
 }

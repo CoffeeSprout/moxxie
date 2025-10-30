@@ -1,13 +1,16 @@
 package com.coffeesprout.api;
 
-import com.coffeesprout.api.dto.AnsibleInventoryResponse;
-import com.coffeesprout.service.AnsibleInventoryService;
-import io.smallrye.common.annotation.RunOnVirtualThread;
+import java.util.List;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
+import com.coffeesprout.api.dto.AnsibleInventoryResponse;
+import com.coffeesprout.service.AnsibleInventoryService;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -16,8 +19,6 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jboss.logging.Logger;
-
-import java.util.List;
 
 @Path("/api/v1/ansible")
 @ApplicationScoped

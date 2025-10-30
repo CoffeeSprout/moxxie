@@ -1,12 +1,13 @@
 package com.coffeesprout.client;
 
 
-import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
-import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
-import com.fasterxml.jackson.databind.JsonNode;
+
 import com.coffeesprout.dto.*;
+import com.fasterxml.jackson.databind.JsonNode;
+import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
+import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 @RegisterRestClient(configKey = "proxmox-api")
 @RegisterProvider(ProxmoxClientLoggingFilter.class)
@@ -195,7 +196,7 @@ public interface ProxmoxClient {
                             @PathParam("vmid") int vmid,
                             @CookieParam("PVEAuthCookie") String ticket,
                             @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // Get specific VM configuration/status
     @GET
     @Path("/nodes/{node}/qemu/{vmid}/config")
@@ -203,14 +204,14 @@ public interface ProxmoxClient {
     VMConfigResponse getVMConfig(@PathParam("node") String node,
                                  @PathParam("vmid") int vmid,
                                  @CookieParam("PVEAuthCookie") String ticket);
-    
+
     // Get network interfaces for a node
     @GET
     @Path("/nodes/{node}/network")
     @Produces(MediaType.APPLICATION_JSON)
     NetworkResponse getNodeNetworks(@PathParam("node") String node,
                                     @CookieParam("PVEAuthCookie") String ticket);
-    
+
     // Reboot the VM
     @POST
     @Path("/nodes/{node}/qemu/{vmid}/status/reboot")
@@ -219,7 +220,7 @@ public interface ProxmoxClient {
                             @PathParam("vmid") int vmid,
                             @CookieParam("PVEAuthCookie") String ticket,
                             @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // Suspend the VM
     @POST
     @Path("/nodes/{node}/qemu/{vmid}/status/suspend")
@@ -228,7 +229,7 @@ public interface ProxmoxClient {
                              @PathParam("vmid") int vmid,
                              @CookieParam("PVEAuthCookie") String ticket,
                              @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // Resume the VM
     @POST
     @Path("/nodes/{node}/qemu/{vmid}/status/resume")
@@ -237,7 +238,7 @@ public interface ProxmoxClient {
                             @PathParam("vmid") int vmid,
                             @CookieParam("PVEAuthCookie") String ticket,
                             @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // Shutdown the VM (graceful shutdown via ACPI)
     @POST
     @Path("/nodes/{node}/qemu/{vmid}/status/shutdown")
@@ -246,7 +247,7 @@ public interface ProxmoxClient {
                               @PathParam("vmid") int vmid,
                               @CookieParam("PVEAuthCookie") String ticket,
                               @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // Get detailed VM status
     @GET
     @Path("/nodes/{node}/qemu/{vmid}/status/current")
@@ -254,7 +255,7 @@ public interface ProxmoxClient {
     VMStatusResponse getVMStatus(@PathParam("node") String node,
                                  @PathParam("vmid") int vmid,
                                  @CookieParam("PVEAuthCookie") String ticket);
-    
+
     // Get VM configuration with CSRF token
     @GET
     @Path("/nodes/{node}/qemu/{vmid}/config")
@@ -263,7 +264,7 @@ public interface ProxmoxClient {
                                                         @PathParam("vmid") int vmid,
                                                         @CookieParam("PVEAuthCookie") String ticket,
                                                         @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // Update VM configuration (generic method for any config update)
     @PUT
     @Path("/nodes/{node}/qemu/{vmid}/config")
@@ -274,7 +275,7 @@ public interface ProxmoxClient {
                                                            @CookieParam("PVEAuthCookie") String ticket,
                                                            @HeaderParam("CSRFPreventionToken") String csrfToken,
                                                            String formData);
-    
+
     // Get cluster resources with type filter
     @GET
     @Path("/cluster/resources")
@@ -282,41 +283,41 @@ public interface ProxmoxClient {
     JsonNode getClusterResources(@CookieParam("PVEAuthCookie") String ticket,
                                                                 @HeaderParam("CSRFPreventionToken") String csrfToken,
                                                                 @QueryParam("type") String type);
-    
+
     // Pool API Methods
     @GET
     @Path("/pools")
     @Produces(MediaType.APPLICATION_JSON)
     PoolsResponse listPools(@CookieParam("PVEAuthCookie") String ticket);
-    
+
     @GET
     @Path("/pools/{poolid}")
     @Produces(MediaType.APPLICATION_JSON)
     PoolDetailResponse getPool(@PathParam("poolid") String poolId,
                                @CookieParam("PVEAuthCookie") String ticket);
-    
+
     // SDN API Methods
-    
+
     // List SDN zones
     @GET
     @Path("/cluster/sdn/zones")
     @Produces(MediaType.APPLICATION_JSON)
     NetworkZonesResponse listSDNZones(@CookieParam("PVEAuthCookie") String ticket);
-    
+
     // Get specific zone details
     @GET
     @Path("/cluster/sdn/zones/{zone}")
     @Produces(MediaType.APPLICATION_JSON)
     NetworkZoneResponse getSDNZone(@PathParam("zone") String zone,
                                    @CookieParam("PVEAuthCookie") String ticket);
-    
+
     // List VNets in a zone
     @GET
     @Path("/cluster/sdn/vnets")
     @Produces(MediaType.APPLICATION_JSON)
     VNetsResponse listVNets(@QueryParam("zone") String zone,
                             @CookieParam("PVEAuthCookie") String ticket);
-    
+
     // Create a new VNet
     @POST
     @Path("/cluster/sdn/vnets")
@@ -328,7 +329,7 @@ public interface ProxmoxClient {
                                   @FormParam("alias") String alias,
                                   @CookieParam("PVEAuthCookie") String ticket,
                                   @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // Delete a VNet
     @DELETE
     @Path("/cluster/sdn/vnets/{vnet}")
@@ -336,16 +337,16 @@ public interface ProxmoxClient {
     DeleteResponse deleteVNet(@PathParam("vnet") String vnetId,
                               @CookieParam("PVEAuthCookie") String ticket,
                               @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // Apply SDN configuration
     @PUT
     @Path("/cluster/sdn")
     @Produces(MediaType.APPLICATION_JSON)
     ApplySDNResponse applySDNConfig(@CookieParam("PVEAuthCookie") String ticket,
                                     @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // Snapshot Management
-    
+
     // List all snapshots for a VM
     @GET
     @Path("/nodes/{node}/qemu/{vmid}/snapshot")
@@ -353,7 +354,7 @@ public interface ProxmoxClient {
     SnapshotsResponse listSnapshots(@PathParam("node") String node,
                                     @PathParam("vmid") int vmid,
                                     @CookieParam("PVEAuthCookie") String ticket);
-    
+
     // Create a new snapshot
     @POST
     @Path("/nodes/{node}/qemu/{vmid}/snapshot")
@@ -366,7 +367,7 @@ public interface ProxmoxClient {
                                       @FormParam("vmstate") Integer vmstate,
                                       @CookieParam("PVEAuthCookie") String ticket,
                                       @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // Get snapshot configuration
     @GET
     @Path("/nodes/{node}/qemu/{vmid}/snapshot/{snapname}/config")
@@ -375,7 +376,7 @@ public interface ProxmoxClient {
                                        @PathParam("vmid") int vmid,
                                        @PathParam("snapname") String snapname,
                                        @CookieParam("PVEAuthCookie") String ticket);
-    
+
     // Delete a snapshot
     @DELETE
     @Path("/nodes/{node}/qemu/{vmid}/snapshot/{snapname}")
@@ -385,7 +386,7 @@ public interface ProxmoxClient {
                                       @PathParam("snapname") String snapname,
                                       @CookieParam("PVEAuthCookie") String ticket,
                                       @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // Rollback to a snapshot
     @POST
     @Path("/nodes/{node}/qemu/{vmid}/snapshot/{snapname}/rollback")
@@ -395,9 +396,9 @@ public interface ProxmoxClient {
                                         @PathParam("snapname") String snapname,
                                         @CookieParam("PVEAuthCookie") String ticket,
                                         @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // Backup Management
-    
+
     // Create a backup using vzdump
     @POST
     @Path("/nodes/{node}/vzdump")
@@ -414,7 +415,7 @@ public interface ProxmoxClient {
                                     @FormParam("mailnotification") String mailNotification,
                                     @CookieParam("PVEAuthCookie") String ticket,
                                     @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // List storage content (including backups)
     @GET
     @Path("/nodes/{node}/storage/{storage}/content")
@@ -424,7 +425,7 @@ public interface ProxmoxClient {
                                               @QueryParam("content") String content,
                                               @QueryParam("vmid") Integer vmid,
                                               @CookieParam("PVEAuthCookie") String ticket);
-    
+
     // Delete a backup
     @DELETE
     @Path("/nodes/{node}/storage/{storage}/content/{volume}")
@@ -434,7 +435,7 @@ public interface ProxmoxClient {
                                     @PathParam("volume") String volume,
                                     @CookieParam("PVEAuthCookie") String ticket,
                                     @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // Restore VM from backup (uses regular VM creation with archive parameter)
     @POST
     @Path("/nodes/{node}/qemu")
@@ -452,7 +453,7 @@ public interface ProxmoxClient {
                                  @FormParam("force") Integer force,
                                  @CookieParam("PVEAuthCookie") String ticket,
                                  @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // Upload file to storage (ISO, etc)
     @POST
     @Path("/nodes/{node}/storage/{storage}/upload")
@@ -464,7 +465,7 @@ public interface ProxmoxClient {
                                        @FormParam("filename") java.io.InputStream file,
                                        @CookieParam("PVEAuthCookie") String ticket,
                                        @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // Download file from URL to storage
     @POST
     @Path("/nodes/{node}/storage/{storage}/download-url")
@@ -480,7 +481,7 @@ public interface ProxmoxClient {
                                             @FormParam("verify-certificates") Integer verifyCertificates,
                                             @CookieParam("PVEAuthCookie") String ticket,
                                             @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // Get storage status
     @GET
     @Path("/nodes/{node}/storage/{storage}/status")
@@ -488,9 +489,9 @@ public interface ProxmoxClient {
     StorageStatusResponse getStorageStatus(@PathParam("node") String node,
                                            @PathParam("storage") String storage,
                                            @CookieParam("PVEAuthCookie") String ticket);
-    
+
     // Task Management
-    
+
     // Get task status
     @GET
     @Path("/nodes/{node}/tasks/{upid}/status")
@@ -498,7 +499,7 @@ public interface ProxmoxClient {
     JsonNode getTaskStatus(@PathParam("node") String node,
                                                           @PathParam("upid") String upid,
                                                           @CookieParam("PVEAuthCookie") String ticket);
-    
+
     // Get task log
     @GET
     @Path("/nodes/{node}/tasks/{upid}/log")
@@ -508,7 +509,7 @@ public interface ProxmoxClient {
                                                        @QueryParam("start") Integer start,
                                                        @QueryParam("limit") Integer limit,
                                                        @CookieParam("PVEAuthCookie") String ticket);
-    
+
     // List tasks on a node
     @GET
     @Path("/nodes/{node}/tasks")
@@ -521,7 +522,7 @@ public interface ProxmoxClient {
                               @QueryParam("userfilter") String userFilter,
                               @QueryParam("vmid") Integer vmid,
                               @CookieParam("PVEAuthCookie") String ticket);
-    
+
     // Stop a task
     @DELETE
     @Path("/nodes/{node}/tasks/{upid}")
@@ -530,9 +531,9 @@ public interface ProxmoxClient {
                                                      @PathParam("upid") String upid,
                                                      @CookieParam("PVEAuthCookie") String ticket,
                                                      @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // Console Access APIs
-    
+
     // VNC proxy
     @POST
     @Path("/nodes/{node}/qemu/{vmid}/vncproxy")
@@ -541,7 +542,7 @@ public interface ProxmoxClient {
                                           @PathParam("vmid") int vmid,
                                           @CookieParam("PVEAuthCookie") String ticket,
                                           @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // VNC websocket
     @GET
     @Path("/nodes/{node}/qemu/{vmid}/vncwebsocket")
@@ -551,7 +552,7 @@ public interface ProxmoxClient {
                                            @QueryParam("vncticket") String vncticket,
                                            @QueryParam("port") String port,
                                            @CookieParam("PVEAuthCookie") String ticket);
-    
+
     // SPICE proxy
     @POST
     @Path("/nodes/{node}/qemu/{vmid}/spiceproxy")
@@ -560,7 +561,7 @@ public interface ProxmoxClient {
                                             @PathParam("vmid") int vmid,
                                             @CookieParam("PVEAuthCookie") String ticket,
                                             @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // Terminal proxy (for serial console)
     @POST
     @Path("/nodes/{node}/qemu/{vmid}/termproxy")
@@ -569,32 +570,32 @@ public interface ProxmoxClient {
                                            @PathParam("vmid") int vmid,
                                            @CookieParam("PVEAuthCookie") String ticket,
                                            @HeaderParam("CSRFPreventionToken") String csrfToken);
-    
+
     // Backup Job Management
-    
+
     // List all backup jobs
     @GET
     @Path("/cluster/backup")
     @Produces(MediaType.APPLICATION_JSON)
     BackupJobsResponse listBackupJobs(@CookieParam("PVEAuthCookie") String ticket);
-    
+
     // Get specific backup job
     @GET
     @Path("/cluster/backup/{id}")
     @Produces(MediaType.APPLICATION_JSON)
     BackupJobDetailResponse getBackupJob(@PathParam("id") String id,
                                          @CookieParam("PVEAuthCookie") String ticket);
-    
+
     // Cluster Management
-    
+
     // Get next available VM ID
     @GET
     @Path("/cluster/nextid")
     @Produces(MediaType.APPLICATION_JSON)
     ClusterNextIdResponse getNextVmId(@CookieParam("PVEAuthCookie") String ticket);
-    
+
     // VM Migration
-    
+
     // Check migration preconditions
     @GET
     @Path("/nodes/{node}/qemu/{vmid}/migrate")
@@ -603,7 +604,7 @@ public interface ProxmoxClient {
                                                               @PathParam("vmid") int vmid,
                                                               @QueryParam("target") String targetNode,
                                                               @CookieParam("PVEAuthCookie") String ticket);
-    
+
     // Execute VM migration
     @POST
     @Path("/nodes/{node}/qemu/{vmid}/migrate")
@@ -622,4 +623,3 @@ public interface ProxmoxClient {
                                  @CookieParam("PVEAuthCookie") String ticket,
                                  @HeaderParam("CSRFPreventionToken") String csrfToken);
 }
-

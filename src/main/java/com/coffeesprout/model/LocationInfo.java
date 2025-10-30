@@ -18,14 +18,14 @@ public record LocationInfo(
     Double longitude,     // Geographic longitude
     String instanceId     // Unique instance identifier (generated if not provided)
 ) {
-    
+
     /**
      * Get the full location identifier in the format "region/datacenter"
      */
     public String fullLocation() {
         return region + "/" + datacenter;
     }
-    
+
     /**
      * Validate that all required fields are present
      */
@@ -38,7 +38,7 @@ public record LocationInfo(
         requireNonNull(latitude, "latitude");
         requireNonNull(longitude, "longitude");
         requireNonBlank(instanceId, "instanceId");
-        
+
         // Validate latitude and longitude ranges
         if (latitude < -90 || latitude > 90) {
             throw new IllegalArgumentException("Latitude must be between -90 and 90");
@@ -46,19 +46,19 @@ public record LocationInfo(
         if (longitude < -180 || longitude > 180) {
             throw new IllegalArgumentException("Longitude must be between -180 and 180");
         }
-        
+
         // Validate country code is 2 characters
         if (country.length() != 2) {
             throw new IllegalArgumentException("Country must be a 2-letter ISO code");
         }
     }
-    
+
     private void requireNonBlank(String value, String field) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("Location field '" + field + "' is required");
         }
     }
-    
+
     private void requireNonNull(Object value, String field) {
         if (value == null) {
             throw new IllegalArgumentException("Location field '" + field + "' is required");

@@ -1,7 +1,5 @@
 package com.coffeesprout.api.filter;
 
-import com.coffeesprout.api.dto.ErrorResponse;
-import com.coffeesprout.config.MoxxieConfig;
 import jakarta.annotation.Priority;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
@@ -9,6 +7,9 @@ import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
+
+import com.coffeesprout.api.dto.ErrorResponse;
+import com.coffeesprout.config.MoxxieConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

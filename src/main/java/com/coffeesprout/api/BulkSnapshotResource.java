@@ -1,18 +1,18 @@
 package com.coffeesprout.api;
 
-import com.coffeesprout.api.dto.BulkSnapshotRequest;
-import com.coffeesprout.api.dto.BulkSnapshotResponse;
-import com.coffeesprout.api.dto.ErrorResponse;
-import com.coffeesprout.constants.VMConstants;
-import com.coffeesprout.service.SafeMode;
-import com.coffeesprout.service.SnapshotService;
-import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
+import com.coffeesprout.api.dto.BulkSnapshotRequest;
+import com.coffeesprout.api.dto.BulkSnapshotResponse;
+import com.coffeesprout.api.dto.ErrorResponse;
+import com.coffeesprout.service.SafeMode;
+import com.coffeesprout.service.SnapshotService;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -30,16 +30,16 @@ import org.slf4j.LoggerFactory;
 @RunOnVirtualThread
 @Tag(name = "Bulk Snapshots", description = "Bulk snapshot management endpoints")
 public class BulkSnapshotResource {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(BulkSnapshotResource.class);
-    
+
     @Inject
     SnapshotService snapshotService;
-    
+
     @POST
     @Path("/bulk")
     @SafeMode(operation = SafeMode.Operation.WRITE)
-    @Operation(summary = "Create snapshots for multiple VMs", 
+    @Operation(summary = "Create snapshots for multiple VMs",
                description = "Create snapshots for multiple VMs based on various selection criteria. " +
                             "Supports VM IDs, name patterns, and tag expressions. " +
                             "Snapshots can have TTL for automatic cleanup.")
@@ -59,17 +59,17 @@ public class BulkSnapshotResource {
             @Valid BulkSnapshotRequest request) {
         try {
             LOG.info("Starting bulk snapshot creation with selectors: {}", request.vmSelectors());
-            
+
             // Validate snapshot name pattern
             if (!isValidSnapshotNamePattern(request.snapshotName())) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(new ErrorResponse("Invalid snapshot name pattern. Use placeholders like {vm}, {date}, {time}"))
                         .build();
             }
-            
+
             // Perform bulk snapshot creation
             BulkSnapshotResponse response = snapshotService.bulkCreateSnapshots(request, null);
-            
+
             return Response.ok(response).build();
         } catch (IllegalArgumentException e) {
             LOG.error("Invalid request for bulk snapshot creation", e);
@@ -83,19 +83,19 @@ public class BulkSnapshotResource {
                     .build();
         }
     }
-    
+
     private boolean isValidSnapshotNamePattern(String pattern) {
         // Basic validation - ensure pattern isn't too long after expansion
         // Placeholder length estimates for pattern expansion
         final int VM_NAME_PLACEHOLDER_LENGTH = 20;  // Typical VM name length
         final int DATE_PLACEHOLDER_LENGTH = 8;      // YYYYMMDD format
         final int TIME_PLACEHOLDER_LENGTH = 6;      // HHMMSS format
-        
+
         String expanded = pattern
             .replace("{vm}", "x".repeat(VM_NAME_PLACEHOLDER_LENGTH))
             .replace("{date}", "x".repeat(DATE_PLACEHOLDER_LENGTH))
             .replace("{time}", "x".repeat(TIME_PLACEHOLDER_LENGTH));
-        
+
         // Use a higher limit than VMConstants.Snapshot.MAX_NAME_LENGTH to account for Proxmox's actual limit
         final int PROXMOX_SNAPSHOT_NAME_LIMIT = 60;
         return expanded.length() <= PROXMOX_SNAPSHOT_NAME_LIMIT;

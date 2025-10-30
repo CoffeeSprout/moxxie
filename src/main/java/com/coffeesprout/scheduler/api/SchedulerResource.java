@@ -1,5 +1,17 @@
 package com.coffeesprout.scheduler.api;
 
+import java.time.Instant;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+
 import com.coffeesprout.scheduler.api.dto.JobExecutionResponse;
 import com.coffeesprout.scheduler.api.dto.ScheduledJobRequest;
 import com.coffeesprout.scheduler.api.dto.ScheduledJobResponse;
@@ -8,13 +20,6 @@ import com.coffeesprout.scheduler.event.JobCreatedEvent;
 import com.coffeesprout.scheduler.service.SchedulerService;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
-import jakarta.enterprise.event.Event;
-import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
-import jakarta.validation.Valid;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
@@ -22,10 +27,6 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.quartz.SchedulerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.time.Instant;
-import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * REST API for scheduler management
@@ -35,15 +36,15 @@ import java.util.stream.Collectors;
 @Consumes(MediaType.APPLICATION_JSON)
 @Tag(name = "Scheduler", description = "Manage scheduled jobs and executions")
 public class SchedulerResource {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(SchedulerResource.class);
-    
+
     @Inject
     SchedulerService schedulerService;
-    
+
     @Inject
     Event<JobCreatedEvent> jobCreatedEvent;
-    
+
     @GET
     @Path("/jobs")
     @Operation(summary = "List all scheduled jobs")
@@ -59,22 +60,22 @@ public class SchedulerResource {
             // Build query
             Map<String, Object> params = new HashMap<>();
             StringBuilder query = new StringBuilder();
-            
+
             if (enabled != null) {
                 query.append("enabled = :enabled");
                 params.put("enabled", enabled);
             }
-            
+
             if (taskType != null && !taskType.isBlank()) {
                 if (query.length() > 0) query.append(" AND ");
                 query.append("taskType.name = :taskType");
                 params.put("taskType", taskType);
             }
-            
+
             // Execute query
             List<ScheduledJob> jobs;
             long total;
-            
+
             if (query.length() > 0) {
                 jobs = ScheduledJob.find(query.toString(), Sort.by("name"), params)
                     .page(Page.of(page, size))
@@ -86,12 +87,12 @@ public class SchedulerResource {
                     .list();
                 total = ScheduledJob.count();
             }
-            
+
             // Convert to response DTOs
             List<ScheduledJobResponse> responses = jobs.stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
-            
+
             Map<String, Object> result = Map.of(
                 "jobs", responses,
                 "total", total,
@@ -99,9 +100,9 @@ public class SchedulerResource {
                 "size", size,
                 "totalPages", (total + size - 1) / size
             );
-            
+
             return Response.ok(result).build();
-            
+
         } catch (Exception e) {
             LOG.error("Failed to list jobs", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -109,7 +110,7 @@ public class SchedulerResource {
                 .build();
         }
     }
-    
+
     @GET
     @Path("/jobs/{id}")
     @Operation(summary = "Get scheduled job by ID")
@@ -123,10 +124,10 @@ public class SchedulerResource {
                 .entity(Map.of("error", "Job not found"))
                 .build();
         }
-        
+
         return Response.ok(toResponse(job)).build();
     }
-    
+
     @POST
     @Path("/jobs")
     @Operation(summary = "Create a new scheduled job")
@@ -142,14 +143,14 @@ public class SchedulerResource {
                     .entity(Map.of("error", "Invalid task type: " + request.taskType()))
                     .build();
             }
-            
+
             // Check for duplicate name
             if (ScheduledJob.findByName(request.name()) != null) {
                 return Response.status(Response.Status.BAD_REQUEST)
                     .entity(Map.of("error", "Job with name already exists: " + request.name()))
                     .build();
             }
-            
+
             // Create job
             ScheduledJob job = schedulerService.createJob(
                 request.name(),
@@ -158,7 +159,7 @@ public class SchedulerResource {
                 request.cronExpression(),
                 "API" // TODO: Get from security context
             );
-            
+
             // Set optional fields
             if (request.enabled() != null) {
                 job.enabled = request.enabled();
@@ -172,14 +173,14 @@ public class SchedulerResource {
             if (request.timeoutSeconds() != null) {
                 job.timeoutSeconds = request.timeoutSeconds();
             }
-            
+
             // Add parameters
             if (request.parameters() != null) {
                 for (Map.Entry<String, String> entry : request.parameters().entrySet()) {
                     job.addParameter(entry.getKey(), entry.getValue());
                 }
             }
-            
+
             // Add VM selectors
             if (request.vmSelectors() != null) {
                 for (var selectorReq : request.vmSelectors()) {
@@ -192,21 +193,21 @@ public class SchedulerResource {
                     job.vmSelectors.add(selector);
                 }
             }
-            
+
             job.persist();
-            
+
             // Fire event to schedule job after transaction commits
             // This avoids transaction conflicts between JTA and Quartz jdbc-cmt
             jobCreatedEvent.fire(new JobCreatedEvent(job.id, job.name, job.enabled));
-            
+
             if (job.enabled) {
                 LOG.info("Job {} created and will be scheduled after transaction commit", job.name);
             }
-            
+
             return Response.status(Response.Status.CREATED)
                 .entity(toResponse(job))
                 .build();
-            
+
         } catch (Exception e) {
             LOG.error("Failed to create job", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -214,7 +215,7 @@ public class SchedulerResource {
                 .build();
         }
     }
-    
+
     @PUT
     @Path("/jobs/{id}")
     @Operation(summary = "Update a scheduled job")
@@ -229,7 +230,7 @@ public class SchedulerResource {
                     .entity(Map.of("error", "Job not found"))
                     .build();
             }
-            
+
             // Update basic fields
             if (!job.name.equals(request.name())) {
                 // Check for duplicate name
@@ -240,9 +241,9 @@ public class SchedulerResource {
                 }
                 job.name = request.name();
             }
-            
+
             job.description = request.description();
-            
+
             // Update task type if changed
             if (!job.taskType.name.equals(request.taskType())) {
                 TaskType taskType = TaskType.findByName(request.taskType());
@@ -253,13 +254,13 @@ public class SchedulerResource {
                 }
                 job.taskType = taskType;
             }
-            
+
             // Update schedule if changed
             boolean scheduleChanged = !job.cronExpression.equals(request.cronExpression());
             if (scheduleChanged) {
                 schedulerService.updateJobSchedule(id, request.cronExpression());
             }
-            
+
             // Update optional fields
             if (request.maxRetries() != null) {
                 job.maxRetries = request.maxRetries();
@@ -270,12 +271,12 @@ public class SchedulerResource {
             if (request.timeoutSeconds() != null) {
                 job.timeoutSeconds = request.timeoutSeconds();
             }
-            
+
             // Update enabled status if changed
             if (request.enabled() != null && job.enabled != request.enabled()) {
                 schedulerService.setJobEnabled(id, request.enabled());
             }
-            
+
             // Update parameters
             // Delete existing parameters first
             JobParameter.delete("job.id = ?1", id);
@@ -285,12 +286,12 @@ public class SchedulerResource {
                     job.addParameter(entry.getKey(), entry.getValue());
                 }
             }
-            
+
             // Update VM selectors
             // Delete existing selectors
             JobVMSelector.delete("job.id = ?1", id);
             job.vmSelectors.clear();
-            
+
             // Add new selectors
             if (request.vmSelectors() != null) {
                 for (var selectorReq : request.vmSelectors()) {
@@ -303,13 +304,13 @@ public class SchedulerResource {
                     job.vmSelectors.add(selector);
                 }
             }
-            
+
             job.updatedAt = Instant.now();
             job.updatedBy = "API"; // TODO: Get from security context
             job.persist();
-            
+
             return Response.ok(toResponse(job)).build();
-            
+
         } catch (Exception e) {
             LOG.error("Failed to update job", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -317,7 +318,7 @@ public class SchedulerResource {
                 .build();
         }
     }
-    
+
     @DELETE
     @Path("/jobs/{id}")
     @Operation(summary = "Delete a scheduled job")
@@ -332,10 +333,10 @@ public class SchedulerResource {
                     .entity(Map.of("error", "Job not found"))
                     .build();
             }
-            
+
             schedulerService.deleteJob(id);
             return Response.noContent().build();
-            
+
         } catch (Exception e) {
             LOG.error("Failed to delete job", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -343,7 +344,7 @@ public class SchedulerResource {
                 .build();
         }
     }
-    
+
     @POST
     @Path("/jobs/{id}/trigger")
     @Operation(summary = "Trigger a job manually")
@@ -357,14 +358,14 @@ public class SchedulerResource {
                     .entity(Map.of("error", "Job not found"))
                     .build();
             }
-            
+
             String executionId = schedulerService.triggerJobNow(job.name);
-            
+
             return Response.ok(Map.of(
                 "message", "Job triggered successfully",
                 "executionId", executionId
             )).build();
-            
+
         } catch (Exception e) {
             LOG.error("Failed to trigger job", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -372,7 +373,7 @@ public class SchedulerResource {
                 .build();
         }
     }
-    
+
     @POST
     @Path("/jobs/{id}/enable")
     @Operation(summary = "Enable a scheduled job")
@@ -393,7 +394,7 @@ public class SchedulerResource {
                 .build();
         }
     }
-    
+
     @POST
     @Path("/jobs/{id}/disable")
     @Operation(summary = "Disable a scheduled job")
@@ -414,7 +415,7 @@ public class SchedulerResource {
                 .build();
         }
     }
-    
+
     @GET
     @Path("/jobs/{id}/executions")
     @Operation(summary = "Get job execution history")
@@ -434,28 +435,28 @@ public class SchedulerResource {
                     .entity(Map.of("error", "Job not found"))
                     .build();
             }
-            
+
             // Build query
             Map<String, Object> params = new HashMap<>();
             params.put("jobId", id);
             String query = "job.id = :jobId";
-            
+
             if (status != null && !status.isBlank()) {
                 query += " AND status = :status";
                 params.put("status", status);
             }
-            
+
             // Execute query
             List<JobExecution> executions = JobExecution.find(query, Sort.by("startedAt").descending(), params)
                 .page(Page.of(page, size))
                 .list();
             long total = JobExecution.count(query, params);
-            
+
             // Convert to response DTOs
             List<JobExecutionResponse> responses = executions.stream()
                 .map(JobExecutionResponse::from)
                 .collect(Collectors.toList());
-            
+
             Map<String, Object> result = Map.of(
                 "executions", responses,
                 "total", total,
@@ -463,9 +464,9 @@ public class SchedulerResource {
                 "size", size,
                 "totalPages", (total + size - 1) / size
             );
-            
+
             return Response.ok(result).build();
-            
+
         } catch (Exception e) {
             LOG.error("Failed to get job executions", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -473,7 +474,7 @@ public class SchedulerResource {
                 .build();
         }
     }
-    
+
     @GET
     @Path("/executions/{executionId}")
     @Operation(summary = "Get execution details by execution ID")
@@ -487,10 +488,10 @@ public class SchedulerResource {
                 .entity(Map.of("error", "Execution not found"))
                 .build();
         }
-        
+
         return Response.ok(JobExecutionResponse.from(execution)).build();
     }
-    
+
     @GET
     @Path("/task-types")
     @Operation(summary = "List available task types")
@@ -498,7 +499,7 @@ public class SchedulerResource {
     @Transactional
     public Response getTaskTypes() {
         List<TaskType> taskTypes = TaskType.listAll(Sort.by("displayName"));
-        
+
         List<Map<String, Object>> response = taskTypes.stream()
             .map(tt -> Map.<String, Object>of(
                 "name", tt.name,
@@ -506,10 +507,10 @@ public class SchedulerResource {
                 "description", tt.description != null ? tt.description : ""
             ))
             .collect(Collectors.toList());
-        
+
         return Response.ok(response).build();
     }
-    
+
     /**
      * Convert ScheduledJob entity to response DTO
      */
@@ -523,25 +524,25 @@ public class SchedulerResource {
         } catch (SchedulerException e) {
             LOG.warn("Failed to get next fire time for job {}: {}", job.name, e.getMessage());
         }
-        
+
         // Get last execution info
         JobExecution lastExecution = JobExecution.find("job.id = ?1", Sort.by("startedAt").descending(), job.id)
             .firstResult();
-        
+
         String lastStatus = null;
         Instant lastTime = null;
         if (lastExecution != null) {
             lastStatus = lastExecution.status;
             lastTime = lastExecution.startedAt;
         }
-        
+
         // Convert parameters
         Map<String, String> parameters = job.parameters.stream()
             .collect(Collectors.toMap(
                 p -> p.paramKey,
                 p -> p.paramValue
             ));
-        
+
         // Convert VM selectors
         List<ScheduledJobResponse.VMSelectorResponse> selectors = job.vmSelectors.stream()
             .map(s -> new ScheduledJobResponse.VMSelectorResponse(
@@ -551,7 +552,7 @@ public class SchedulerResource {
                 s.excludeExpression
             ))
             .collect(Collectors.toList());
-        
+
         return new ScheduledJobResponse(
             job.id,
             job.name,

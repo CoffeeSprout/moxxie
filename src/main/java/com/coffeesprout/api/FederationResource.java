@@ -1,5 +1,17 @@
 package com.coffeesprout.api;
 
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.validation.Valid;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+
 import com.coffeesprout.api.dto.ErrorResponse;
 import com.coffeesprout.api.exception.ProxmoxException;
 import com.coffeesprout.federation.ClusterResources;
@@ -12,12 +24,6 @@ import com.coffeesprout.service.LocationService;
 import com.coffeesprout.service.ResourceCacheService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.smallrye.common.annotation.RunOnVirtualThread;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import jakarta.validation.Valid;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -27,11 +33,6 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
 
 /**
  * Federation API endpoints as specified in issue #53
@@ -43,27 +44,27 @@ import java.util.Optional;
 @RunOnVirtualThread
 @Tag(name = "Federation", description = "Federation-ready API endpoints for Cafn8 integration")
 public class FederationResource {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(FederationResource.class);
-    
+
     // Byte conversion constants
     private static final double BYTES_TO_GB = 1024.0 * 1024.0 * 1024.0;
     private static final double CPU_RESERVE_RATIO = 0.1;    // 10% reserved
     private static final double MEMORY_RESERVE_RATIO = 0.15; // 15% reserved
     private static final double STORAGE_RESERVE_RATIO = 0.1; // 10% reserved
-    
+
     @Inject
     ProxmoxResourceProvider resourceProvider;
-    
+
     @Inject
     ResourceCacheService cacheService;
-    
+
     @Inject
     LocationService locationService;
-    
+
     @GET
     @Path("/capacity")
-    @Operation(summary = "Get available capacity", 
+    @Operation(summary = "Get available capacity",
                description = "Returns available capacity for VM provisioning in this location")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Capacity information retrieved successfully"),
@@ -82,58 +83,58 @@ public class FederationResource {
                     }
                 }
             );
-            
+
             LocationInfo location = locationService.getLocationInfo();
-            
+
             Map<String, Object> response = new HashMap<>();
-            
+
             // Location information
             Map<String, String> locationData = new HashMap<>();
             locationData.put("provider", location.provider());
             locationData.put("region", location.region());
             locationData.put("datacenter", location.datacenter());
             response.put("location", locationData);
-            
+
             // Capacity information
             Map<String, Object> capacity = new HashMap<>();
-            
+
             // CPU capacity
             Map<String, Object> vcpus = new HashMap<>();
             vcpus.put("total", resources.getCpu().getTotalCores());
             vcpus.put("available", Math.round(resources.getCpu().getAvailableCores()));
             vcpus.put("reserved", Math.round(resources.getCpu().getTotalCores() * CPU_RESERVE_RATIO));
             capacity.put("vcpus", vcpus);
-            
+
             // Memory capacity
             Map<String, Object> memory = new HashMap<>();
             memory.put("total", Math.round(resources.getMemory().getTotalBytes() / BYTES_TO_GB));
             memory.put("available", Math.round(resources.getMemory().getAvailableBytes() / BYTES_TO_GB));
             memory.put("reserved", Math.round(resources.getMemory().getTotalBytes() * MEMORY_RESERVE_RATIO / BYTES_TO_GB));
             capacity.put("memory_gb", memory);
-            
+
             // Storage capacity (in GB)
             Map<String, Object> storage = new HashMap<>();
             storage.put("total", Math.round(resources.getStorage().getTotalBytes() / BYTES_TO_GB));
             storage.put("available", Math.round(resources.getStorage().getAvailableBytes() / BYTES_TO_GB));
             storage.put("reserved", Math.round(resources.getStorage().getTotalBytes() * STORAGE_RESERVE_RATIO / BYTES_TO_GB));
             capacity.put("storage_gb", storage);
-            
+
             response.put("capacity", capacity);
-            
+
             // Calculate largest possible VM
             ResourceRequirements emptyReq = new ResourceRequirements.Builder().build();
             VMCapacity largestVM = resourceProvider.calculateLargestPossibleVM(emptyReq).get();
-            
+
             Map<String, Object> largestPossible = new HashMap<>();
             largestPossible.put("vcpus", largestVM.getMaxCpuCores());
             largestPossible.put("memory_gb", Math.round(largestVM.getMaxMemoryBytes() / (1024.0 * 1024 * 1024)));
             largestPossible.put("storage_gb", Math.round(largestVM.getMaxStorageBytes() / (1024.0 * 1024 * 1024)));
             response.put("largest_possible_vm", largestPossible);
-            
+
             response.put("timestamp", Instant.now().toString());
-            
+
             return Response.ok(response).build();
-            
+
         } catch (Exception e) {
             LOG.error("Failed to get capacity", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -141,10 +142,10 @@ public class FederationResource {
                     .build();
         }
     }
-    
+
     @GET
     @Path("/utilization")
-    @Operation(summary = "Get resource utilization", 
+    @Operation(summary = "Get resource utilization",
                description = "Returns current resource utilization metrics")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Utilization information retrieved successfully"),
@@ -163,44 +164,44 @@ public class FederationResource {
                     }
                 }
             );
-            
+
             LocationInfo location = locationService.getLocationInfo();
-            
+
             Map<String, Object> response = new HashMap<>();
-            
+
             // Location information
             Map<String, String> locationData = new HashMap<>();
             locationData.put("provider", location.provider());
             locationData.put("region", location.region());
             locationData.put("datacenter", location.datacenter());
             response.put("location", locationData);
-            
+
             // Utilization percentages
             Map<String, Object> utilization = new HashMap<>();
             utilization.put("vcpu_percent", resources.getCpu().getActualUsagePercent());
-            utilization.put("memory_percent", 
+            utilization.put("memory_percent",
                 (resources.getMemory().getActualUsedBytes() / (double) resources.getMemory().getTotalBytes()) * 100);
             utilization.put("storage_percent",
                 (resources.getStorage().getActualUsedBytes() / (double) resources.getStorage().getTotalBytes()) * 100);
             response.put("utilization", utilization);
-            
+
             // VM counts
             Map<String, Object> vmCount = new HashMap<>();
             vmCount.put("total", resources.getTotalVMs());
             vmCount.put("running", resources.getRunningVMs());
             vmCount.put("stopped", resources.getTotalVMs() - resources.getRunningVMs());
             response.put("vm_count", vmCount);
-            
+
             // Trends (placeholder - would need historical data)
             Map<String, String> trends = new HashMap<>();
             trends.put("vcpu_trend_1h", "+0.0%");
             trends.put("memory_trend_1h", "+0.0%");
             response.put("trends", trends);
-            
+
             response.put("timestamp", Instant.now().toString());
-            
+
             return Response.ok(response).build();
-            
+
         } catch (Exception e) {
             LOG.error("Failed to get utilization", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -208,10 +209,10 @@ public class FederationResource {
                     .build();
         }
     }
-    
+
     @GET
     @Path("/capabilities")
-    @Operation(summary = "Get location capabilities", 
+    @Operation(summary = "Get location capabilities",
                description = "Returns capabilities and constraints of this location")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Capabilities retrieved successfully"),
@@ -221,27 +222,27 @@ public class FederationResource {
     public Response getCapabilities() {
         try {
             LocationInfo location = locationService.getLocationInfo();
-            
+
             Map<String, Object> response = new HashMap<>();
-            
+
             // Location information
             Map<String, String> locationData = new HashMap<>();
             locationData.put("provider", location.provider());
             locationData.put("region", location.region());
             locationData.put("datacenter", location.datacenter());
             response.put("location", locationData);
-            
+
             // Capabilities
             Map<String, Object> capabilities = new HashMap<>();
-            
+
             // VM types supported (based on Proxmox capabilities)
             capabilities.put("vm_types", new String[]{"general", "compute", "memory"});
-            
+
             // Maximum resources per VM
             capabilities.put("max_vcpus_per_vm", 128);
             capabilities.put("max_memory_gb_per_vm", 512);
             capabilities.put("max_storage_gb_per_vm", 10000);
-            
+
             // Features
             capabilities.put("features", new String[]{
                 "snapshots",
@@ -252,24 +253,24 @@ public class FederationResource {
                 "vnc_console",
                 "spice_console"
             });
-            
+
             // Networking capabilities
             Map<String, Boolean> networking = new HashMap<>();
             networking.put("ipv6_support", true);
             networking.put("private_networks", true);
             networking.put("floating_ips", false); // Proxmox doesn't have floating IPs
             capabilities.put("networking", networking);
-            
+
             response.put("capabilities", capabilities);
-            
+
             // Constraints (placeholder - would be configured)
             Map<String, Object> constraints = new HashMap<>();
             constraints.put("compliance", new String[]{"gdpr"});
             constraints.put("certifications", new String[]{});
             response.put("constraints", constraints);
-            
+
             return Response.ok(response).build();
-            
+
         } catch (Exception e) {
             LOG.error("Failed to get capabilities", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -277,10 +278,10 @@ public class FederationResource {
                     .build();
         }
     }
-    
+
     @POST
     @Path("/estimate")
-    @Operation(summary = "Estimate cost and feasibility", 
+    @Operation(summary = "Estimate cost and feasibility",
                description = "Estimates cost and checks feasibility for VM provisioning")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Estimate calculated successfully"),
@@ -292,7 +293,7 @@ public class FederationResource {
     public Response estimate(
             @RequestBody(description = "Resource requirements for estimation", required = true)
             @Valid EstimateRequest request) {
-        
+
         try {
             // Build resource requirements
             ResourceRequirements.Builder reqBuilder = new ResourceRequirements.Builder();
@@ -305,17 +306,17 @@ public class FederationResource {
             if (request.getStorageGb() != null) {
                 reqBuilder.storageGB(request.getStorageGb().longValue());
             }
-            
+
             ResourceRequirements requirements = reqBuilder.build();
-            
+
             // Check if placement is possible
-            Optional<PlacementRecommendation> placement = 
+            Optional<PlacementRecommendation> placement =
                 resourceProvider.findOptimalPlacement(requirements).get();
-            
+
             Map<String, Object> response = new HashMap<>();
-            
+
             response.put("feasible", placement.isPresent());
-            
+
             // Cost estimation (placeholder - Proxmox doesn't have built-in pricing)
             Map<String, Object> estimatedCost = new HashMap<>();
             if (placement.isPresent()) {
@@ -330,7 +331,7 @@ public class FederationResource {
                 if (request.getStorageGb() != null) {
                     monthlyCost += request.getStorageGb() * 0.1; // $0.10 per GB storage
                 }
-                
+
                 estimatedCost.put("amount", monthlyCost);
                 estimatedCost.put("currency", "USD");
                 estimatedCost.put("period", "monthly");
@@ -340,15 +341,15 @@ public class FederationResource {
                 estimatedCost.put("period", "monthly");
             }
             response.put("estimated_cost", estimatedCost);
-            
+
             // Availability
             Map<String, Object> availability = new HashMap<>();
             availability.put("immediate", placement.isPresent());
             availability.put("wait_time_minutes", placement.isPresent() ? 0 : -1);
             response.put("availability", availability);
-            
+
             return Response.ok(response).build();
-            
+
         } catch (Exception e) {
             LOG.error("Failed to calculate estimate", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -356,51 +357,51 @@ public class FederationResource {
                     .build();
         }
     }
-    
+
     /**
      * Request DTO for estimate endpoint
      */
     public static class EstimateRequest {
         @JsonProperty("vcpus")
         private Integer vcpus;
-        
+
         @JsonProperty("memory_gb")
         private Double memoryGb;
-        
+
         @JsonProperty("storage_gb")
         private Double storageGb;
-        
+
         @JsonProperty("duration_hours")
         private Integer durationHours;
-        
+
         public Integer getVcpus() {
             return vcpus;
         }
-        
+
         public void setVcpus(Integer vcpus) {
             this.vcpus = vcpus;
         }
-        
+
         public Double getMemoryGb() {
             return memoryGb;
         }
-        
+
         public void setMemoryGb(Double memoryGb) {
             this.memoryGb = memoryGb;
         }
-        
+
         public Double getStorageGb() {
             return storageGb;
         }
-        
+
         public void setStorageGb(Double storageGb) {
             this.storageGb = storageGb;
         }
-        
+
         public Integer getDurationHours() {
             return durationHours;
         }
-        
+
         public void setDurationHours(Integer durationHours) {
             this.durationHours = durationHours;
         }

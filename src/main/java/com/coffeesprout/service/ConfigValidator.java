@@ -1,15 +1,16 @@
 package com.coffeesprout.service;
 
-import com.coffeesprout.config.MoxxieConfig;
-import io.quarkus.runtime.Startup;
-import io.quarkus.runtime.StartupEvent;
+import java.util.Optional;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
+
+import com.coffeesprout.config.MoxxieConfig;
+import io.quarkus.runtime.Startup;
+import io.quarkus.runtime.StartupEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Optional;
 
 /**
  * Validates critical configuration at startup to fail-fast on misconfiguration.

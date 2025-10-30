@@ -7,68 +7,68 @@ import java.util.Map;
  * Custom exception for Proxmox-related errors with enhanced error information.
  */
 public class ProxmoxException extends RuntimeException {
-    
+
     private final int httpStatus;
     private final String errorCode;
     private final Map<String, String> details;
-    
+
     public ProxmoxException(int httpStatus, String errorCode, String message) {
         this(httpStatus, errorCode, message, null, null);
     }
-    
+
     public ProxmoxException(int httpStatus, String errorCode, String message, Map<String, String> details) {
         this(httpStatus, errorCode, message, details, null);
     }
-    
+
     public ProxmoxException(int httpStatus, String errorCode, String message, Throwable cause) {
         this(httpStatus, errorCode, message, null, cause);
     }
-    
+
     public ProxmoxException(int httpStatus, String errorCode, String message, Map<String, String> details, Throwable cause) {
         super(message, cause);
         this.httpStatus = httpStatus;
         this.errorCode = errorCode;
         this.details = details != null ? new HashMap<>(details) : new HashMap<>();
     }
-    
+
     public int getHttpStatus() {
         return httpStatus;
     }
-    
+
     public String getErrorCode() {
         return errorCode;
     }
-    
+
     public Map<String, String> getDetails() {
         return new HashMap<>(details);
     }
-    
+
     public ProxmoxException withDetail(String key, String value) {
         this.details.put(key, value);
         return this;
     }
-    
+
     // Common exception factory methods
-    
+
     public static ProxmoxException notFound(String resourceType, String identifier) {
         return new ProxmoxException(
-            404, 
+            404,
             "RESOURCE_NOT_FOUND",
             String.format("%s with identifier '%s' not found", resourceType, identifier)
         ).withDetail("resourceType", resourceType)
          .withDetail("identifier", identifier);
     }
-    
+
     public static ProxmoxException notFound(String resourceType, String identifier, String suggestion) {
         return new ProxmoxException(
-            404, 
+            404,
             "RESOURCE_NOT_FOUND",
             String.format("%s with identifier '%s' not found. %s", resourceType, identifier, suggestion)
         ).withDetail("resourceType", resourceType)
          .withDetail("identifier", identifier)
          .withDetail("suggestion", suggestion);
     }
-    
+
     public static ProxmoxException conflict(String resource, String reason) {
         return new ProxmoxException(
             409,
@@ -76,7 +76,7 @@ public class ProxmoxException extends RuntimeException {
             String.format("Conflict with %s: %s", resource, reason)
         ).withDetail("resource", resource);
     }
-    
+
     public static ProxmoxException validation(String field, String value, String constraint) {
         return new ProxmoxException(
             400,
@@ -86,7 +86,7 @@ public class ProxmoxException extends RuntimeException {
          .withDetail("value", value)
          .withDetail("constraint", constraint);
     }
-    
+
     public static ProxmoxException unauthorized(String reason) {
         return new ProxmoxException(
             401,
@@ -94,7 +94,7 @@ public class ProxmoxException extends RuntimeException {
             reason != null ? reason : "Authentication required"
         );
     }
-    
+
     public static ProxmoxException forbidden(String resource, String action) {
         return new ProxmoxException(
             403,
@@ -103,7 +103,7 @@ public class ProxmoxException extends RuntimeException {
         ).withDetail("resource", resource)
          .withDetail("action", action);
     }
-    
+
     public static ProxmoxException forbidden(String resource, String action, String suggestion) {
         return new ProxmoxException(
             403,
@@ -113,7 +113,7 @@ public class ProxmoxException extends RuntimeException {
          .withDetail("action", action)
          .withDetail("suggestion", suggestion);
     }
-    
+
     public static ProxmoxException serviceUnavailable(String service, String reason) {
         return new ProxmoxException(
             503,
@@ -121,9 +121,9 @@ public class ProxmoxException extends RuntimeException {
             String.format("%s is unavailable: %s", service, reason)
         ).withDetail("service", service);
     }
-    
+
     public static ProxmoxException internalError(String operation, Throwable cause) {
-        String message = cause != null && cause.getMessage() != null ? 
+        String message = cause != null && cause.getMessage() != null ?
             cause.getMessage() : "Unknown error";
         return new ProxmoxException(
             500,
@@ -132,7 +132,7 @@ public class ProxmoxException extends RuntimeException {
             cause
         ).withDetail("operation", operation);
     }
-    
+
     public static ProxmoxException internalError(String message) {
         return new ProxmoxException(
             500,
@@ -140,7 +140,7 @@ public class ProxmoxException extends RuntimeException {
             message
         );
     }
-    
+
     public static ProxmoxException badRequest(String message) {
         return new ProxmoxException(
             400,
@@ -148,7 +148,7 @@ public class ProxmoxException extends RuntimeException {
             message
         );
     }
-    
+
     public static ProxmoxException timeout(String operation, int timeoutSeconds) {
         return new ProxmoxException(
             504,
@@ -157,9 +157,9 @@ public class ProxmoxException extends RuntimeException {
         ).withDetail("operation", operation)
          .withDetail("timeout", String.valueOf(timeoutSeconds));
     }
-    
+
     // Enhanced exception factory methods with context
-    
+
     public static ProxmoxException vmOperationFailed(String operation, int vmId, String reason) {
         return new ProxmoxException(
             500,
@@ -169,7 +169,7 @@ public class ProxmoxException extends RuntimeException {
          .withDetail("vmId", String.valueOf(vmId))
          .withDetail("reason", reason);
     }
-    
+
     public static ProxmoxException vmOperationFailed(String operation, int vmId, String vmName, String reason, String suggestion) {
         return new ProxmoxException(
             500,
@@ -181,7 +181,7 @@ public class ProxmoxException extends RuntimeException {
          .withDetail("reason", reason)
          .withDetail("suggestion", suggestion);
     }
-    
+
     public static ProxmoxException invalidConfiguration(String component, String issue, String suggestion) {
         return new ProxmoxException(
             400,
@@ -191,7 +191,7 @@ public class ProxmoxException extends RuntimeException {
          .withDetail("issue", issue)
          .withDetail("suggestion", suggestion);
     }
-    
+
     public static ProxmoxException resourceLimitExceeded(String resource, int current, int max) {
         return new ProxmoxException(
             400,
@@ -201,7 +201,7 @@ public class ProxmoxException extends RuntimeException {
          .withDetail("current", String.valueOf(current))
          .withDetail("maximum", String.valueOf(max));
     }
-    
+
     public static ProxmoxException operationNotSupported(String operation, String reason) {
         return new ProxmoxException(
             400,
@@ -210,7 +210,7 @@ public class ProxmoxException extends RuntimeException {
         ).withDetail("operation", operation)
          .withDetail("reason", reason);
     }
-    
+
     public static ProxmoxException prerequisiteFailed(String operation, String prerequisite, String suggestion) {
         return new ProxmoxException(
             412,
@@ -220,7 +220,7 @@ public class ProxmoxException extends RuntimeException {
          .withDetail("prerequisite", prerequisite)
          .withDetail("suggestion", suggestion);
     }
-    
+
     public static ProxmoxException resourceBusy(String resource, String currentOperation, String suggestion) {
         return new ProxmoxException(
             423,
@@ -230,9 +230,9 @@ public class ProxmoxException extends RuntimeException {
          .withDetail("currentOperation", currentOperation)
          .withDetail("suggestion", suggestion);
     }
-    
+
     public static ProxmoxException networkError(String operation, String target, Throwable cause) {
-        String message = cause != null && cause.getMessage() != null ? 
+        String message = cause != null && cause.getMessage() != null ?
             cause.getMessage() : "Network communication failed";
         return new ProxmoxException(
             502,

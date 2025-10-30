@@ -1,19 +1,18 @@
 package com.coffeesprout.api;
 
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
+
 import com.coffeesprout.client.*;
 import com.coffeesprout.service.ConsoleService;
-import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.InjectMock;
+import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Disabled;
 import org.mockito.Mockito;
-
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
@@ -25,14 +24,14 @@ class ConsoleResourceTest {
 
     @InjectMock
     ConsoleService consoleService;
-    
+
     private final int TEST_VM_ID = 100;
-    
+
     @BeforeEach
     void setUp() {
         RestAssured.basePath = "/api/v1";
     }
-    
+
     @Test
     void testCreateVNCConsoleAccess() {
         // Arrange
@@ -44,17 +43,17 @@ class ConsoleResourceTest {
         mockResponse.setWebsocketPort(443);
         mockResponse.setWebsocketPath("/api2/json/nodes/pve1/qemu/100/vncwebsocket");
         mockResponse.setValidUntil(Instant.now().plusSeconds(600));
-        
+
         when(consoleService.createConsoleAccess(eq(TEST_VM_ID), Mockito.any(ConsoleRequest.class), isNull()))
             .thenReturn(mockResponse);
-        
+
         String requestBody = """
             {
                 "type": "VNC",
                 "generatePassword": true
             }
             """;
-        
+
         // Act & Assert
         given()
             .contentType(ContentType.JSON)
@@ -70,7 +69,7 @@ class ConsoleResourceTest {
             .body("websocketPort", equalTo(443))
             .body("websocketPath", containsString("/vncwebsocket"));
     }
-    
+
     @Test
     void testCreateSPICEConsoleAccess() {
         // Arrange
@@ -79,17 +78,17 @@ class ConsoleResourceTest {
         mockResponse.setTicket("SPICE-TICKET-456");
         mockResponse.setPort(3128);
         mockResponse.setPassword("spice-pass");
-        
+
         when(consoleService.createConsoleAccess(eq(TEST_VM_ID), Mockito.any(ConsoleRequest.class), isNull()))
             .thenReturn(mockResponse);
-        
+
         String requestBody = """
             {
                 "type": "SPICE",
                 "generatePassword": true
             }
             """;
-        
+
         // Act & Assert
         given()
             .contentType(ContentType.JSON)
@@ -103,20 +102,20 @@ class ConsoleResourceTest {
             .body("port", equalTo(3128))
             .body("password", equalTo("spice-pass"));
     }
-    
+
     @Test
     void testCreateConsoleAccessInvalidType() {
         // Arrange
         when(consoleService.createConsoleAccess(anyInt(), Mockito.any(ConsoleRequest.class), isNull()))
             .thenThrow(new IllegalArgumentException("Invalid console type"));
-        
+
         String requestBody = """
             {
                 "type": "INVALID",
                 "generatePassword": true
             }
             """;
-        
+
         // Act & Assert
         given()
             .contentType(ContentType.JSON)
@@ -128,22 +127,22 @@ class ConsoleResourceTest {
             // Note: Invalid enum values cause JSON deserialization errors
             // The exact error format may vary, so we only verify the 400 status
     }
-    
+
     @Test
     void testGetWebSocketDetails() {
         // Arrange
         Map<String, String> headers = new HashMap<>();
         headers.put("Cookie", "PVEAuthCookie=test-ticket");
         headers.put("Sec-WebSocket-Protocol", "binary");
-        
+
         ConsoleWebSocketResponse mockResponse = new ConsoleWebSocketResponse();
         mockResponse.setUrl("wss://10.0.0.10:8006/api2/json/nodes/pve1/qemu/100/vncwebsocket");
         mockResponse.setProtocol("binary");
         mockResponse.setHeaders(headers);
-        
+
         when(consoleService.getWebSocketDetails(eq(TEST_VM_ID), eq("console-ticket"), isNull()))
             .thenReturn(mockResponse);
-        
+
         // Act & Assert
         given()
             .queryParam("ticket", "console-ticket")
@@ -156,7 +155,7 @@ class ConsoleResourceTest {
             .body("protocol", equalTo("binary"))
             .body("headers.Cookie", containsString("PVEAuthCookie"));
     }
-    
+
     @Test
     void testGetWebSocketDetailsMissingTicket() {
         // Act & Assert
@@ -167,7 +166,7 @@ class ConsoleResourceTest {
             .statusCode(400)
             .body("error", equalTo("Console ticket is required"));
     }
-    
+
     @Test
     void testGetSpiceConnectionFile() {
         // Arrange
@@ -175,10 +174,10 @@ class ConsoleResourceTest {
         mockFile.setContent("[virt-viewer]\ntype=spice\nhost=10.0.0.10\nport=3128\n");
         mockFile.setFilename("vm-100.vv");
         mockFile.setMimeType("application/x-virt-viewer");
-        
+
         when(consoleService.generateSpiceFile(eq(TEST_VM_ID), eq("spice-ticket"), isNull()))
             .thenReturn(mockFile);
-        
+
         // Act & Assert
         given()
             .queryParam("ticket", "spice-ticket")
@@ -191,13 +190,13 @@ class ConsoleResourceTest {
             .body(containsString("[virt-viewer]"))
             .body(containsString("type=spice"));
     }
-    
+
     @Test
     void testGetSpiceConnectionFileVMNotFound() {
         // Arrange
         when(consoleService.generateSpiceFile(anyInt(), anyString(), isNull()))
             .thenThrow(new IllegalArgumentException("VM not found"));
-        
+
         // Act & Assert
         given()
             .queryParam("ticket", "spice-ticket")
@@ -207,17 +206,17 @@ class ConsoleResourceTest {
             .statusCode(404);
             // Note: Due to @Produces annotation, error responses maintain the declared content-type
     }
-    
+
     @Test
     void testCreateConsoleWithNodeOverride() {
         // Arrange
         ConsoleResponse mockResponse = new ConsoleResponse();
         mockResponse.setType("terminal");
         mockResponse.setTicket("TERM-TICKET-789");
-        
+
         when(consoleService.createConsoleAccess(eq(TEST_VM_ID), Mockito.any(ConsoleRequest.class), isNull()))
             .thenReturn(mockResponse);
-        
+
         String requestBody = """
             {
                 "type": "TERMINAL",
@@ -225,7 +224,7 @@ class ConsoleResourceTest {
                 "node": "pve-node2"
             }
             """;
-        
+
         // Act & Assert
         given()
             .contentType(ContentType.JSON)

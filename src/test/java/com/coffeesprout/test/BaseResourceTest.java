@@ -1,5 +1,9 @@
 package com.coffeesprout.test;
 
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.client.ProxmoxClient;
 import com.coffeesprout.service.TicketManager;
@@ -10,10 +14,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.ArgumentMatchers;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-
 import static org.mockito.Mockito.when;
 
 /**
@@ -22,33 +22,33 @@ import static org.mockito.Mockito.when;
  */
 @QuarkusTest
 public abstract class BaseResourceTest {
-    
+
     @InjectMock
     protected ProxmoxClient proxmoxClient;
-    
+
     @InjectMock
     protected TicketManager ticketManager;
-    
+
     protected static final String TEST_TICKET = "PVE:test@pve:TOKEN";
     protected static final String TEST_CSRF_TOKEN = "test-csrf-token";
-    
+
     @BeforeEach
     void setupBaseMocks() {
         // Setup common ticket manager mocks
         when(ticketManager.getTicket()).thenReturn(TEST_TICKET);
         when(ticketManager.getCsrfToken()).thenReturn(TEST_CSRF_TOKEN);
-        
+
         // Call child class setup if needed
         setupMocks();
     }
-    
+
     /**
      * Override this method in child classes to add custom mock setup
      */
     protected void setupMocks() {
         // Default empty implementation - override in child classes
     }
-    
+
     /**
      * Helper method to create a mock VM response
      */
@@ -68,7 +68,7 @@ public abstract class BaseResourceTest {
             0                        // template (0 = regular VM, 1 = template)
         );
     }
-    
+
     /**
      * Helper method to create a list of mock VMs
      */
@@ -84,13 +84,13 @@ public abstract class BaseResourceTest {
         }
         return vms;
     }
-    
+
     /**
      * Helper method to mock a successful task response
      */
     protected void mockSuccessfulTask(String taskUpid) {
         String node = extractNodeFromUpid(taskUpid);
-        
+
         ObjectMapper mapper = new ObjectMapper();
         ObjectNode rootNode = mapper.createObjectNode();
         ObjectNode dataNode = mapper.createObjectNode();
@@ -101,20 +101,20 @@ public abstract class BaseResourceTest {
         dataNode.put("pid", 100);
         dataNode.put("starttime", Instant.now().toString());
         rootNode.set("data", dataNode);
-        
+
         when(proxmoxClient.getTaskStatus(
             ArgumentMatchers.eq(node),
             ArgumentMatchers.eq(taskUpid),
             ArgumentMatchers.anyString()
         )).thenReturn(rootNode);
     }
-    
+
     /**
      * Helper method to mock a failed task response
      */
     protected void mockFailedTask(String taskUpid, String errorMessage) {
         String node = extractNodeFromUpid(taskUpid);
-        
+
         ObjectMapper mapper = new ObjectMapper();
         ObjectNode rootNode = mapper.createObjectNode();
         ObjectNode dataNode = mapper.createObjectNode();
@@ -125,14 +125,14 @@ public abstract class BaseResourceTest {
         dataNode.put("pid", 100);
         dataNode.put("starttime", Instant.now().toString());
         rootNode.set("data", dataNode);
-        
+
         when(proxmoxClient.getTaskStatus(
             ArgumentMatchers.eq(node),
             ArgumentMatchers.eq(taskUpid),
             ArgumentMatchers.anyString()
         )).thenReturn(rootNode);
     }
-    
+
     /**
      * Helper method to extract node from UPID
      * UPID format: UPID:node:pid:starttime:type:id:user@realm:
@@ -144,7 +144,7 @@ public abstract class BaseResourceTest {
         String[] parts = upid.split(":");
         return parts.length > 1 ? parts[1] : "node1";
     }
-    
+
     /**
      * Helper method to verify authentication headers were used
      */

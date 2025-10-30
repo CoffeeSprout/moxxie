@@ -1,9 +1,9 @@
 package com.coffeesprout.health;
 
-import com.coffeesprout.client.ProxmoxClient;
-import com.coffeesprout.client.StatusResponse;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+
+import com.coffeesprout.client.ProxmoxClient;
 import org.eclipse.microprofile.health.HealthCheck;
 import org.eclipse.microprofile.health.HealthCheckResponse;
 import org.eclipse.microprofile.health.Readiness;

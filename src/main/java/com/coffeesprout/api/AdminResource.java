@@ -1,17 +1,20 @@
 package com.coffeesprout.api;
 
-import com.coffeesprout.api.dto.ErrorResponse;
-import com.coffeesprout.client.ProxmoxClient;
-import com.coffeesprout.service.SafeMode;
-import com.coffeesprout.service.TicketManager;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.smallrye.common.annotation.RunOnVirtualThread;
+import java.util.Map;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
+import com.coffeesprout.api.dto.ErrorResponse;
+import com.coffeesprout.client.ProxmoxClient;
+import com.coffeesprout.service.SafeMode;
+import com.coffeesprout.service.TicketManager;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -24,8 +27,6 @@ import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-
 @Path("/api/v1/admin")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -33,23 +34,23 @@ import java.util.Map;
 @RunOnVirtualThread
 @Tag(name = "Admin", description = "Administrative endpoints")
 public class AdminResource {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(AdminResource.class);
-    
+
     @Inject
     @RestClient
     ProxmoxClient proxmoxClient;
-    
+
     @Inject
     TicketManager ticketManager;
-    
+
     @Inject
     ObjectMapper objectMapper;
-    
+
     @POST
     @Path("/tag-style")
     @SafeMode(operation = SafeMode.Operation.WRITE)
-    @Operation(summary = "Configure tag colors", 
+    @Operation(summary = "Configure tag colors",
                description = "Configure Proxmox datacenter tag colors for visual identification in the UI")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Tag style configuration updated",
@@ -72,15 +73,15 @@ public class AdminResource {
                         .entity(new ErrorResponse("Tag style configuration is required"))
                         .build();
             }
-            
+
             // Build the tag-style configuration string for Proxmox
             StringBuilder tagStyle = new StringBuilder(256);
-            
+
             // Add case sensitivity setting
             tagStyle.append("case-sensitive=").append(config.tagStyle().caseSensitive() ? "1" : "0").append(';')
                     .append("ordering=").append(config.tagStyle().ordering()).append(';')
                     .append("shape=").append(config.tagStyle().shape()).append(';');
-            
+
             // Add color mappings
             if (config.tagStyle().colorMap() != null && !config.tagStyle().colorMap().isEmpty()) {
                 tagStyle.append("color-map=");
@@ -93,14 +94,14 @@ public class AdminResource {
                     first = false;
                 }
             }
-            
+
             // Note: The actual Proxmox API endpoint for updating datacenter config varies
             // This is a conceptual implementation - adjust based on your Proxmox version
             LOG.info("Configuring tag style: {}", tagStyle.toString());
-            
+
             // For now, we'll store this configuration locally and return success
             // In a real implementation, this would update Proxmox datacenter.cfg
-            
+
             return Response.ok(new ConfigResponse("Tag style configuration updated successfully"))
                     .build();
         } catch (Exception e) {
@@ -110,11 +111,11 @@ public class AdminResource {
                     .build();
         }
     }
-    
+
     @POST
     @Path("/tag/{tag}/style")
     @SafeMode(operation = SafeMode.Operation.WRITE)
-    @Operation(summary = "Configure individual tag style", 
+    @Operation(summary = "Configure individual tag style",
                description = "Configure style for a specific tag")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Tag style updated",
@@ -132,7 +133,7 @@ public class AdminResource {
             @Valid SimpleTagStyle style) {
         try {
             LOG.info("Configuring style for tag '{}': color={}, icon={}", tag, style.color(), style.icon());
-            
+
             // Store tag style configuration locally for now
             // In a real implementation, this would update Proxmox datacenter config
             return Response.ok(new ConfigResponse("Tag style for '" + tag + "' updated successfully")).build();
@@ -143,18 +144,18 @@ public class AdminResource {
                     .build();
         }
     }
-    
+
     // DTOs
-    
+
     @Schema(description = "Simple tag style configuration")
     public record SimpleTagStyle(
         @Schema(description = "Color in hex format", example = "#ff0000", required = true)
         String color,
-        
+
         @Schema(description = "Icon name", example = "power-on")
         String icon
     ) {}
-    
+
     @Schema(description = "Tag style configuration for Proxmox UI")
     public record TagStyleConfig(
         @Schema(description = "Tag style settings", required = true)
@@ -164,19 +165,19 @@ public class AdminResource {
         public record TagStyle(
             @Schema(description = "Case sensitive tag matching", example = "false")
             boolean caseSensitive,
-            
+
             @Schema(description = "Tag ordering method", example = "config")
             String ordering,
-            
+
             @Schema(description = "Tag shape in UI", example = "full")
             String shape,
-            
-            @Schema(description = "Color mappings for tags", 
+
+            @Schema(description = "Color mappings for tags",
                     example = "{\"moxxie\": \"#00aa00\", \"env-prod\": \"#0066cc\", \"always-on\": \"#cc0000\"}")
             Map<String, String> colorMap
         ) {}
     }
-    
+
     @Schema(description = "Configuration update response")
     public record ConfigResponse(
         @Schema(description = "Status message", example = "Tag style configuration updated successfully")

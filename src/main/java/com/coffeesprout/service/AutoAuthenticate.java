@@ -1,7 +1,8 @@
 package com.coffeesprout.service;
 
-import jakarta.interceptor.InterceptorBinding;
 import java.lang.annotation.*;
+
+import jakarta.interceptor.InterceptorBinding;
 
 /**
  * Interceptor binding for automatic authentication.

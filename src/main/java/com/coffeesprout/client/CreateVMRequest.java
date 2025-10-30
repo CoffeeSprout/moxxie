@@ -2,6 +2,8 @@ package com.coffeesprout.client;
 
 import jakarta.ws.rs.FormParam;
 
+import com.coffeesprout.api.exception.ProxmoxException;
+
 public class CreateVMRequest {
     @FormParam("vmid")
     private int vmid;
@@ -17,125 +19,125 @@ public class CreateVMRequest {
 
     @FormParam("net0")
     private String net0; // e.g., "virtio,bridge=vmbr0"
-    
+
     @FormParam("net1")
     private String net1;
-    
+
     @FormParam("net2")
     private String net2;
-    
+
     @FormParam("net3")
     private String net3;
-    
+
     @FormParam("net4")
     private String net4;
-    
+
     @FormParam("net5")
     private String net5;
-    
+
     @FormParam("net6")
     private String net6;
-    
+
     @FormParam("net7")
     private String net7;
-    
+
     @FormParam("scsihw")
     private String scsihw = "virtio-scsi-pci"; // Default SCSI hardware
-    
+
     @FormParam("scsi0")
     private String scsi0; // Disk configuration
-    
+
     @FormParam("scsi1")
     private String scsi1;
-    
+
     @FormParam("scsi2")
     private String scsi2;
-    
+
     @FormParam("scsi3")
     private String scsi3;
-    
+
     @FormParam("scsi4")
     private String scsi4;
-    
+
     @FormParam("scsi5")
     private String scsi5;
-    
+
     @FormParam("ide2")
     private String ide2; // Cloud-init drive
-    
+
     @FormParam("boot")
     private String boot = "c"; // Boot from hard disk by default
-    
+
     @FormParam("onboot")
     private int onboot; // Start on boot (0 or 1)
-    
+
     @FormParam("pool")
     private String pool; // Resource pool name (optional)
-    
+
     @FormParam("tags")
     private String tags; // Comma-separated tags
-    
+
     @FormParam("agent")
     private String agent; // QEMU agent (0 or 1)
-    
+
     @FormParam("cpu")
     private String cpu; // CPU type
-    
+
     @FormParam("serial0")
     private String serial0; // Serial console
-    
+
     @FormParam("vga")
     private String vga; // VGA hardware
-    
+
     @FormParam("ciuser")
     private String ciuser; // Cloud-init user
-    
+
     @FormParam("cipassword")
     private String cipassword; // Cloud-init password
-    
+
     @FormParam("ipconfig0")
     private String ipconfig0; // Cloud-init IP config
-    
+
     @FormParam("ipconfig1")
     private String ipconfig1;
-    
+
     @FormParam("ipconfig2")
     private String ipconfig2;
-    
+
     @FormParam("ipconfig3")
     private String ipconfig3;
-    
+
     @FormParam("ipconfig4")
     private String ipconfig4;
-    
+
     @FormParam("ipconfig5")
     private String ipconfig5;
-    
+
     @FormParam("ipconfig6")
     private String ipconfig6;
-    
+
     @FormParam("ipconfig7")
     private String ipconfig7;
-    
+
     @FormParam("nameserver")
     private String nameserver; // Cloud-init DNS servers
-    
+
     @FormParam("searchdomain")
     private String searchdomain; // Cloud-init search domain
-    
+
     @FormParam("sshkeys")
     private String sshkeys; // Cloud-init SSH keys
-    
+
     @FormParam("description")
     private String description; // VM description
-    
+
     // UEFI/OVMF firmware configuration
     @FormParam("machine")
     private String machine; // Machine type (pc, q35)
-    
+
     @FormParam("bios")
     private String bios; // Firmware type (seabios, ovmf)
-    
+
     @FormParam("efidisk0")
     private String efidisk0; // EFI disk configuration for UEFI
 
@@ -390,16 +392,16 @@ public class CreateVMRequest {
                 String normalized = sshkeys.trim()
                     .replaceAll("\r\n", "\n")
                     .replaceAll("\r", "\n");
-                
+
                 // Apply first URL encoding - replace + with %20 to match Python's quote behavior
                 String encoded = java.net.URLEncoder.encode(normalized, "UTF-8")
                         .replaceAll("\\+", "%20");
-                
+
                 // Since @FormParam will encode once more, we store the single-encoded version
                 // This results in double encoding when sent
                 this.sshkeys = encoded;
             } catch (Exception e) {
-                throw new RuntimeException("Failed to encode SSH keys", e);
+                throw ProxmoxException.internalError("encode SSH keys", e);
             }
         } else {
             this.sshkeys = sshkeys;
@@ -411,28 +413,28 @@ public class CreateVMRequest {
     public void setDescription(String description) {
         this.description = description;
     }
-    
+
     public String getMachine() {
         return machine;
     }
     public void setMachine(String machine) {
         this.machine = machine;
     }
-    
+
     public String getBios() {
         return bios;
     }
     public void setBios(String bios) {
         this.bios = bios;
     }
-    
+
     public String getEfidisk0() {
         return efidisk0;
     }
     public void setEfidisk0(String efidisk0) {
         this.efidisk0 = efidisk0;
     }
-    
+
     @Override
     public String toString() {
         return "CreateVMRequest{" +

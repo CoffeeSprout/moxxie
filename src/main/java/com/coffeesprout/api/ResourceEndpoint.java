@@ -1,18 +1,23 @@
 package com.coffeesprout.api;
 
-import com.coffeesprout.api.dto.*;
-import com.coffeesprout.api.dto.federation.*;
-import com.coffeesprout.federation.*;
-import com.coffeesprout.federation.providers.ProxmoxResourceProvider;
-import com.coffeesprout.service.ResourceCacheService;
-import com.coffeesprout.service.ResourceCalculationService;
-import io.smallrye.common.annotation.RunOnVirtualThread;
+import java.util.*;
+import java.util.stream.Collectors;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
+import com.coffeesprout.api.dto.*;
+import com.coffeesprout.api.dto.federation.*;
+import com.coffeesprout.api.exception.ProxmoxException;
+import com.coffeesprout.federation.*;
+import com.coffeesprout.federation.providers.ProxmoxResourceProvider;
+import com.coffeesprout.service.ResourceCacheService;
+import com.coffeesprout.service.ResourceCalculationService;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -24,11 +29,6 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
-
 /**
  * REST API endpoint for federation-ready resource management
  */
@@ -38,21 +38,21 @@ import java.util.stream.Collectors;
 @RunOnVirtualThread
 @Tag(name = "Resources", description = "Federation-ready resource management endpoints")
 public class ResourceEndpoint {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(ResourceEndpoint.class);
-    
+
     @Inject
     ProxmoxResourceProvider resourceProvider;
-    
+
     @Inject
     ResourceCalculationService calculationService;
-    
+
     @Inject
     ResourceCacheService cacheService;
-    
+
     @GET
     @Path("/cluster")
-    @Operation(summary = "Get cluster-wide resources", 
+    @Operation(summary = "Get cluster-wide resources",
                description = "Get comprehensive resource information for the entire cluster")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Cluster resources retrieved successfully",
@@ -67,14 +67,14 @@ public class ResourceEndpoint {
             @QueryParam("includeVMs") @DefaultValue("false") boolean includeVMs,
             @Parameter(description = "Use cached data if available")
             @QueryParam("useCache") @DefaultValue("true") boolean useCache) {
-        
+
         try {
             String cacheKey = "cluster-resources-" + includeNodes + "-" + includeVMs;
-            
-            FederationClusterResourcesResponse response = useCache 
+
+            FederationClusterResourcesResponse response = useCache
                 ? cacheService.get(cacheKey, () -> buildFederationClusterResourcesResponse(includeNodes, includeVMs))
                 : buildFederationClusterResourcesResponse(includeNodes, includeVMs);
-            
+
             return Response.ok(response).build();
         } catch (Exception e) {
             LOG.error("Failed to get cluster resources", e);
@@ -83,10 +83,10 @@ public class ResourceEndpoint {
                     .build();
         }
     }
-    
+
     @GET
     @Path("/nodes")
-    @Operation(summary = "Get resources for all nodes", 
+    @Operation(summary = "Get resources for all nodes",
                description = "Get resource information for all nodes in the cluster")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Node resources retrieved successfully",
@@ -101,35 +101,35 @@ public class ResourceEndpoint {
             @QueryParam("minCpuCores") Integer minCpuCores,
             @Parameter(description = "Minimum available memory in GB")
             @QueryParam("minMemoryGB") Long minMemoryGB) {
-        
+
         try {
             List<NodeInfo> nodes = resourceProvider.getNodes().get();
             List<FederationNodeResourcesResponse> responses = new ArrayList<>();
-            
+
             for (NodeInfo node : nodes) {
                 // Apply filters
                 if (status != null && !status.equals(node.getStatus())) {
                     continue;
                 }
-                
+
                 NodeResources resources = resourceProvider.getNodeResources(node.getNodeId()).get();
-                
-                if (minCpuCores != null && resources.getCpu() != null && 
+
+                if (minCpuCores != null && resources.getCpu() != null &&
                     resources.getCpu().getAvailableCores() < minCpuCores) {
                     continue;
                 }
-                
+
                 if (minMemoryGB != null && resources.getMemory() != null) {
-                    long availableGB = resources.getMemory().getAvailableBytes() / 
+                    long availableGB = resources.getMemory().getAvailableBytes() /
                         (1024L * 1024L * 1024L);
                     if (availableGB < minMemoryGB) {
                         continue;
                     }
                 }
-                
+
                 responses.add(convertToFederationNodeResourcesResponse(resources));
             }
-            
+
             return Response.ok(responses).build();
         } catch (Exception e) {
             LOG.error("Failed to get node resources", e);
@@ -138,10 +138,10 @@ public class ResourceEndpoint {
                     .build();
         }
     }
-    
+
     @GET
     @Path("/nodes/{nodeId}")
-    @Operation(summary = "Get resources for a specific node", 
+    @Operation(summary = "Get resources for a specific node",
                description = "Get detailed resource information for a specific node")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Node resources retrieved successfully",
@@ -154,7 +154,7 @@ public class ResourceEndpoint {
     public Response getNodeResources(
             @Parameter(description = "Node ID", required = true)
             @PathParam("nodeId") String nodeId) {
-        
+
         try {
             NodeResources resources = cacheService.get(
                 "node-resources-" + nodeId,
@@ -162,17 +162,17 @@ public class ResourceEndpoint {
                     try {
                         return resourceProvider.getNodeResources(nodeId).get();
                     } catch (Exception e) {
-                        throw new RuntimeException(e);
+                        throw ProxmoxException.internalError("get node resources", e);
                     }
                 }
             );
-            
+
             if (resources == null) {
                 return Response.status(Response.Status.NOT_FOUND)
                         .entity(new ErrorResponse("Node not found: " + nodeId))
                         .build();
             }
-            
+
             return Response.ok(convertToFederationNodeResourcesResponse(resources)).build();
         } catch (Exception e) {
             LOG.error("Failed to get node resources for: " + nodeId, e);
@@ -181,10 +181,10 @@ public class ResourceEndpoint {
                     .build();
         }
     }
-    
+
     @POST
     @Path("/capacity/calculate")
-    @Operation(summary = "Calculate largest possible VM", 
+    @Operation(summary = "Calculate largest possible VM",
                description = "Calculate the largest VM that can be created with given requirements")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Capacity calculated successfully",
@@ -197,11 +197,11 @@ public class ResourceEndpoint {
     public Response calculateCapacity(
             @RequestBody(description = "Resource requirements", required = true)
             @Valid ResourceRequirementsRequest request) {
-        
+
         try {
             ResourceRequirements requirements = convertToResourceRequirements(request);
             VMCapacity capacity = resourceProvider.calculateLargestPossibleVM(requirements).get();
-            
+
             return Response.ok(convertToFederationVMCapacityResponse(capacity)).build();
         } catch (Exception e) {
             LOG.error("Failed to calculate capacity", e);
@@ -210,10 +210,10 @@ public class ResourceEndpoint {
                     .build();
         }
     }
-    
+
     @POST
     @Path("/placement/recommend")
-    @Operation(summary = "Get VM placement recommendation", 
+    @Operation(summary = "Get VM placement recommendation",
                description = "Find the optimal node for VM placement based on requirements")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Placement recommendation provided",
@@ -228,18 +228,18 @@ public class ResourceEndpoint {
     public Response recommendPlacement(
             @RequestBody(description = "Resource requirements", required = true)
             @Valid ResourceRequirementsRequest request) {
-        
+
         try {
             ResourceRequirements requirements = convertToResourceRequirements(request);
-            Optional<PlacementRecommendation> recommendation = 
+            Optional<PlacementRecommendation> recommendation =
                 resourceProvider.findOptimalPlacement(requirements).get();
-            
+
             if (recommendation.isEmpty()) {
                 return Response.status(Response.Status.NOT_FOUND)
                         .entity(new ErrorResponse("No suitable placement found for requirements"))
                         .build();
             }
-            
+
             return Response.ok(convertToFederationPlacementRecommendationResponse(recommendation.get()))
                     .build();
         } catch (Exception e) {
@@ -249,10 +249,10 @@ public class ResourceEndpoint {
                     .build();
         }
     }
-    
+
     @GET
     @Path("/storage")
-    @Operation(summary = "Get storage pool information", 
+    @Operation(summary = "Get storage pool information",
                description = "Get information about all storage pools in the cluster")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Storage pools retrieved successfully",
@@ -267,21 +267,21 @@ public class ResourceEndpoint {
             @QueryParam("class") String storageClass,
             @Parameter(description = "Only show active pools")
             @QueryParam("activeOnly") @DefaultValue("true") boolean activeOnly) {
-        
+
         try {
             List<StoragePool> pools = resourceProvider.getStoragePools().get();
-            
+
             // Apply filters
             List<StoragePool> filtered = pools.stream()
                 .filter(pool -> type == null || type.equals(pool.getType()))
                 .filter(pool -> storageClass == null || storageClass.equals(pool.getStorageClass()))
                 .filter(pool -> !activeOnly || pool.isActive())
                 .collect(Collectors.toList());
-            
+
             List<FederationStoragePoolResponse> responses = filtered.stream()
                 .map(this::convertToFederationStoragePoolResponse)
                 .collect(Collectors.toList());
-            
+
             return Response.ok(responses).build();
         } catch (Exception e) {
             LOG.error("Failed to get storage pools", e);
@@ -290,10 +290,10 @@ public class ResourceEndpoint {
                     .build();
         }
     }
-    
+
     @GET
     @Path("/metrics")
-    @Operation(summary = "Get provider metrics", 
+    @Operation(summary = "Get provider metrics",
                description = "Get detailed metrics and statistics for the resource provider")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Metrics retrieved successfully",
@@ -305,7 +305,7 @@ public class ResourceEndpoint {
         try {
             Map<String, Object> providerMetrics = resourceProvider.getProviderMetrics().get();
             ResourceCacheService.CacheStatistics cacheStats = cacheService.getStatistics();
-            
+
             FederationResourceMetricsResponse response = new FederationResourceMetricsResponse();
             response.setProviderMetrics(providerMetrics);
             response.setCacheStatistics(Map.of(
@@ -315,7 +315,7 @@ public class ResourceEndpoint {
                 "hitRate", cacheStats.getHitRate(),
                 "evictions", cacheStats.getEvictions()
             ));
-            
+
             return Response.ok(response).build();
         } catch (Exception e) {
             LOG.error("Failed to get metrics", e);
@@ -324,10 +324,10 @@ public class ResourceEndpoint {
                     .build();
         }
     }
-    
+
     @POST
     @Path("/cache/invalidate")
-    @Operation(summary = "Invalidate resource cache", 
+    @Operation(summary = "Invalidate resource cache",
                description = "Invalidate cached resource data")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Cache invalidated successfully"),
@@ -339,7 +339,7 @@ public class ResourceEndpoint {
             @QueryParam("key") String key,
             @Parameter(description = "Pattern to match keys for invalidation")
             @QueryParam("pattern") String pattern) {
-        
+
         try {
             if (key != null) {
                 cacheService.invalidate(key);
@@ -348,7 +348,7 @@ public class ResourceEndpoint {
             } else {
                 cacheService.clear();
             }
-            
+
             return Response.ok().build();
         } catch (Exception e) {
             LOG.error("Failed to invalidate cache", e);
@@ -357,10 +357,10 @@ public class ResourceEndpoint {
                     .build();
         }
     }
-    
+
     @POST
     @Path("/refresh")
-    @Operation(summary = "Refresh resource data", 
+    @Operation(summary = "Refresh resource data",
                description = "Force refresh of resource data from the provider")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Resources refreshed successfully"),
@@ -379,36 +379,36 @@ public class ResourceEndpoint {
                     .build();
         }
     }
-    
+
     // Helper methods for conversion
-    
-    private FederationClusterResourcesResponse buildFederationClusterResourcesResponse(boolean includeNodes, 
+
+    private FederationClusterResourcesResponse buildFederationClusterResourcesResponse(boolean includeNodes,
                                                                   boolean includeVMs) {
         try {
             ClusterResources resources = resourceProvider.getClusterResources().get();
             FederationClusterResourcesResponse response = new FederationClusterResourcesResponse();
-            
+
             // Basic info
             response.setClusterId(resources.getClusterId());
             response.setClusterName(resources.getClusterName());
             response.setProviderId(resources.getProviderId());
             response.setTimestamp(resources.getTimestamp());
-            
+
             // CPU resources
             if (resources.getCpu() != null) {
                 response.setCpu(convertCpuResources(resources.getCpu()));
             }
-            
+
             // Memory resources
             if (resources.getMemory() != null) {
                 response.setMemory(convertMemoryResources(resources.getMemory()));
             }
-            
+
             // Storage resources
             if (resources.getStorage() != null) {
                 response.setStorage(convertStorageResources(resources.getStorage()));
             }
-            
+
             // Summary
             response.setSummary(Map.of(
                 "totalNodes", resources.getTotalNodes(),
@@ -419,7 +419,7 @@ public class ResourceEndpoint {
                 "memoryEfficiency", resources.getMemoryEfficiency(),
                 "storageEfficiency", resources.getStorageEfficiency()
             ));
-            
+
             // Include node details if requested
             if (includeNodes) {
                 List<NodeInfo> nodes = resourceProvider.getNodes().get();
@@ -427,7 +427,7 @@ public class ResourceEndpoint {
                     .map(this::convertToNodeSummary)
                     .collect(Collectors.toList()));
             }
-            
+
             // Include VM details if requested
             if (includeVMs) {
                 List<VMResources> vms = resourceProvider.getVMResources().get();
@@ -435,14 +435,14 @@ public class ResourceEndpoint {
                     .map(this::convertToVMSummary)
                     .collect(Collectors.toList()));
             }
-            
+
             return response;
-            
+
         } catch (Exception e) {
-            throw new RuntimeException("Failed to build cluster resources response", e);
+            throw ProxmoxException.internalError("build cluster resources response", e);
         }
     }
-    
+
     private Map<String, Object> convertCpuResources(ClusterResources.CpuResources cpu) {
         return Map.of(
             "totalCores", cpu.getTotalCores(),
@@ -454,7 +454,7 @@ public class ResourceEndpoint {
             "maxOvercommit", cpu.getMaxOvercommit()
         );
     }
-    
+
     private Map<String, Object> convertMemoryResources(ClusterResources.MemoryResources memory) {
         return Map.of(
             "totalGB", memory.getTotalBytes() / (1024.0 * 1024 * 1024),
@@ -465,7 +465,7 @@ public class ResourceEndpoint {
             "maxOvercommit", memory.getMaxOvercommit()
         );
     }
-    
+
     private Map<String, Object> convertStorageResources(ClusterResources.StorageResources storage) {
         Map<String, Object> result = new HashMap<>();
         result.put("totalGB", storage.getTotalBytes() / (1024.0 * 1024 * 1024));
@@ -477,27 +477,27 @@ public class ResourceEndpoint {
         result.put("activePools", storage.getActivePools());
         return result;
     }
-    
+
     private FederationNodeResourcesResponse convertToFederationNodeResourcesResponse(NodeResources resources) {
         FederationNodeResourcesResponse response = new FederationNodeResourcesResponse();
         response.setNodeId(resources.getNodeId());
         response.setNodeName(resources.getNodeName());
         response.setStatus(resources.getStatus());
         response.setTimestamp(resources.getTimestamp());
-        
+
         // Resource pressure
         response.setResourcePressure(Map.of(
             "cpu", resources.getCpuPressure(),
             "memory", resources.getMemoryPressure(),
             "storage", resources.getStoragePressure()
         ));
-        
+
         // VM info
         response.setVmInfo(Map.of(
             "total", resources.getVmCount(),
             "running", resources.getRunningVMs()
         ));
-        
+
         // CPU
         if (resources.getCpu() != null) {
             response.setCpu(Map.of(
@@ -507,7 +507,7 @@ public class ResourceEndpoint {
                 "currentUsagePercent", resources.getCpu().getCurrentUsagePercent()
             ));
         }
-        
+
         // Memory
         if (resources.getMemory() != null) {
             response.setMemory(Map.of(
@@ -518,21 +518,21 @@ public class ResourceEndpoint {
                 "usagePercent", resources.getMemory().getUsagePercent()
             ));
         }
-        
+
         // Storage
         if (resources.getStorage() != null) {
             response.setStorage(Map.of(
                 "totalGB", resources.getStorage().getTotalBytes() / (1024.0 * 1024 * 1024),
                 "usedGB", resources.getStorage().getUsedBytes() / (1024.0 * 1024 * 1024),
                 "availableGB", resources.getStorage().getAvailableBytes() / (1024.0 * 1024 * 1024),
-                "poolCount", resources.getStorage().getPools() != null ? 
+                "poolCount", resources.getStorage().getPools() != null ?
                     resources.getStorage().getPools().size() : 0
             ));
         }
-        
+
         return response;
     }
-    
+
     private Map<String, Object> convertToNodeSummary(NodeInfo node) {
         return Map.of(
             "nodeId", node.getNodeId(),
@@ -545,7 +545,7 @@ public class ResourceEndpoint {
             "vmCount", node.getTotalVMs()
         );
     }
-    
+
     private Map<String, Object> convertToVMSummary(VMResources vm) {
         Map<String, Object> summary = new HashMap<>();
         summary.put("vmId", vm.getVmId());
@@ -561,7 +561,7 @@ public class ResourceEndpoint {
         }
         return summary;
     }
-    
+
     private FederationVMCapacityResponse convertToFederationVMCapacityResponse(VMCapacity capacity) {
         FederationVMCapacityResponse response = new FederationVMCapacityResponse();
         response.setNodeId(capacity.getNodeId());
@@ -571,7 +571,7 @@ public class ResourceEndpoint {
         response.setMaxStorageGB(capacity.getMaxStorageBytes() / (1024.0 * 1024 * 1024));
         response.setLimitingFactor(capacity.getLimitingFactor());
         response.setWithOvercommit(capacity.isWithOvercommit());
-        
+
         if (capacity.getAlternativeNodes() != null) {
             List<Map<String, Object>> alternatives = new ArrayList<>();
             capacity.getAlternativeNodes().forEach((nodeId, alt) -> {
@@ -586,10 +586,10 @@ public class ResourceEndpoint {
             });
             response.setAlternatives(alternatives);
         }
-        
+
         return response;
     }
-    
+
     private FederationPlacementRecommendationResponse convertToFederationPlacementRecommendationResponse(
             PlacementRecommendation recommendation) {
         FederationPlacementRecommendationResponse response = new FederationPlacementRecommendationResponse();
@@ -598,7 +598,7 @@ public class ResourceEndpoint {
         response.setPlacementScore(recommendation.getPlacementScore());
         response.setReasons(recommendation.getReasons());
         response.setWarnings(recommendation.getWarnings());
-        
+
         if (recommendation.getResourceFit() != null) {
             response.setResourceFit(Map.of(
                 "cpuFitScore", recommendation.getResourceFit().getCpuFitScore(),
@@ -607,7 +607,7 @@ public class ResourceEndpoint {
                 "meetsAllRequirements", recommendation.getResourceFit().isMeetsAllRequirements()
             ));
         }
-        
+
         if (recommendation.getAlternatives() != null) {
             List<Map<String, Object>> alternatives = new ArrayList<>();
             for (PlacementRecommendation.AlternativePlacement alt : recommendation.getAlternatives()) {
@@ -619,10 +619,10 @@ public class ResourceEndpoint {
             }
             response.setAlternatives(alternatives);
         }
-        
+
         return response;
     }
-    
+
     private FederationStoragePoolResponse convertToFederationStoragePoolResponse(StoragePool pool) {
         FederationStoragePoolResponse response = new FederationStoragePoolResponse();
         response.setPoolId(pool.getPoolId());
@@ -635,7 +635,7 @@ public class ResourceEndpoint {
         response.setActive(pool.isActive());
         response.setShared(pool.isShared());
         response.setAccessibleNodes(pool.getAccessibleNodes());
-        
+
         // Features
         Map<String, Boolean> features = new HashMap<>();
         features.put("thinProvisioning", pool.isSupportsThinProvisioning());
@@ -643,13 +643,13 @@ public class ResourceEndpoint {
         features.put("replication", pool.isSupportsReplication());
         features.put("encryption", pool.isSupportsEncryption());
         response.setFeatures(features);
-        
+
         return response;
     }
-    
+
     private ResourceRequirements convertToResourceRequirements(ResourceRequirementsRequest request) {
         ResourceRequirements.Builder builder = new ResourceRequirements.Builder();
-        
+
         if (request.getCpuCores() != null) {
             builder.cpuCores(request.getCpuCores());
         }
@@ -674,7 +674,7 @@ public class ResourceEndpoint {
         if (request.getExcludedNodes() != null) {
             builder.excludedNodes(new HashSet<>(request.getExcludedNodes()));
         }
-        
+
         return builder.build();
     }
 }

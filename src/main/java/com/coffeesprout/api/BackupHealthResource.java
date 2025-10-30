@@ -1,14 +1,17 @@
 package com.coffeesprout.api;
 
-import com.coffeesprout.api.dto.*;
-import com.coffeesprout.service.BackupAnalyticsService;
-import com.coffeesprout.service.SafeMode;
-import io.smallrye.common.annotation.RunOnVirtualThread;
+import java.util.List;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
+import com.coffeesprout.api.dto.*;
+import com.coffeesprout.service.BackupAnalyticsService;
+import com.coffeesprout.service.SafeMode;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
@@ -20,29 +23,27 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-
 @Path("/api/v1/backups/health")
 @Produces(MediaType.APPLICATION_JSON)
 @ApplicationScoped
 @RunOnVirtualThread
 @Tag(name = "Backup Health", description = "Backup health monitoring and compliance endpoints")
 public class BackupHealthResource {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(BackupHealthResource.class);
-    
+
     @Inject
     BackupAnalyticsService analyticsService;
-    
+
     @ConfigProperty(name = "moxxie.backup.health.coverage-threshold-days", defaultValue = "3")
     int defaultCoverageThresholdDays;
-    
+
     @ConfigProperty(name = "moxxie.backup.health.overdue-threshold-days", defaultValue = "7")
     int defaultOverdueThresholdDays;
-    
+
     @GET
     @SafeMode(false)  // Read operation
-    @Operation(summary = "Get overall backup health", 
+    @Operation(summary = "Get overall backup health",
                description = "Get comprehensive backup health status including coverage and compliance metrics")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Backup health calculated successfully",
@@ -58,7 +59,7 @@ public class BackupHealthResource {
         try {
             int coverage = coverageThresholdDays != null ? coverageThresholdDays : defaultCoverageThresholdDays;
             int overdue = overdueThresholdDays != null ? overdueThresholdDays : defaultOverdueThresholdDays;
-            
+
             BackupHealth health = analyticsService.getBackupHealth(coverage, overdue, null);
             return Response.ok(health).build();
         } catch (Exception e) {
@@ -68,11 +69,11 @@ public class BackupHealthResource {
                     .build();
         }
     }
-    
+
     @GET
     @Path("/coverage")
     @SafeMode(false)  // Read operation
-    @Operation(summary = "Get backup coverage details", 
+    @Operation(summary = "Get backup coverage details",
                description = "Get detailed backup coverage information for all VMs")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Backup coverage retrieved successfully",
@@ -87,7 +88,7 @@ public class BackupHealthResource {
             @QueryParam("thresholdDays") Integer thresholdDays) {
         try {
             int threshold = thresholdDays != null ? thresholdDays : defaultOverdueThresholdDays;
-            
+
             if (overdueOnly) {
                 List<BackupCoverage> overdue = analyticsService.getVMsWithoutRecentBackups(threshold, null);
                 return Response.ok(overdue).build();

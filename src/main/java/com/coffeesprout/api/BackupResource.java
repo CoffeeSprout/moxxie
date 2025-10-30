@@ -1,17 +1,22 @@
 package com.coffeesprout.api;
 
-import com.coffeesprout.api.dto.*;
-import com.coffeesprout.service.BackupJobService;
-import com.coffeesprout.service.BackupLifecycleService;
-import com.coffeesprout.service.BackupService;
-import com.coffeesprout.service.SafeMode;
-import io.smallrye.common.annotation.RunOnVirtualThread;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
+import com.coffeesprout.api.dto.*;
+import com.coffeesprout.service.BackupJobService;
+import com.coffeesprout.service.BackupLifecycleService;
+import com.coffeesprout.service.BackupService;
+import com.coffeesprout.service.SafeMode;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -23,31 +28,27 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
-
 @Path("/api/v1/backups")
 @Produces(MediaType.APPLICATION_JSON)
 @ApplicationScoped
 @RunOnVirtualThread
 @Tag(name = "Backups", description = "VM backup and restore management endpoints")
 public class BackupResource {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(BackupResource.class);
-    
+
     @Inject
     BackupService backupService;
-    
+
     @Inject
     BackupJobService backupJobService;
-    
+
     @Inject
     BackupLifecycleService lifecycleService;
-    
+
     @GET
     @SafeMode(false)  // Read operation
-    @Operation(summary = "List all backups", 
+    @Operation(summary = "List all backups",
                description = "Get all VM backups across all storage locations and nodes")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Backups retrieved successfully",
@@ -66,11 +67,11 @@ public class BackupResource {
                     .build();
         }
     }
-    
+
     @DELETE
     @Path("/{volid}")
     @SafeMode(true)  // Write operation - deleting backups
-    @Operation(summary = "Delete a backup", 
+    @Operation(summary = "Delete a backup",
                description = "Delete a specific backup by volume ID. Protected backups cannot be deleted.")
     @APIResponses({
         @APIResponse(responseCode = "202", description = "Backup deletion started",
@@ -83,13 +84,13 @@ public class BackupResource {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public Response deleteBackup(
-            @Parameter(description = "Backup volume ID", required = true, 
+            @Parameter(description = "Backup volume ID", required = true,
                       example = "local:backup/vzdump-qemu-100-2024_01_15-10_30_00.vma.zst")
             @PathParam("volid") String volid) {
         try {
             // URL decode the volid (in case it was encoded in the path)
             String decodedVolid = volid.replace("%3A", ":").replace("%2F", "/");
-            
+
             TaskResponse task = backupService.deleteBackup(decodedVolid, null);
             return Response.accepted(task).build();
         } catch (RuntimeException e) {
@@ -110,11 +111,11 @@ public class BackupResource {
                     .build();
         }
     }
-    
+
     @POST
     @Path("/restore")
     @SafeMode(true)  // Write operation - creating new VM
-    @Operation(summary = "Restore VM from backup", 
+    @Operation(summary = "Restore VM from backup",
                description = "Restore a VM from a backup to the same or different node")
     @APIResponses({
         @APIResponse(responseCode = "202", description = "VM restore started",
@@ -146,13 +147,13 @@ public class BackupResource {
                     .build();
         }
     }
-    
+
     // Backup Job Management
-    
+
     @GET
     @Path("/jobs")
     @SafeMode(false)  // Read operation
-    @Operation(summary = "List backup jobs", 
+    @Operation(summary = "List backup jobs",
                description = "Get all configured backup jobs from Proxmox cluster")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Backup jobs retrieved successfully",
@@ -171,11 +172,11 @@ public class BackupResource {
                     .build();
         }
     }
-    
+
     @GET
     @Path("/jobs/{jobId}")
     @SafeMode(false)  // Read operation
-    @Operation(summary = "Get backup job details", 
+    @Operation(summary = "Get backup job details",
                description = "Get details of a specific backup job")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Backup job retrieved successfully",
@@ -205,13 +206,13 @@ public class BackupResource {
                     .build();
         }
     }
-    
+
     // Backup Lifecycle Management
-    
+
     @GET
     @Path("/retention-candidates")
     @SafeMode(false)  // Read operation
-    @Operation(summary = "Get retention candidates", 
+    @Operation(summary = "Get retention candidates",
                description = "List backups eligible for deletion based on retention policy")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Retention candidates retrieved successfully",
@@ -237,7 +238,7 @@ public class BackupResource {
                         .entity(new ErrorResponse("Invalid retention policy format. Use: days:30, count:5, or monthly:3"))
                         .build();
             }
-            
+
             // Parse tags and VM IDs
             List<String> tagList = tags != null ? Arrays.asList(tags.split(",")) : null;
             List<Integer> vmIdList = null;
@@ -247,10 +248,10 @@ public class BackupResource {
                         .map(Integer::parseInt)
                         .collect(Collectors.toList());
             }
-            
+
             List<BackupDeletionCandidate> candidates = lifecycleService.getRetentionCandidates(
                     retentionPolicy, tagList, vmIdList, includeProtected, null);
-            
+
             return Response.ok(candidates).build();
         } catch (Exception e) {
             LOG.error("Failed to get retention candidates", e);
@@ -259,11 +260,11 @@ public class BackupResource {
                     .build();
         }
     }
-    
+
     @POST
     @Path("/cleanup")
     @SafeMode(true)  // Write operation - deleting backups
-    @Operation(summary = "Clean up old backups", 
+    @Operation(summary = "Clean up old backups",
                description = "Delete backups based on retention policy. Use dryRun=true to preview.")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Cleanup completed or preview generated",
@@ -286,11 +287,11 @@ public class BackupResource {
                     .build();
         }
     }
-    
+
     @POST
     @Path("/{volid}/protect")
     @SafeMode(true)  // Write operation
-    @Operation(summary = "Update backup protection", 
+    @Operation(summary = "Update backup protection",
                description = "Protect or unprotect a backup from deletion")
     @APIResponses({
         @APIResponse(responseCode = "204", description = "Protection status updated successfully"),

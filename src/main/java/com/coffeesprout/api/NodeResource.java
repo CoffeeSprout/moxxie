@@ -1,8 +1,19 @@
 package com.coffeesprout.api;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+
 import com.coffeesprout.api.dto.ErrorResponse;
-import com.coffeesprout.api.dto.NodeResponse;
 import com.coffeesprout.api.dto.NodeResourcesResponse;
+import com.coffeesprout.api.dto.NodeResponse;
 import com.coffeesprout.api.dto.NodeStatusResponse;
 import com.coffeesprout.client.Node;
 import com.coffeesprout.client.NodeStatus;
@@ -10,12 +21,6 @@ import com.coffeesprout.client.StoragePool;
 import com.coffeesprout.client.VM;
 import com.coffeesprout.service.NodeService;
 import io.smallrye.common.annotation.RunOnVirtualThread;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-import org.jboss.resteasy.reactive.ClientWebApplicationException;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -23,13 +28,9 @@ import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.jboss.resteasy.reactive.ClientWebApplicationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.stream.Collectors;
 
 @Path("/api/v1/nodes")
 @Produces(MediaType.APPLICATION_JSON)
@@ -65,7 +66,7 @@ public class NodeResource {
                     0L // uptime would need to be fetched from status endpoint
                 ))
                 .collect(Collectors.toList());
-            
+
             return Response.ok(nodeResponses).build();
         } catch (Exception e) {
             LOG.error("Failed to list nodes", e);
@@ -93,16 +94,16 @@ public class NodeResource {
             @PathParam("nodeName") String nodeName) {
         try {
             NodeStatus status = nodeService.getNodeStatus(nodeName, null);
-            
+
             // Calculate CPU usage (this is a simplified calculation)
             double cpuUsage = 0.0; // Would need actual CPU usage from Proxmox API
-            
+
             // Calculate memory usage percentage
             double memoryUsagePercentage = 0.0;
             if (status.getMemory() != null && status.getMemory().getTotal() > 0) {
                 memoryUsagePercentage = (double) status.getMemory().getUsed() / status.getMemory().getTotal() * 100;
             }
-            
+
             NodeStatusResponse response = new NodeStatusResponse(
                 nodeName,
                 cpuUsage,
@@ -119,12 +120,12 @@ public class NodeResource {
                 ) : null,
                 new double[]{0.0, 0.0, 0.0} // Would need actual load average from Proxmox API
             );
-            
+
             return Response.ok(response).build();
         } catch (ClientWebApplicationException e) {
             // Handle Proxmox client errors (like hostname lookup failures)
-            if (e.getResponse().getStatus() == 500 && 
-                e.getMessage() != null && 
+            if (e.getResponse().getStatus() == 500 &&
+                e.getMessage() != null &&
                 e.getMessage().contains("hostname lookup")) {
                 return Response.status(Response.Status.NOT_FOUND)
                         .entity(new ErrorResponse("Node not found: " + nodeName))
@@ -168,16 +169,16 @@ public class NodeResource {
         try {
             // Get VMs on the node
             List<VM> vms = nodeService.getNodeVMs(nodeName, null);
-            
+
             // Get storage on the node
             List<StoragePool> storage = nodeService.getNodeStorage(nodeName, null);
-            
+
             // Build response using simple structure
             NodeResourcesResponse response = new NodeResourcesResponse();
             response.setNodeId(nodeName);
             response.setNodeName(nodeName);
             response.setStatus("online");
-            
+
             // Set VM info
             Map<String, Integer> vmInfo = new HashMap<>();
             vmInfo.put("total", vms.size());
@@ -185,24 +186,24 @@ public class NodeResource {
                 .filter(vm -> "running".equals(vm.getStatus()))
                 .count());
             response.setVmInfo(vmInfo);
-            
+
             // Set storage info
             long totalStorage = storage.stream().mapToLong(StoragePool::getTotal).sum();
             long usedStorage = storage.stream().mapToLong(StoragePool::getUsed).sum();
             long availStorage = storage.stream().mapToLong(StoragePool::getAvail).sum();
-            
+
             Map<String, Object> storageInfo = new HashMap<>();
             storageInfo.put("totalGB", totalStorage / (1024.0 * 1024 * 1024));
             storageInfo.put("usedGB", usedStorage / (1024.0 * 1024 * 1024));
             storageInfo.put("availableGB", availStorage / (1024.0 * 1024 * 1024));
             storageInfo.put("poolCount", storage.size());
             response.setStorage(storageInfo);
-            
+
             return Response.ok(response).build();
         } catch (ClientWebApplicationException e) {
             // Handle Proxmox client errors (like hostname lookup failures)
-            if (e.getResponse().getStatus() == 500 && 
-                e.getMessage() != null && 
+            if (e.getResponse().getStatus() == 500 &&
+                e.getMessage() != null &&
                 e.getMessage().contains("hostname lookup")) {
                 return Response.status(Response.Status.NOT_FOUND)
                         .entity(new ErrorResponse("Node not found: " + nodeName))

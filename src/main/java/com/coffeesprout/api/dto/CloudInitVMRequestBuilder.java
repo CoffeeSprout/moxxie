@@ -1,8 +1,9 @@
 package com.coffeesprout.api.dto;
 
-import com.coffeesprout.api.dto.cluster.NodeTemplate;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.coffeesprout.api.dto.cluster.NodeTemplate;
 
 /**
  * Builder for CloudInitVMRequest to avoid long parameter lists
@@ -16,7 +17,7 @@ public class CloudInitVMRequestBuilder {
     private Integer memoryMB;
     private String imageSource;
     private String targetStorage;
-    
+
     // Optional fields with defaults
     private String templateNode;
     private Integer diskSizeGB = 50;
@@ -35,23 +36,23 @@ public class CloudInitVMRequestBuilder {
     private String description;
     private String tags;
     private CloudInitVMRequest.DiskOptions diskOptions;
-    
+
     // Firmware and hardware configuration
     private FirmwareConfig firmware;
     private String scsihw = "virtio-scsi-pci";
     private String serial0;
     private String vgaType = "std";
-    
+
     // Private constructor - use static factory methods
     private CloudInitVMRequestBuilder() {}
-    
+
     /**
      * Create a new builder
      */
     public static CloudInitVMRequestBuilder builder() {
         return new CloudInitVMRequestBuilder();
     }
-    
+
     /**
      * Create a builder for FCOS (Fedora CoreOS) VMs that don't use cloud-init
      */
@@ -71,7 +72,7 @@ public class CloudInitVMRequestBuilder {
             .start(false)  // Never auto-start FCOS nodes
             .skipCloudInit();
     }
-    
+
     /**
      * Create a builder for regular cloud-init VMs
      */
@@ -88,7 +89,7 @@ public class CloudInitVMRequestBuilder {
             .diskSizeGB(template.disks().get(0).sizeGB())
             .cpuType(template.cpuType())
             .qemuAgent(template.qemuAgent());
-        
+
         // Add cloud-init config if present
         if (template.cloudInit() != null) {
             builder.cloudInitUser(template.cloudInit().user())
@@ -97,153 +98,153 @@ public class CloudInitVMRequestBuilder {
                    .searchDomain(template.cloudInit().searchDomain())
                    .nameservers(template.cloudInit().nameservers());
         }
-        
+
         return builder;
     }
-    
+
     // Builder methods for required fields
     public CloudInitVMRequestBuilder vmid(Integer vmid) {
         this.vmid = vmid;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder name(String name) {
         this.name = name;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder node(String node) {
         this.node = node;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder cores(Integer cores) {
         this.cores = cores;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder memoryMB(Integer memoryMB) {
         this.memoryMB = memoryMB;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder imageSource(String imageSource) {
         this.imageSource = imageSource;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder targetStorage(String targetStorage) {
         this.targetStorage = targetStorage;
         return this;
     }
-    
+
     // Builder methods for optional fields
     public CloudInitVMRequestBuilder templateNode(String templateNode) {
         this.templateNode = templateNode;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder diskSizeGB(Integer diskSizeGB) {
         this.diskSizeGB = diskSizeGB;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder cloudInitUser(String cloudInitUser) {
         this.cloudInitUser = cloudInitUser;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder cloudInitPassword(String cloudInitPassword) {
         this.cloudInitPassword = cloudInitPassword;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder sshKeys(String sshKeys) {
         this.sshKeys = sshKeys;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder networks(List<NetworkConfig> networks) {
         this.networks = networks != null ? networks : new ArrayList<>();
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder addNetwork(NetworkConfig network) {
         this.networks.add(network);
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder ipConfigs(List<String> ipConfigs) {
         this.ipConfigs = ipConfigs != null ? ipConfigs : new ArrayList<>();
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder addIpConfig(String ipConfig) {
         this.ipConfigs.add(ipConfig);
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder searchDomain(String searchDomain) {
         this.searchDomain = searchDomain;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder nameservers(String nameservers) {
         this.nameservers = nameservers;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder cpuType(String cpuType) {
         this.cpuType = cpuType;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder qemuAgent(Boolean qemuAgent) {
         this.qemuAgent = qemuAgent;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder start(Boolean start) {
         this.start = start;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder description(String description) {
         this.description = description;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder tags(String tags) {
         this.tags = tags;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder diskOptions(CloudInitVMRequest.DiskOptions diskOptions) {
         this.diskOptions = diskOptions;
         return this;
     }
-    
+
     // Firmware and hardware configuration methods
     public CloudInitVMRequestBuilder firmware(FirmwareConfig firmware) {
         this.firmware = firmware;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder scsihw(String scsihw) {
         this.scsihw = scsihw;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder serial0(String serial0) {
         this.serial0 = serial0;
         return this;
     }
-    
+
     public CloudInitVMRequestBuilder vgaType(String vgaType) {
         this.vgaType = vgaType;
         return this;
     }
-    
+
     /**
      * Convenience method to skip cloud-init configuration (for FCOS)
      */
@@ -255,7 +256,7 @@ public class CloudInitVMRequestBuilder {
         this.nameservers = null;
         return this;
     }
-    
+
     /**
      * Build the CloudInitVMRequest
      */
@@ -279,7 +280,7 @@ public class CloudInitVMRequestBuilder {
         if (targetStorage == null || targetStorage.isBlank()) {
             throw new IllegalStateException("Target storage is required");
         }
-        
+
         return new CloudInitVMRequest(
             vmid,
             name,

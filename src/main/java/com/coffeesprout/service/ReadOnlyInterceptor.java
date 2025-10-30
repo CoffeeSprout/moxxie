@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.interceptor.AroundInvoke;
 import jakarta.interceptor.Interceptor;
 import jakarta.interceptor.InvocationContext;
+
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +25,7 @@ public class ReadOnlyInterceptor {
     public Object checkReadOnly(InvocationContext context) throws Exception {
         if (readOnlyMode) {
             String methodName = context.getMethod().getName();
-            
+
             // Block any write operations
             if (isWriteOperation(methodName)) {
                 LOG.warn("BLOCKED: Write operation '{}' attempted in read-only mode", methodName);
@@ -33,7 +34,7 @@ public class ReadOnlyInterceptor {
                 );
             }
         }
-        
+
         return context.proceed();
     }
 

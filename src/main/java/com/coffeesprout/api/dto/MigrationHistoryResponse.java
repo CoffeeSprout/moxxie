@@ -1,8 +1,9 @@
 package com.coffeesprout.api.dto;
 
-import com.coffeesprout.model.VmMigration;
 import java.time.Instant;
 import java.util.Map;
+
+import com.coffeesprout.model.VmMigration;
 
 /**
  * Response DTO for VM migration history

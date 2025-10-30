@@ -1,15 +1,17 @@
 package com.coffeesprout.service;
 
-import com.coffeesprout.config.MoxxieConfig;
-import com.coffeesprout.model.LocationInfo;
-import io.quarkus.runtime.StartupEvent;
+import java.util.UUID;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
+
+import com.coffeesprout.api.exception.ProxmoxException;
+import com.coffeesprout.config.MoxxieConfig;
+import com.coffeesprout.model.LocationInfo;
+import io.quarkus.runtime.StartupEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.UUID;
 
 /**
  * Service responsible for managing location information for this Moxxie instance.
@@ -17,20 +19,20 @@ import java.util.UUID;
  */
 @ApplicationScoped
 public class LocationService {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(LocationService.class);
-    
+
     @Inject
     MoxxieConfig config;
-    
+
     private LocationInfo locationInfo;
-    
+
     /**
      * Initialize location information at startup
      */
     void onStart(@Observes StartupEvent ev) {
         LOG.info("Initializing location information for Moxxie instance");
-        
+
         try {
             // Generate instance ID if not provided
             String instanceId = config.location().instanceId()
@@ -39,7 +41,7 @@ public class LocationService {
                     LOG.info("Generated instance ID: {}", generated);
                     return generated;
                 });
-            
+
             // Create LocationInfo from configuration
             locationInfo = new LocationInfo(
                 config.location().provider(),
@@ -51,25 +53,27 @@ public class LocationService {
                 config.location().longitude(),
                 instanceId
             );
-            
+
             // Validate location information
             locationInfo.validate();
-            
-            LOG.info("Location initialized: {} ({}) at {}/{}", 
-                locationInfo.name(), 
+
+            LOG.info("Location initialized: {} ({}) at {}/{}",
+                locationInfo.name(),
                 locationInfo.provider(),
                 locationInfo.region(),
                 locationInfo.datacenter()
             );
             LOG.info("Coordinates: {}, {}", locationInfo.latitude(), locationInfo.longitude());
             LOG.info("Instance ID: {}", locationInfo.instanceId());
-            
+
         } catch (Exception e) {
             LOG.error("Failed to initialize location information", e);
-            throw new RuntimeException("Invalid location configuration: " + e.getMessage(), e);
+            throw ProxmoxException.invalidConfiguration("location",
+                "location configuration is invalid: " + e.getMessage(),
+                "Check location configuration in Proxmox and ensure all location nodes exist");
         }
     }
-    
+
     /**
      * Get the location information for this instance
      */
@@ -79,14 +83,14 @@ public class LocationService {
         }
         return locationInfo;
     }
-    
+
     /**
      * Get the full location identifier (region/datacenter)
      */
     public String getFullLocation() {
         return getLocationInfo().fullLocation();
     }
-    
+
     /**
      * Check if location information is initialized
      */

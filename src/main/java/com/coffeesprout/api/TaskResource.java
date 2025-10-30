@@ -1,5 +1,11 @@
 package com.coffeesprout.api;
 
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+
 import com.coffeesprout.api.dto.ErrorResponse;
 import com.coffeesprout.api.dto.TaskListResponse;
 import com.coffeesprout.api.dto.TaskLogResponse;
@@ -7,13 +13,7 @@ import com.coffeesprout.api.dto.TaskStatusDetailResponse;
 import com.coffeesprout.service.SafeMode;
 import com.coffeesprout.service.TaskService;
 import io.smallrye.common.annotation.RunOnVirtualThread;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
-import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
@@ -29,15 +29,15 @@ import org.slf4j.LoggerFactory;
 @RunOnVirtualThread
 @Tag(name = "Tasks", description = "Task monitoring and management endpoints")
 public class TaskResource {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(TaskResource.class);
-    
+
     @Inject
     TaskService taskService;
-    
+
     @GET
     @SafeMode(false)  // Read operation
-    @Operation(summary = "List tasks", 
+    @Operation(summary = "List tasks",
                description = "List tasks across the cluster with optional filtering")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Tasks retrieved successfully",
@@ -52,7 +52,7 @@ public class TaskResource {
             @QueryParam("node") String node,
             @Parameter(description = "Filter by task type", example = "qmstart")
             @QueryParam("type") String typeFilter,
-            @Parameter(description = "Filter by status (running, stopped)", 
+            @Parameter(description = "Filter by status (running, stopped)",
                       schema = @Schema(enumeration = {"running", "stopped"}))
             @QueryParam("status") String statusFilter,
             @Parameter(description = "Filter by user", example = "root@pam")
@@ -75,11 +75,11 @@ public class TaskResource {
                     .build();
         }
     }
-    
+
     @GET
     @Path("/{taskId}")
     @SafeMode(false)  // Read operation
-    @Operation(summary = "Get task status", 
+    @Operation(summary = "Get task status",
                description = "Get detailed status of a specific task by UPID")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Task status retrieved successfully",
@@ -90,7 +90,7 @@ public class TaskResource {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public Response getTaskStatus(
-            @Parameter(description = "Task UPID", required = true, 
+            @Parameter(description = "Task UPID", required = true,
                       example = "UPID:pve1:00001234:12345678:5F3E8B7C:qmstart:100:root@pam:")
             @PathParam("taskId") String taskId) {
         try {
@@ -118,11 +118,11 @@ public class TaskResource {
                     .build();
         }
     }
-    
+
     @GET
     @Path("/{taskId}/log")
     @SafeMode(false)  // Read operation
-    @Operation(summary = "Get task log", 
+    @Operation(summary = "Get task log",
                description = "Get execution log of a specific task with pagination")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Task log retrieved successfully",
@@ -165,11 +165,11 @@ public class TaskResource {
                     .build();
         }
     }
-    
+
     @DELETE
     @Path("/{taskId}")
     @SafeMode(true)  // Write operation - stopping a task
-    @Operation(summary = "Stop task", 
+    @Operation(summary = "Stop task",
                description = "Stop a running task (requires appropriate permissions)")
     @APIResponses({
         @APIResponse(responseCode = "204", description = "Task stop initiated successfully"),
@@ -194,7 +194,7 @@ public class TaskResource {
                         .entity(new ErrorResponse("Task is not running"))
                         .build();
             }
-            
+
             taskService.stopTask(taskId, null);
             return Response.noContent().build();
         } catch (IllegalArgumentException e) {

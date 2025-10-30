@@ -5,11 +5,11 @@ package com.coffeesprout.constants;
  * Centralizes all VM-related constants to avoid magic strings throughout the codebase.
  */
 public final class VMConstants {
-    
+
     private VMConstants() {
         // Prevent instantiation
     }
-    
+
     /**
      * VM Status values as returned by Proxmox API
      */
@@ -19,10 +19,10 @@ public final class VMConstants {
         public static final String SUSPENDED = "suspended";
         public static final String PAUSED = "paused";
         public static final String HIBERNATED = "hibernated";
-        
+
         private Status() {}
     }
-    
+
     /**
      * VM Lock states
      */
@@ -36,10 +36,10 @@ public final class VMConstants {
         public static final String SNAPSHOT_DELETE = "snapshot-delete";
         public static final String SUSPENDED = "suspended";
         public static final String SUSPENDING = "suspending";
-        
+
         private Lock() {}
     }
-    
+
     /**
      * Network interface patterns and defaults
      */
@@ -48,10 +48,10 @@ public final class VMConstants {
         public static final String DEFAULT_MODEL = "virtio";
         public static final String DEFAULT_BRIDGE = "vmbr0";
         public static final int MAX_INTERFACES = 8;
-        
+
         private Network() {}
     }
-    
+
     /**
      * Disk interface types and limits
      */
@@ -60,20 +60,20 @@ public final class VMConstants {
         public static final String VIRTIO_PREFIX = "virtio";
         public static final String IDE_PREFIX = "ide";
         public static final String SATA_PREFIX = "sata";
-        
+
         public static final int MAX_SCSI_DEVICES = 31;
         public static final int MAX_VIRTIO_DEVICES = 16;
         public static final int MAX_IDE_DEVICES = 4;
         public static final int MAX_SATA_DEVICES = 6;
-        
+
         public static final String DEFAULT_FORMAT = "raw";
         public static final String DEFAULT_STORAGE = "local-zfs";
         public static final int MIN_SIZE_GB = 1;
         public static final int MAX_SIZE_GB = 131072; // 128TB
-        
+
         private Disk() {}
     }
-    
+
     /**
      * VM Resource limits and defaults
      */
@@ -81,23 +81,23 @@ public final class VMConstants {
         public static final int MIN_CORES = 1;
         public static final int MAX_CORES = 128;
         public static final int DEFAULT_CORES = 2;
-        
+
         public static final int MIN_MEMORY_MB = 512;
         public static final int MAX_MEMORY_MB = 4194304; // 4TB
         public static final int DEFAULT_MEMORY_MB = 2048;
-        
+
         public static final int MIN_VM_ID = 100;
         public static final int MAX_VM_ID = 999999999;
-        
+
         public static final String DEFAULT_CPU_TYPE = "x86-64-v2-AES";
         public static final String DEFAULT_VGA_TYPE = "std";
         public static final String DEFAULT_BIOS_TYPE = "seabios";
         public static final String DEFAULT_OS_TYPE = "l26"; // Linux 2.6+
         public static final String DEFAULT_MACHINE_TYPE = "q35";
-        
+
         private Resources() {}
     }
-    
+
     /**
      * Pagination defaults
      */
@@ -105,10 +105,10 @@ public final class VMConstants {
         public static final int DEFAULT_PAGE_SIZE = 100;
         public static final int MAX_PAGE_SIZE = 1000;
         public static final int MIN_PAGE_SIZE = 10;
-        
+
         private Pagination() {}
     }
-    
+
     /**
      * Timeout values in seconds
      */
@@ -120,10 +120,10 @@ public final class VMConstants {
         public static final int TASK_POLL_INTERVAL = 2;
         public static final int SNAPSHOT_TIMEOUT = 60;
         public static final int BACKUP_TIMEOUT = 3600; // 1 hour
-        
+
         private Timeouts() {}
     }
-    
+
     /**
      * Snapshot configuration
      */
@@ -132,10 +132,10 @@ public final class VMConstants {
         public static final int MAX_NAME_LENGTH = 40;
         public static final int MAX_DESCRIPTION_LENGTH = 255;
         public static final String DEFAULT_PREFIX = "snap";
-        
+
         private Snapshot() {}
     }
-    
+
     /**
      * Backup configuration
      */
@@ -144,10 +144,10 @@ public final class VMConstants {
         public static final String DEFAULT_COMPRESSION = "zstd";
         public static final int DEFAULT_RETENTION_DAYS = 7;
         public static final int MAX_CONCURRENT_BACKUPS = 5;
-        
+
         private Backup() {}
     }
-    
+
     /**
      * Tag configuration
      */
@@ -157,10 +157,10 @@ public final class VMConstants {
         public static final String SEPARATOR = ";"; // Proxmox uses semicolon
         public static final String PREFIX_SEPARATOR = "-"; // Use dash instead of colon
         public static final String MOXXIE_TAG = "moxxie";
-        
+
         private Tags() {}
     }
-    
+
     /**
      * Cloud-init configuration
      */
@@ -169,10 +169,10 @@ public final class VMConstants {
         public static final String FORMAT = "nocloud";
         public static final String MEDIA = "cdrom";
         public static final String DNS_DOMAIN = "localdomain";
-        
+
         private CloudInit() {}
     }
-    
+
     /**
      * Task status values
      */
@@ -180,7 +180,7 @@ public final class VMConstants {
         public static final String OK = "OK";
         public static final String RUNNING = "running";
         public static final String STOPPED = "stopped";
-        
+
         private TaskStatus() {}
     }
 }

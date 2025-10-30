@@ -26,14 +26,14 @@ public record MigrationResponse(
     public MigrationResponse(Long migrationId, String taskUpid, String message) {
         this(migrationId, taskUpid, message, null, null, null, null, null, null, null, null, null);
     }
-    
+
     /**
      * Constructor for backward compatibility (without auto-detection fields)
      */
     public MigrationResponse(Long migrationId, String taskUpid, String message,
-                           Integer vmId, String vmName, String sourceNode, 
+                           Integer vmId, String vmName, String sourceNode,
                            String targetNode, String migrationType, Instant startedAt) {
-        this(migrationId, taskUpid, message, vmId, vmName, sourceNode, 
+        this(migrationId, taskUpid, message, vmId, vmName, sourceNode,
              targetNode, migrationType, startedAt, null, null, null);
     }
 }

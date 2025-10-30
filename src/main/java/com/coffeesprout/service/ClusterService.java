@@ -1,15 +1,16 @@
 package com.coffeesprout.service;
 
-import com.coffeesprout.api.dto.ClusterDiscoveryResponse;
-import com.coffeesprout.client.*;
+import java.util.ArrayList;
+import java.util.List;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+
+import com.coffeesprout.api.dto.ClusterDiscoveryResponse;
+import com.coffeesprout.client.*;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @ApplicationScoped
 @AutoAuthenticate
@@ -54,12 +55,12 @@ public class ClusterService {
         // Discover storage
         StorageResponse storageResponse = proxmoxClient.getStorage(ticket);
         List<ClusterDiscoveryResponse.StorageInfo> storageInfos = new ArrayList<>();
-        
+
         storageResponse.getData().forEach(pool -> {
             if (pool.getTotal() == 0) {
                 return; // Skip storage without capacity info
             }
-            
+
             ClusterDiscoveryResponse.StorageInfo storageInfo = new ClusterDiscoveryResponse.StorageInfo(
                 pool.getStorage(),
                 pool.getType(),
@@ -72,7 +73,7 @@ public class ClusterService {
 
         // Determine cluster name (could be enhanced to get actual cluster name from API)
         String clusterName = "proxmox-cluster";
-        
+
         return new ClusterDiscoveryResponse(clusterName, nodeInfos, storageInfos);
     }
 

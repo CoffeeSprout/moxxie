@@ -2,6 +2,7 @@ package com.coffeesprout.scheduler.health;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+
 import org.eclipse.microprofile.health.HealthCheck;
 import org.eclipse.microprofile.health.HealthCheckResponse;
 import org.eclipse.microprofile.health.Readiness;
@@ -16,12 +17,12 @@ import org.slf4j.LoggerFactory;
 @ApplicationScoped
 @Readiness
 public class SchedulerHealthCheck implements HealthCheck {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(SchedulerHealthCheck.class);
-    
+
     @Inject
     Scheduler scheduler;
-    
+
     @Override
     public HealthCheckResponse call() {
         try {
@@ -29,12 +30,12 @@ public class SchedulerHealthCheck implements HealthCheck {
             boolean shutdown = scheduler.isShutdown();
             boolean standby = scheduler.isInStandbyMode();
             int runningJobs = scheduler.getCurrentlyExecutingJobs().size();
-            
+
             // Get metadata for additional information
             SchedulerMetaData metaData = scheduler.getMetaData();
-            
+
             HealthCheckResponse response;
-            
+
             if (started && !shutdown && !standby) {
                 response = HealthCheckResponse.named("scheduler")
                     .up()
@@ -57,9 +58,9 @@ public class SchedulerHealthCheck implements HealthCheck {
                     .withData("standby", standby)
                     .build();
             }
-            
+
             return response;
-            
+
         } catch (Exception e) {
             LOG.error("Scheduler health check failed", e);
             return HealthCheckResponse.named("scheduler")

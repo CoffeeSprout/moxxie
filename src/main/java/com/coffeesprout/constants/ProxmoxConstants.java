@@ -5,11 +5,11 @@ package com.coffeesprout.constants;
  * These values are defined by the Proxmox VE API specification.
  */
 public final class ProxmoxConstants {
-    
+
     private ProxmoxConstants() {
         throw new AssertionError("ProxmoxConstants is a utility class and should not be instantiated");
     }
-    
+
     /**
      * API paths and endpoints
      */
@@ -21,10 +21,10 @@ public final class ProxmoxConstants {
         public static final String STORAGE_PATH = "/storage";
         public static final String NETWORK_PATH = "/network";
         public static final String ACCESS_PATH = "/access";
-        
+
         private API() {}
     }
-    
+
     /**
      * Form field names for API requests
      */
@@ -48,7 +48,7 @@ public final class ProxmoxConstants {
         public static final String BOOTDISK = "bootdisk";
         public static final String VGA = "vga";
         public static final String SERIAL = "serial0";
-        
+
         // Migration fields
         public static final String TARGET = "target";
         public static final String ONLINE = "online";
@@ -58,18 +58,18 @@ public final class ProxmoxConstants {
         public static final String MIGRATION_NETWORK = "migration_network";
         public static final String BWLIMIT = "bwlimit";
         public static final String TARGET_STORAGE = "targetstorage";
-        
+
         // Snapshot fields
         public static final String SNAPNAME = "snapname";
         public static final String VMSTATE = "vmstate";
-        
+
         // Backup fields
         public static final String COMPRESS = "compress";
         public static final String MODE = "mode";
         public static final String MAILTO = "mailto";
         public static final String MAILNOTIFICATION = "mailnotification";
         public static final String NOTES_TEMPLATE = "notes-template";
-        
+
         // Cloud-init fields
         public static final String CIUSER = "ciuser";
         public static final String CIPASSWORD = "cipassword";
@@ -77,10 +77,10 @@ public final class ProxmoxConstants {
         public static final String SEARCHDOMAIN = "searchdomain";
         public static final String NAMESERVER = "nameserver";
         public static final String IPCONFIG_PREFIX = "ipconfig";
-        
+
         private FormFields() {}
     }
-    
+
     /**
      * Header names for API requests
      */
@@ -91,10 +91,10 @@ public final class ProxmoxConstants {
         public static final String CONTENT_TYPE = "Content-Type";
         public static final String FORM_URLENCODED = "application/x-www-form-urlencoded";
         public static final String APPLICATION_JSON = "application/json";
-        
+
         private Headers() {}
     }
-    
+
     /**
      * Response field names
      */
@@ -105,10 +105,10 @@ public final class ProxmoxConstants {
         public static final String MESSAGE = "message";
         public static final String SUCCESS = "success";
         public static final String UPID = "UPID";
-        
+
         private ResponseFields() {}
     }
-    
+
     /**
      * Task types as returned by Proxmox API
      */
@@ -127,10 +127,10 @@ public final class ProxmoxConstants {
         public static final String VZRESTORE = "vzrestore";
         public static final String VNCPROXY = "vncproxy";
         public static final String SPICEPROXY = "spiceproxy";
-        
+
         private TaskTypes() {}
     }
-    
+
     /**
      * Storage types supported by Proxmox
      */
@@ -147,10 +147,10 @@ public final class ProxmoxConstants {
         public static final String ZFS = "zfspool";
         public static final String ZFS_OVER_ISCSI = "zfs";
         public static final String PBS = "pbs"; // Proxmox Backup Server
-        
+
         private StorageTypes() {}
     }
-    
+
     /**
      * Network types
      */
@@ -162,10 +162,10 @@ public final class ProxmoxConstants {
         public static final String OVS_BOND = "OVSBond";
         public static final String OVS_PORT = "OVSPort";
         public static final String OVS_INTPORT = "OVSIntPort";
-        
+
         private NetworkTypes() {}
     }
-    
+
     /**
      * Permission paths
      */
@@ -187,10 +187,10 @@ public final class ProxmoxConstants {
         public static final String SYS_AUDIT = "Sys.Audit";
         public static final String SYS_MODIFY = "Sys.Modify";
         public static final String SYS_POWER_MGT = "Sys.PowerMgmt";
-        
+
         private Permissions() {}
     }
-    
+
     /**
      * Special values and limits
      */
@@ -202,7 +202,7 @@ public final class ProxmoxConstants {
         public static final int DEFAULT_CONSOLE_PORT = 5900; // VNC
         public static final int DEFAULT_SPICE_PORT = 3128;
         public static final int DEFAULT_API_PORT = 8006;
-        
+
         private Limits() {}
     }
 }

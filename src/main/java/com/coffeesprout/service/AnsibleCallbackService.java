@@ -1,20 +1,20 @@
 package com.coffeesprout.service;
 
-import com.coffeesprout.api.dto.VMResponse;
-import com.coffeesprout.config.AnsibleConfig;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import org.eclipse.microprofile.rest.client.inject.RestClient;
-import org.jboss.logging.Logger;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+
+import com.coffeesprout.api.dto.VMResponse;
+import com.coffeesprout.api.exception.ProxmoxException;
+import com.coffeesprout.config.AnsibleConfig;
+import org.jboss.logging.Logger;
 
 /**
  * Service for triggering Ansible playbooks after VM creation or configuration changes.
@@ -88,7 +88,7 @@ public class AnsibleCallbackService {
                 attempt++;
                 if (attempt >= maxRetries) {
                     LOG.errorf(e, "Ansible callback failed for VM %d after %d attempts", vm.vmid(), maxRetries);
-                    throw new RuntimeException("Ansible callback failed after " + maxRetries + " attempts", e);
+                    throw ProxmoxException.internalError("Ansible callback for VM " + vm.vmid() + " after " + maxRetries + " attempts", e);
                 }
 
                 // Wait before retry with exponential backoff
@@ -98,7 +98,9 @@ public class AnsibleCallbackService {
                     Thread.sleep(delayMs);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
-                    throw new RuntimeException("Callback retry interrupted", ie);
+                    ProxmoxException interrupted = ProxmoxException.internalError("callback retry (interrupted)", ie);
+                    interrupted.addSuppressed(e); // Preserve the original exception
+                    throw interrupted;
                 }
             }
         }

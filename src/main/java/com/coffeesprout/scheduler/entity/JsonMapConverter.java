@@ -1,20 +1,21 @@
 package com.coffeesprout.scheduler.entity;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.inject.Inject;
-import jakarta.persistence.AttributeConverter;
-import jakarta.persistence.Converter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.Converter;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 @Converter
 public class JsonMapConverter implements AttributeConverter<Map<String, Object>, String> {
-    
+
     private static final ObjectMapper objectMapper = new ObjectMapper();
-    
+
     @Override
     public String convertToDatabaseColumn(Map<String, Object> attribute) {
         if (attribute == null || attribute.isEmpty()) {
@@ -26,10 +27,10 @@ public class JsonMapConverter implements AttributeConverter<Map<String, Object>,
             throw new IllegalArgumentException("Error converting map to JSON", e);
         }
     }
-    
+
     @Override
     public Map<String, Object> convertToEntityAttribute(String dbData) {
-        if (dbData == null || dbData.trim().isEmpty()) {
+        if (dbData == null || dbData.isBlank()) {
             return new HashMap<>();
         }
         try {

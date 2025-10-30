@@ -1,5 +1,25 @@
 package com.coffeesprout.api;
 
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.validation.Valid;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriBuilder;
+import jakarta.ws.rs.core.UriInfo;
+
 import com.coffeesprout.api.dto.BackupRequest;
 import com.coffeesprout.api.dto.BackupResponse;
 import com.coffeesprout.api.dto.CloudInitVMRequest;
@@ -8,41 +28,30 @@ import com.coffeesprout.api.dto.CreateVMRequestDTO;
 import com.coffeesprout.api.dto.DiskConfig;
 import com.coffeesprout.api.dto.DiskInfo;
 import com.coffeesprout.api.dto.ErrorResponse;
-import com.coffeesprout.api.exception.ProxmoxException;
-import com.coffeesprout.api.dto.RestoreRequest;
 import com.coffeesprout.api.dto.SetSSHKeysRequest;
 import com.coffeesprout.api.dto.SnapshotResponse;
 import com.coffeesprout.api.dto.TaskResponse;
 import com.coffeesprout.api.dto.VMDetailResponse;
-import com.coffeesprout.api.dto.VMStatusDetailResponse;
 import com.coffeesprout.api.dto.VMResponse;
+import com.coffeesprout.api.dto.VMStatusDetailResponse;
+import com.coffeesprout.api.exception.ProxmoxException;
 import com.coffeesprout.client.CreateVMRequest;
 import com.coffeesprout.client.CreateVMRequestBuilder;
 import com.coffeesprout.client.CreateVMResponse;
-import com.coffeesprout.client.VM;
-import com.coffeesprout.client.VMStatusResponse;
+import com.coffeesprout.client.ProxmoxClient;
 import com.coffeesprout.client.TaskStatusResponse;
+import com.coffeesprout.client.VMStatusResponse;
+import com.coffeesprout.config.MoxxieConfig;
 import com.coffeesprout.service.BackupService;
-import com.coffeesprout.service.SafeMode;
 import com.coffeesprout.service.SDNService;
+import com.coffeesprout.service.SafeMode;
 import com.coffeesprout.service.SnapshotService;
 import com.coffeesprout.service.TagService;
-import com.coffeesprout.service.VMService;
-import com.coffeesprout.service.VMIdService;
 import com.coffeesprout.service.TicketManager;
-import com.coffeesprout.client.ProxmoxClient;
-import com.coffeesprout.config.MoxxieConfig;
+import com.coffeesprout.service.VMIdService;
+import com.coffeesprout.service.VMService;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.smallrye.common.annotation.RunOnVirtualThread;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import jakarta.validation.Valid;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.UriBuilder;
-import jakarta.ws.rs.core.UriInfo;
-import jakarta.ws.rs.core.Context;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -55,16 +64,6 @@ import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
 @Path("/api/v1/vms")
 @Produces(MediaType.APPLICATION_JSON)
 @ApplicationScoped
@@ -76,32 +75,32 @@ public class VMResource {
 
     @Inject
     VMService vmService;
-    
+
     @Inject
     TagService tagService;
-    
+
     @Inject
     SDNService sdnService;
-    
+
     @Inject
     @RestClient
     ProxmoxClient proxmoxClient;
-    
+
     @Inject
     SnapshotService snapshotService;
-    
+
     @Inject
     BackupService backupService;
-    
+
     @Inject
     TicketManager ticketManager;
-    
+
     @Inject
     VMIdService vmIdService;
-    
+
     @Inject
     MoxxieConfig config;
-    
+
     @Context
     UriInfo uriInfo;
 
@@ -138,10 +137,10 @@ public class VMResource {
         if (tags != null && !tags.isEmpty()) {
             tagFilter = List.of(tags.split(","));
         }
-        
+
         // Get filtered VMs from service
         List<VMResponse> vms = vmService.listVMsWithFilters(tagFilter, client, node, status, null);
-        
+
         // Apply additional filters for vmIds
         if (vmIds != null && !vmIds.isEmpty()) {
             Set<Integer> vmIdSet = new HashSet<>();
@@ -156,7 +155,7 @@ public class VMResource {
                 .filter(vm -> vmIdSet.contains(vm.vmid()))
                 .collect(Collectors.toList());
         }
-        
+
         // Apply name pattern filter
         if (namePattern != null && !namePattern.isEmpty()) {
             Pattern pattern = Pattern.compile(namePattern.replace("*", ".*"));
@@ -164,13 +163,13 @@ public class VMResource {
                 .filter(vm -> pattern.matcher(vm.name()).matches())
                 .collect(Collectors.toList());
         }
-        
+
         // Apply pagination
         List<VMResponse> paginatedVMs = vms.stream()
             .skip(offset)
             .limit(limit)
             .collect(Collectors.toList());
-        
+
         return Response.ok(paginatedVMs).build();
     }
 
@@ -214,10 +213,10 @@ public class VMResource {
         // Get ticket and CSRF token
         String ticket = ticketManager.getTicket();
         String csrfToken = ticketManager.getCsrfToken();
-        
+
         // Call Proxmox cluster resources directly
         JsonNode clusterResources = proxmoxClient.getClusterResources(ticket, csrfToken, "vm");
-        
+
         // Find the specific VM in the results
         if (clusterResources != null && clusterResources.has("data") && clusterResources.get("data").isArray()) {
             for (JsonNode resource : clusterResources.get("data")) {
@@ -227,7 +226,7 @@ public class VMResource {
                 }
             }
         }
-        
+
         throw ProxmoxException.notFound("VM", String.valueOf(vmId));
     }
 
@@ -255,31 +254,31 @@ public class VMResource {
         if (request.node() == null || request.node().isEmpty()) {
             throw ProxmoxException.validation("node", "null", "Required field");
         }
-            
+
             // Convert DTO to client request using builder
             // Generate VM ID if not provided
             int vmId = request.vmId() != null ? request.vmId() : vmIdService.getNextAvailableVmId(null);
-            
+
             CreateVMRequestBuilder builder = CreateVMRequestBuilder.builder()
                 .vmid(vmId)
                 .name(request.name())
                 .cores(request.cores())
                 .memory(request.memoryMB());
-            
+
             // Handle multiple networks
             List<com.coffeesprout.api.dto.NetworkConfig> networks = request.networks();
-            
+
             // Backward compatibility: if networks is null/empty but network is set, convert it
             if ((networks == null || networks.isEmpty()) && request.network() != null) {
                 CreateVMRequestDTO.NetworkConfig oldNet = request.network();
                 networks = List.of(new com.coffeesprout.api.dto.NetworkConfig(
-                    "virtio", 
-                    oldNet.bridge(), 
+                    "virtio",
+                    oldNet.bridge(),
                     oldNet.vlan(),
                     null, null, null, null, null, null
                 ));
             }
-            
+
             // Set up networks
             if (networks != null) {
                 for (com.coffeesprout.api.dto.NetworkConfig net : networks) {
@@ -290,55 +289,55 @@ public class VMResource {
                     builder.addNetwork(model, net.bridge(), vlan, tag.isEmpty() ? null : tag);
                 }
             }
-            
+
             // Set start on boot
             if (request.startOnBoot() != null && request.startOnBoot()) {
                 builder.onboot(true);
             }
-            
+
             // Set pool if specified
             if (request.pool() != null && !request.pool().isEmpty()) {
                 builder.pool(request.pool());
             }
-            
+
             // Set boot order if specified
             if (request.bootOrder() != null && !request.bootOrder().isEmpty()) {
                 builder.boot(request.bootOrder());
             }
-            
+
             // Add tags from the request
             if (request.tags() != null && !request.tags().isEmpty()) {
                 builder.tags(String.join(",", request.tags()));
             }
-            
+
             // Set CPU type (use request value or default)
-            builder.cpu(request.cpuType() != null && !request.cpuType().isEmpty() ? 
+            builder.cpu(request.cpuType() != null && !request.cpuType().isEmpty() ?
                 request.cpuType() : config.proxmox().defaultCpuType());
-            
+
             // Set VGA type (use request value or default)
-            builder.vga(request.vgaType() != null && !request.vgaType().isEmpty() ? 
+            builder.vga(request.vgaType() != null && !request.vgaType().isEmpty() ?
                 request.vgaType() : config.proxmox().defaultVgaType());
-            
+
             // Handle disk configurations
             if (request.disks() != null && !request.disks().isEmpty()) {
                 // Use the new disk configuration - we'll need to build the request first
-                // then apply disks using the existing setters since the builder 
+                // then apply disks using the existing setters since the builder
                 // doesn't have complex disk handling yet
             } else if (request.diskGB() != null && request.diskGB() > 0) {
                 // Fallback to legacy disk configuration
                 // TODO: Make storage configurable - for now use local-zfs
                 builder.addDisk("local-zfs", request.diskGB());
             }
-            
+
             // Build the request
             CreateVMRequest clientRequest = builder.build();
-            
+
             // Apply complex disk configurations if present (after building)
             if (request.disks() != null && !request.disks().isEmpty()) {
                 for (DiskConfig disk : request.disks()) {
                     String diskString = disk.toProxmoxString();
                     LOG.info("Setting disk {} with config: {}", disk.getParameterName(), diskString);
-                    
+
                     // Set the disk based on its interface and slot
                     switch (disk.interfaceType()) {
                         case SCSI:
@@ -378,20 +377,20 @@ public class VMResource {
                     }
                 }
             }
-            
+
             // Create the VM
             CreateVMResponse response = vmService.createVM(request.node(), clientRequest, null);
-            
+
             // Set the actual VM ID and status in the response
             // Proxmox returns a task UPID, not the VM details, so we need to set these
             response.setVmid(vmId);
             response.setStatus("created");
-            
+
             // Build location URI
             URI location = UriBuilder.fromResource(VMResource.class)
                     .path(String.valueOf(vmId))
                     .build();
-            
+
             return Response.created(location)
                     .entity(response)
                     .build();
@@ -400,7 +399,7 @@ public class VMResource {
     @POST
     @Path("/cloud-init")
     @SafeMode(operation = SafeMode.Operation.WRITE)
-    @Operation(summary = "Create VM from cloud image", 
+    @Operation(summary = "Create VM from cloud image",
                description = "Create a new VM from a cloud-init image with automatic disk import")
     @APIResponses({
         @APIResponse(responseCode = "201", description = "VM created successfully",
@@ -420,22 +419,22 @@ public class VMResource {
                 content = @Content(schema = @Schema(implementation = CloudInitVMRequest.class)))
             @Valid CloudInitVMRequest request) {
         LOG.info("Creating cloud-init VM {} from image {}", request.name(), request.imageSource());
-        
+
         // Delegate to VMService which handles VMID allocation, creation, and migration
         CreateVMResponse response = vmService.createCloudInitVM(request, null);
-        
+
         // Ensure the response has the correct VM ID
         // (This should already be set in VMService, but verify it's correct)
         if (response.getVmid() == 0 && request.vmid() != null) {
             response.setVmid(request.vmid());
             response.setStatus("created");
         }
-        
+
         // Build location URI
         URI location = uriInfo.getAbsolutePathBuilder()
                 .replacePath("/api/v1/vms/{vmId}")
                 .build(response.getVmid());
-        
+
         return Response.created(location)
                 .entity(response)
                 .build();
@@ -462,13 +461,13 @@ public class VMResource {
             @Parameter(description = "Force delete even if not managed by Moxxie")
             @QueryParam("force") boolean force) {
         VMResponse vm = findVmById(vmId);
-        
+
         // Delete the VM
         vmService.deleteVM(vm.node(), vmId, null);
-        
+
         return Response.noContent().build();
     }
-    
+
     @GET
     @Path("/{vmId}/detail")
     @SafeMode(false)  // Read operation
@@ -485,21 +484,21 @@ public class VMResource {
             @Parameter(description = "VM ID", required = true)
             @PathParam("vmId") int vmId) {
         VMResponse vm = findVmById(vmId);
-        
+
         // Get detailed VM configuration
         LOG.debug("Getting config for VM {} on node '{}'", vmId, vm.node());
         Map<String, Object> config = vmService.getVMConfig(vm.node(), vmId, null);
-        
+
         // Parse network interfaces from config
         List<VMDetailResponse.NetworkInterfaceInfo> networkInterfaces = parseNetworkInterfaces(config);
-        
+
         // Parse disk information from config
         List<DiskInfo> disks = parseDiskInfo(config);
         long totalDiskSize = calculateTotalDiskSize(disks);
-        
+
         // Get VM tags
         List<String> tags = new ArrayList<>(tagService.getVMTags(vmId, null));
-        
+
         VMDetailResponse response = new VMDetailResponse(
             vm.vmid(),
             vm.name() != null ? vm.name() : "VM-" + vm.vmid(),
@@ -516,13 +515,13 @@ public class VMResource {
             tags,
             config
         );
-        
+
         return Response.ok(response).build();
     }
-    
+
     private List<VMDetailResponse.NetworkInterfaceInfo> parseNetworkInterfaces(Map<String, Object> config) {
         List<VMDetailResponse.NetworkInterfaceInfo> interfaces = new ArrayList<>();
-        
+
         // Look for network interfaces (net0, net1, etc.)
         for (String key : config.keySet()) {
             if (key.startsWith("net") && key.matches("net\\d+")) {
@@ -533,16 +532,16 @@ public class VMResource {
                 }
             }
         }
-        
+
         return interfaces;
     }
-    
+
     private VMDetailResponse.NetworkInterfaceInfo parseNetworkInterface(String name, String rawConfig) {
         // Parse network config string (e.g., "virtio=BC:24:11:5E:7D:2C,bridge=vmbr0,tag=101")
         Map<String, String> params = new HashMap<>();
         String model = "virtio";
         String macAddress = null;
-            
+
             // Split by comma and parse key=value pairs
             String[] parts = rawConfig.split(",");
             for (String part : parts) {
@@ -556,7 +555,7 @@ public class VMResource {
                     macAddress = part.trim();
                 }
             }
-            
+
             // Extract model from the first part
             if (parts.length > 0 && parts[0].contains("=")) {
                 String[] modelParts = parts[0].split("=", 2);
@@ -565,11 +564,11 @@ public class VMResource {
                     macAddress = modelParts[1].trim();
                 }
             }
-            
+
             String bridge = params.get("bridge");
             Integer vlan = params.containsKey("tag") ? Integer.parseInt(params.get("tag")) : null;
             boolean firewall = "1".equals(params.get("firewall"));
-            
+
             return new VMDetailResponse.NetworkInterfaceInfo(
                 name,
                 macAddress,
@@ -580,11 +579,11 @@ public class VMResource {
                 rawConfig
             );
     }
-    
+
     /**
      * Find a VM by ID with proper error handling.
      * Centralizes the common pattern of listing VMs and filtering by ID.
-     * 
+     *
      * @param vmId VM ID to find
      * @return VM response if found
      * @throws WebApplicationException with 404 status if VM not found
@@ -596,7 +595,7 @@ public class VMResource {
             .findFirst()
             .orElseThrow(() -> ProxmoxException.notFound("VM", String.valueOf(vmId)));
     }
-    
+
     @GET
     @Path("/{vmId}/status")
     @SafeMode(false)  // Read operation
@@ -616,15 +615,15 @@ public class VMResource {
             @PathParam("vmId") int vmId) {
         // First, find the VM to get its node
         VMResponse vm = findVmById(vmId);
-        
+
         // Get detailed status
         VMStatusResponse status = vmService.getVMStatus(vm.node(), vmId, null);
         VMStatusResponse.VMStatusData data = status.getData();
-        
+
         // Calculate memory percentage
-        double memoryPercent = data.getMaxmem() > 0 ? 
+        double memoryPercent = data.getMaxmem() > 0 ?
             (double) data.getMem() / data.getMaxmem() * 100 : 0;
-        
+
         VMStatusDetailResponse response = new VMStatusDetailResponse(
             data.getVmid(),
             data.getName(),
@@ -647,10 +646,10 @@ public class VMResource {
             data.getLock(),
             data.getAgentStatus()
         );
-        
+
         return Response.ok(response).build();
     }
-    
+
     @POST
     @Path("/{vmId}/start")
     @SafeMode(operation = SafeMode.Operation.WRITE)
@@ -679,21 +678,21 @@ public class VMResource {
             .filter(v -> v.vmid() == vmId)
             .findFirst()
             .orElse(null);
-        
+
         if (vm == null) {
             throw ProxmoxException.notFound("VM", String.valueOf(vmId));
         }
-        
+
         if ("running".equals(vm.status())) {
             throw ProxmoxException.conflict("VM", "VM is already running");
         }
-        
+
         vmService.startVM(vm.node(), vmId, null);
         return Response.accepted()
                 .entity(new ErrorResponse("VM start initiated"))
                 .build();
     }
-    
+
     @POST
     @Path("/{vmId}/stop")
     @SafeMode(operation = SafeMode.Operation.WRITE)
@@ -722,21 +721,21 @@ public class VMResource {
             .filter(v -> v.vmid() == vmId)
             .findFirst()
             .orElse(null);
-        
+
         if (vm == null) {
             throw ProxmoxException.notFound("VM", String.valueOf(vmId));
         }
-        
+
         if ("stopped".equals(vm.status())) {
             throw ProxmoxException.conflict("VM", "VM is not running");
         }
-        
+
         vmService.stopVM(vm.node(), vmId, null);
         return Response.accepted()
                 .entity(new ErrorResponse("VM stop initiated"))
                 .build();
     }
-    
+
     @POST
     @Path("/{vmId}/reboot")
     @SafeMode(operation = SafeMode.Operation.WRITE)
@@ -765,21 +764,21 @@ public class VMResource {
             .filter(v -> v.vmid() == vmId)
             .findFirst()
             .orElse(null);
-        
+
         if (vm == null) {
             throw ProxmoxException.notFound("VM", String.valueOf(vmId));
         }
-        
+
         if (!"running".equals(vm.status())) {
             throw ProxmoxException.conflict("VM", "VM is not running");
         }
-        
+
         vmService.rebootVM(vm.node(), vmId, null);
         return Response.accepted()
                 .entity(new ErrorResponse("VM reboot initiated"))
                 .build();
     }
-    
+
     @POST
     @Path("/{vmId}/shutdown")
     @SafeMode(operation = SafeMode.Operation.WRITE)
@@ -808,21 +807,21 @@ public class VMResource {
             .filter(v -> v.vmid() == vmId)
             .findFirst()
             .orElse(null);
-        
+
         if (vm == null) {
             throw ProxmoxException.notFound("VM", String.valueOf(vmId));
         }
-        
+
         if (!"running".equals(vm.status())) {
             throw ProxmoxException.conflict("VM", "VM is not running");
         }
-        
+
         vmService.shutdownVM(vm.node(), vmId, null);
         return Response.accepted()
                 .entity(new ErrorResponse("VM shutdown initiated"))
                 .build();
     }
-    
+
     @POST
     @Path("/{vmId}/suspend")
     @SafeMode(operation = SafeMode.Operation.WRITE)
@@ -851,21 +850,21 @@ public class VMResource {
             .filter(v -> v.vmid() == vmId)
             .findFirst()
             .orElse(null);
-        
+
         if (vm == null) {
             throw ProxmoxException.notFound("VM", String.valueOf(vmId));
         }
-        
+
         if (!"running".equals(vm.status())) {
             throw ProxmoxException.conflict("VM", "VM is not running");
         }
-        
+
         vmService.suspendVM(vm.node(), vmId, null);
         return Response.accepted()
                 .entity(new ErrorResponse("VM suspend initiated"))
                 .build();
     }
-    
+
     @POST
     @Path("/{vmId}/resume")
     @SafeMode(operation = SafeMode.Operation.WRITE)
@@ -894,11 +893,11 @@ public class VMResource {
             .filter(v -> v.vmid() == vmId)
             .findFirst()
             .orElse(null);
-        
+
         if (vm == null) {
             throw ProxmoxException.notFound("VM", String.valueOf(vmId));
         }
-        
+
         // Check if VM is suspended - Proxmox might report this as "stopped" with suspend disk
         // For now, we'll attempt resume regardless
         vmService.resumeVM(vm.node(), vmId, null);
@@ -906,7 +905,7 @@ public class VMResource {
                 .entity(new ErrorResponse("VM resume initiated"))
                 .build();
     }
-    
+
     @GET
     @Path("/{vmId}/tags")
     @SafeMode(false)  // Read operation
@@ -925,7 +924,7 @@ public class VMResource {
         var tags = tagService.getVMTags(vmId, null);
         return Response.ok(new TagsResponse(tags)).build();
     }
-    
+
     @POST
     @Path("/{vmId}/tags")
     @SafeMode(operation = SafeMode.Operation.WRITE)
@@ -950,14 +949,14 @@ public class VMResource {
             @RequestBody(description = "Tag to add", required = true,
                 content = @Content(schema = @Schema(implementation = TagRequest.class)))
             TagRequest request) {
-        if (request.tag() == null || request.tag().trim().isEmpty()) {
+        if (request.tag() == null || request.tag().isBlank()) {
             throw ProxmoxException.validation("tag", request.tag(), "Cannot be empty");
         }
-            
+
         tagService.addTag(vmId, request.tag(), null);
         return Response.ok().build();
     }
-    
+
     @DELETE
     @Path("/{vmId}/tags/{tag}")
     @SafeMode(operation = SafeMode.Operation.WRITE)
@@ -981,13 +980,13 @@ public class VMResource {
         tagService.removeTag(vmId, tag, null);
         return Response.noContent().build();
     }
-    
+
     private List<DiskInfo> parseDiskInfo(Map<String, Object> config) {
         List<DiskInfo> disks = new ArrayList<>();
-        
+
         // Look for disk interfaces: scsi, virtio, ide, sata
         String[] diskPrefixes = {"scsi", "virtio", "ide", "sata"};
-        
+
         for (String prefix : diskPrefixes) {
             for (int i = 0; i < 30; i++) { // Support up to 30 disks per type
                 String key = prefix + i;
@@ -997,7 +996,7 @@ public class VMResource {
                     if (diskSpec.contains("media=cdrom") || diskSpec.contains("cloudinit")) {
                         continue;
                     }
-                    
+
                     DiskInfo diskInfo = parseSingleDisk(key, diskSpec);
                     if (diskInfo != null) {
                         disks.add(diskInfo);
@@ -1005,24 +1004,24 @@ public class VMResource {
                 }
             }
         }
-        
+
         return disks;
     }
-    
+
     private DiskInfo parseSingleDisk(String diskInterface, String diskSpec) {
         try {
             // Parse storage backend and disk path
             String[] parts = diskSpec.split(",");
             if (parts.length == 0) return null;
-            
+
             String[] storageParts = parts[0].split(":");
             if (storageParts.length < 2) return null;
-            
+
             String storage = storageParts[0];
             String format = null;
             String sizeStr = null;
             Long sizeBytes = null;
-            
+
             // Parse additional parameters
             for (String part : parts) {
                 if (part.startsWith("format=")) {
@@ -1032,12 +1031,12 @@ public class VMResource {
                     sizeBytes = parseDiskSize(sizeStr);
                 }
             }
-            
+
             // If size wasn't in the spec, default to a reasonable size
             if (sizeStr == null) {
                 sizeStr = "unknown";
             }
-            
+
             return new DiskInfo(
                 diskInterface,
                 storage,
@@ -1051,10 +1050,10 @@ public class VMResource {
             return null;
         }
     }
-    
+
     private Long parseDiskSize(String sizeStr) {
         if (sizeStr == null || sizeStr.isEmpty()) return null;
-        
+
         try {
             // Handle sizes like "20G", "100M", "1T"
             char unit = sizeStr.charAt(sizeStr.length() - 1);
@@ -1076,22 +1075,22 @@ public class VMResource {
             return null;
         }
     }
-    
+
     private long calculateTotalDiskSize(List<DiskInfo> disks) {
         return disks.stream()
             .mapToLong(disk -> disk.sizeBytes() != null ? disk.sizeBytes() : 0L)
             .sum();
     }
-    
+
     // DTOs for tag operations
     public record TagsResponse(Set<String> tags) {}
     public record TagRequest(String tag) {}
-    
+
     // SSH Key Management
     @PUT
     @Path("/{vmId}/ssh-keys")
     @Consumes(MediaType.APPLICATION_JSON)
-    @Operation(summary = "Set SSH keys on VM", 
+    @Operation(summary = "Set SSH keys on VM",
                description = "Set SSH keys on an existing VM. Uses proper double URL encoding required by Proxmox API.")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "SSH keys set successfully"),
@@ -1112,29 +1111,29 @@ public class VMResource {
             .filter(v -> v.vmid() == vmId)
             .findFirst()
             .orElse(null);
-        
+
         if (vm == null) {
             throw ProxmoxException.notFound("VM", String.valueOf(vmId));
         }
-        
+
         LOG.info("Setting SSH keys for VM {}", vmId);
-        
+
         // Use the direct SSH key method that does double encoding
         vmService.setSSHKeysDirect(vm.node(), vmId, request.sshKeys(), null);
-        
+
         return Response.ok(Map.of(
             "success", true,
             "vmId", vmId,
             "message", "SSH keys set successfully"
         )).build();
     }
-    
+
     // Snapshot Management Endpoints
-    
+
     @GET
     @Path("/{vmId}/snapshots")
     @SafeMode(false)  // Read operation
-    @Operation(summary = "List VM snapshots", 
+    @Operation(summary = "List VM snapshots",
                description = "Get all snapshots for a specific VM")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Snapshots retrieved successfully",
@@ -1150,11 +1149,11 @@ public class VMResource {
         List<SnapshotResponse> snapshots = snapshotService.listSnapshots(vmId, null);
         return Response.ok(snapshots).build();
     }
-    
+
     @POST
     @Path("/{vmId}/snapshots")
     @SafeMode(true)  // Write operation
-    @Operation(summary = "Create VM snapshot", 
+    @Operation(summary = "Create VM snapshot",
                description = "Create a new snapshot of the VM's current state")
     @APIResponses({
         @APIResponse(responseCode = "202", description = "Snapshot creation started",
@@ -1175,11 +1174,11 @@ public class VMResource {
         TaskResponse task = snapshotService.createSnapshot(vmId, request, null);
         return Response.accepted(task).build();
     }
-    
+
     @DELETE
     @Path("/{vmId}/snapshots/{snapshotName}")
     @SafeMode(true)  // Write operation
-    @Operation(summary = "Delete VM snapshot", 
+    @Operation(summary = "Delete VM snapshot",
                description = "Delete a specific snapshot of the VM")
     @APIResponses({
         @APIResponse(responseCode = "202", description = "Snapshot deletion started",
@@ -1197,11 +1196,11 @@ public class VMResource {
         TaskResponse task = snapshotService.deleteSnapshot(vmId, snapshotName, null);
         return Response.accepted(task).build();
     }
-    
+
     @POST
     @Path("/{vmId}/snapshots/{snapshotName}/rollback")
     @SafeMode(true)  // Write operation - potentially dangerous
-    @Operation(summary = "Rollback VM to snapshot", 
+    @Operation(summary = "Rollback VM to snapshot",
                description = "Rollback the VM to a previous snapshot state. WARNING: This will discard all changes made after the snapshot.")
     @APIResponses({
         @APIResponse(responseCode = "202", description = "Rollback started",
@@ -1219,13 +1218,13 @@ public class VMResource {
         TaskResponse task = snapshotService.rollbackSnapshot(vmId, snapshotName, null);
         return Response.accepted(task).build();
     }
-    
+
     // Backup Management Endpoints
-    
+
     @GET
     @Path("/{vmId}/backups")
     @SafeMode(false)  // Read operation
-    @Operation(summary = "List VM backups", 
+    @Operation(summary = "List VM backups",
                description = "Get all backups for a specific VM across all storage locations")
     @APIResponses({
         @APIResponse(responseCode = "200", description = "Backups retrieved successfully",
@@ -1241,11 +1240,11 @@ public class VMResource {
         List<BackupResponse> backups = backupService.listBackups(vmId, null);
         return Response.ok(backups).build();
     }
-    
+
     @POST
     @Path("/{vmId}/backup")
     @SafeMode(true)  // Write operation
-    @Operation(summary = "Create VM backup", 
+    @Operation(summary = "Create VM backup",
                description = "Create a new backup of the VM using vzdump")
     @APIResponses({
         @APIResponse(responseCode = "202", description = "Backup creation started",
@@ -1264,7 +1263,7 @@ public class VMResource {
         TaskResponse task = backupService.createBackup(vmId, request, null);
         return Response.accepted(task).build();
     }
-    
+
     @POST
     @Path("/{vmId}/clone")
     @SafeMode(value = true, operation = SafeMode.Operation.WRITE)
@@ -1288,9 +1287,9 @@ public class VMResource {
             @Valid com.coffeesprout.api.dto.TemplateCloneRequest request) {
         // Use VMIdService for auto-generation if needed
         int newVmId = request.newVmId() != null ? request.newVmId() : vmIdService.getNextAvailableVmId(null);
-        
+
         VMResponse templateVm = findVmById(templateId);
-        
+
         TaskStatusResponse task = vmService.cloneVM(
             templateVm.node(),
             templateId,
@@ -1304,15 +1303,15 @@ public class VMResource {
             request.targetNode(),
             null
         );
-        
+
         TaskResponse response = new TaskResponse(
             task.getData(),
             "VM clone operation initiated successfully"
         );
-        
+
         return Response.accepted(response).build();
     }
-    
+
     @GET
     @Path("/{vmId}/config")
     @SafeMode(false)  // Read operation
@@ -1328,16 +1327,16 @@ public class VMResource {
     public Response getVMConfig(
             @Parameter(description = "VM ID", required = true)
             @PathParam("vmId") int vmId) {
-        
+
         // Find VM and get its node
         VMResponse vm = findVmById(vmId);
-        
+
         // Get VM configuration from service
         Map<String, Object> config = vmService.getVMConfig(vm.node(), vmId, null);
-        
+
         return Response.ok(config).build();
     }
-    
+
     @PUT
     @Path("/{vmId}/config")
     @SafeMode(operation = SafeMode.Operation.WRITE)
@@ -1358,44 +1357,43 @@ public class VMResource {
             @PathParam("vmId") int vmId,
             @RequestBody(description = "VM configuration update", required = true)
             Map<String, Object> configUpdate) {
-        
+
         // Find VM and get its node
         VMResponse vm = findVmById(vmId);
-        
+
         try {
             // Convert config map to form data for Proxmox API
             StringBuilder formData = new StringBuilder();
             for (Map.Entry<String, Object> entry : configUpdate.entrySet()) {
                 if (formData.length() > 0) {
-                    formData.append("&");
+                    formData.append('&');
                 }
-                formData.append(entry.getKey()).append("=")
+                formData.append(entry.getKey()).append('=')
                         .append(java.net.URLEncoder.encode(String.valueOf(entry.getValue()), "UTF-8"));
             }
-            
+
             // Update VM configuration using Proxmox client directly
             var response = proxmoxClient.updateVMConfig(
-                vm.node(), 
-                vmId, 
-                ticketManager.getTicket(), 
+                vm.node(),
+                vmId,
+                ticketManager.getTicket(),
                 ticketManager.getCsrfToken(),
                 formData.toString()
             );
-            
+
             TaskResponse taskResponse = new TaskResponse(
                 response.path("data").asText(""),
                 "VM configuration update initiated successfully"
             );
-            
+
             return Response.ok(taskResponse).build();
-            
+
         } catch (Exception e) {
             LOG.error("Failed to update VM {} configuration: {}", vmId, e.getMessage());
-            throw ProxmoxException.vmOperationFailed("config update", vmId, vm.name(), 
-                e.getMessage(), "Check the configuration parameters and try again");
+            throw ProxmoxException.internalError("config update for VM " + vmId + " (" + vm.name() + ")", e);
         }
     }
-    
+
     @POST
     @Path("/{vmId}/firmware")
     @SafeMode(operation = SafeMode.Operation.WRITE)
@@ -1416,45 +1414,43 @@ public class VMResource {
             @PathParam("vmId") int vmId,
             @RequestBody(description = "Firmware configuration", required = true)
             @Valid com.coffeesprout.api.dto.FirmwareConfig firmwareConfig) {
-        
+
         // Find VM and get its node
         VMResponse vm = findVmById(vmId);
-        
+
         try {
             // Validate firmware configuration
             firmwareConfig.validate();
-            
+
             // Build configuration update request
             CreateVMRequestBuilder builder = CreateVMRequestBuilder.builder()
                 .vmid(vmId)
                 .name("temp")  // Name is required but not used for updates
                 .machine(firmwareConfig.machine().getValue())
                 .bios(firmwareConfig.type().getProxmoxValue());
-            
+
             // Add EFI disk configuration if UEFI
-            if (firmwareConfig.type() == com.coffeesprout.api.dto.FirmwareConfig.FirmwareType.UEFI 
+            if (firmwareConfig.type() == com.coffeesprout.api.dto.FirmwareConfig.FirmwareType.UEFI
                 && firmwareConfig.efidisk() != null) {
                 builder.efidisk0(firmwareConfig.efidisk().toProxmoxString());
             }
-            
+
             CreateVMRequest request = builder.build();
             vmService.updateVMConfig(vm.node(), vmId, request, null);
-            
+
             TaskResponse response = new TaskResponse(
                 "firmware-update-" + vmId,
                 "VM firmware configuration updated successfully"
             );
-            
+
             return Response.ok(response).build();
-            
+
         } catch (IllegalArgumentException e) {
             LOG.error("Invalid firmware configuration for VM {}: {}", vmId, e.getMessage());
-            throw ProxmoxException.invalidConfiguration("firmware", e.getMessage(), 
-                "Ensure UEFI requires q35 machine type and proper EFI disk configuration");
+            throw ProxmoxException.internalError("firmware configuration for VM " + vmId, e);
         } catch (Exception e) {
             LOG.error("Failed to update VM {} firmware configuration: {}", vmId, e.getMessage());
-            throw ProxmoxException.vmOperationFailed("firmware update", vmId, vm.name(), 
-                e.getMessage(), "Check the firmware configuration and VM state");
+            throw ProxmoxException.internalError("firmware update for VM " + vmId + " (" + vm.name() + ")", e);
         }
     }
 }

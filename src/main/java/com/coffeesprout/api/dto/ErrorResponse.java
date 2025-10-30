@@ -1,7 +1,8 @@
 package com.coffeesprout.api.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public record ErrorResponse(
     @JsonProperty("error") String error,
@@ -12,7 +13,7 @@ public record ErrorResponse(
     public ErrorResponse(String error) {
         this(error, error, Instant.now(), null);
     }
-    
+
     public ErrorResponse(String error, String message) {
         this(error, message, Instant.now(), null);
     }

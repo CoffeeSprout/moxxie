@@ -1,14 +1,19 @@
 package com.coffeesprout.api;
 
-import com.coffeesprout.api.dto.ErrorResponse;
-import com.coffeesprout.service.AuditService;
-import com.coffeesprout.service.SafetyConfig;
-import io.smallrye.common.annotation.RunOnVirtualThread;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
+import java.util.List;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
+import com.coffeesprout.api.dto.ErrorResponse;
+import com.coffeesprout.service.AuditService;
+import com.coffeesprout.service.SafetyConfig;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -19,27 +24,21 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Instant;
-import java.time.format.DateTimeParseException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 @Path("/api/v1/safety")
 @Produces(MediaType.APPLICATION_JSON)
 @ApplicationScoped
 @RunOnVirtualThread
 @Tag(name = "Safety", description = "Safe Mode status and audit endpoints")
 public class SafetyController {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(SafetyController.class);
-    
+
     @Inject
     SafetyConfig safetyConfig;
-    
+
     @Inject
     AuditService auditService;
-    
+
     @GET
     @Path("/status")
     @Operation(summary = "Get safety status", description = "Get the current safe mode configuration and statistics")
@@ -52,7 +51,7 @@ public class SafetyController {
     public Response getSafetyStatus() {
         try {
             AuditService.SafetyStatistics stats = auditService.getStatistics();
-            
+
             SafetyStatusResponse response = new SafetyStatusResponse(
                 safetyConfig.enabled(),
                 safetyConfig.mode().name(),
@@ -63,7 +62,7 @@ public class SafetyController {
                     stats.lastBlocked() != null ? stats.lastBlocked().toString() : null
                 )
             );
-            
+
             return Response.ok(response).build();
         } catch (Exception e) {
             LOG.error("Failed to get safety status", e);
@@ -72,7 +71,7 @@ public class SafetyController {
                     .build();
         }
     }
-    
+
     @GET
     @Path("/audit")
     @Operation(summary = "Get audit log", description = "Query the safety audit log")
@@ -91,7 +90,7 @@ public class SafetyController {
             @DefaultValue("100") @QueryParam("limit") int limit) {
         try {
             Instant startTime = Instant.now().minus(24, java.time.temporal.ChronoUnit.HOURS); // Default to last 24 hours
-            
+
             if (startTimeStr != null && !startTimeStr.isEmpty()) {
                 try {
                     startTime = Instant.parse(startTimeStr);
@@ -101,14 +100,14 @@ public class SafetyController {
                             .build();
                 }
             }
-            
+
             List<AuditService.AuditEntry> entries = auditService.getAuditEntries(startTime);
-            
+
             // Apply limit
             if (entries.size() > limit) {
                 entries = entries.subList(0, limit);
             }
-            
+
             // Convert to response DTOs
             List<AuditEntryResponse> auditResponses = entries.stream()
                 .map(entry -> new AuditEntryResponse(
@@ -122,9 +121,9 @@ public class SafetyController {
                     entry.clientIp()
                 ))
                 .toList();
-            
+
             AuditLogResponse response = new AuditLogResponse(auditResponses);
-            
+
             return Response.ok(response).build();
         } catch (Exception e) {
             LOG.error("Failed to get audit log", e);
@@ -133,7 +132,7 @@ public class SafetyController {
                     .build();
         }
     }
-    
+
     @GET
     @Path("/config")
     @Operation(summary = "Get safety configuration", description = "Get the current safe mode configuration")
@@ -153,7 +152,7 @@ public class SafetyController {
                 safetyConfig.allowManualOverride(),
                 safetyConfig.auditLog()
             );
-            
+
             return Response.ok(response).build();
         } catch (Exception e) {
             LOG.error("Failed to get safety config", e);
@@ -162,25 +161,25 @@ public class SafetyController {
                     .build();
         }
     }
-    
+
     // Response DTOs
     public record SafetyStatusResponse(
         boolean enabled,
         String mode,
         SafetyStatistics statistics
     ) {}
-    
+
     public record SafetyStatistics(
         long totalOperations,
         long blockedOperations,
         long overriddenOperations,
         String lastBlocked
     ) {}
-    
+
     public record AuditLogResponse(
         List<AuditEntryResponse> entries
     ) {}
-    
+
     public record AuditEntryResponse(
         String timestamp,
         String operation,
@@ -191,7 +190,7 @@ public class SafetyController {
         String user,
         String clientIp
     ) {}
-    
+
     public record SafetyConfigResponse(
         boolean enabled,
         String mode,

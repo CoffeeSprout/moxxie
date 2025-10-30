@@ -41,7 +41,7 @@ public record BulkBackupResponse(
                 Instant.now()
             );
         }
-        
+
         public static BackupResult error(String message, String vmName, String node) {
             return new BackupResult(
                 "error",
@@ -53,7 +53,7 @@ public record BulkBackupResponse(
                 Instant.now()
             );
         }
-        
+
         public static BackupResult skipped(String reason, String vmName, String node) {
             return new BackupResult(
                 "skipped",
@@ -65,7 +65,7 @@ public record BulkBackupResponse(
                 Instant.now()
             );
         }
-        
+
         public static BackupResult dryRun(String vmName, String node, String storage) {
             return new BackupResult(
                 "dry-run",

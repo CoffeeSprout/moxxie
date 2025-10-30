@@ -1,14 +1,15 @@
 package com.coffeesprout.api;
 
-import com.coffeesprout.client.*;
-import com.coffeesprout.service.ConsoleService;
-import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
+import com.coffeesprout.client.*;
+import com.coffeesprout.service.ConsoleService;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -34,7 +35,7 @@ public class ConsoleResource {
     ConsoleService consoleService;
 
     @POST
-    @Operation(summary = "Create console access token", 
+    @Operation(summary = "Create console access token",
                description = "Generate a console access token for VNC, SPICE, or terminal connection to a VM")
     @APIResponses({
         @APIResponse(
@@ -54,9 +55,9 @@ public class ConsoleResource {
     public Response createConsoleAccess(
             @Parameter(description = "VM ID", required = true) @PathParam("vmId") int vmId,
             @RequestBody(description = "Console request details", required = true) @Valid ConsoleRequest request) {
-        
+
         LOG.info("Creating console access for VM {} with type {}", vmId, request.getType());
-        
+
         try {
             ConsoleResponse response = consoleService.createConsoleAccess(vmId, request, null);
             return Response.ok(response).build();
@@ -75,7 +76,7 @@ public class ConsoleResource {
 
     @GET
     @Path("/websocket")
-    @Operation(summary = "Get WebSocket connection details", 
+    @Operation(summary = "Get WebSocket connection details",
                description = "Get WebSocket URL and headers for establishing a console connection")
     @APIResponses({
         @APIResponse(
@@ -95,13 +96,13 @@ public class ConsoleResource {
     public Response getWebSocketDetails(
             @Parameter(description = "VM ID", required = true) @PathParam("vmId") int vmId,
             @Parameter(description = "Console ticket from createConsoleAccess", required = true) @QueryParam("ticket") String consoleTicket) {
-        
+
         if (consoleTicket == null || consoleTicket.isEmpty()) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(new ErrorResponse("Console ticket is required"))
                     .build();
         }
-        
+
         try {
             ConsoleWebSocketResponse response = consoleService.getWebSocketDetails(vmId, consoleTicket, null);
             return Response.ok(response).build();
@@ -121,7 +122,7 @@ public class ConsoleResource {
     @GET
     @Path("/spice")
     @Produces("application/x-virt-viewer")
-    @Operation(summary = "Get SPICE connection file", 
+    @Operation(summary = "Get SPICE connection file",
                description = "Generate a .vv file for connecting to the VM using SPICE protocol")
     @APIResponses({
         @APIResponse(
@@ -141,21 +142,21 @@ public class ConsoleResource {
     public Response getSpiceConnectionFile(
             @Parameter(description = "VM ID", required = true) @PathParam("vmId") int vmId,
             @Parameter(description = "Console ticket from createConsoleAccess", required = true) @QueryParam("ticket") String consoleTicket) {
-        
+
         if (consoleTicket == null || consoleTicket.isEmpty()) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(new ErrorResponse("Console ticket is required"))
                     .build();
         }
-        
+
         try {
             SpiceConnectionFile file = consoleService.generateSpiceFile(vmId, consoleTicket, null);
-            
+
             return Response.ok(file.getContent())
                     .type(file.getMimeType())
                     .header("Content-Disposition", "attachment; filename=\"" + file.getFilename() + "\"")
                     .build();
-                    
+
         } catch (IllegalArgumentException e) {
             LOG.error("Invalid request for VM {}: {}", vmId, e.getMessage());
             return Response.status(Response.Status.NOT_FOUND)
@@ -168,19 +169,19 @@ public class ConsoleResource {
                     .build();
         }
     }
-    
+
     // Helper class for error responses
     public static class ErrorResponse {
         private String error;
-        
+
         public ErrorResponse(String error) {
             this.error = error;
         }
-        
+
         public String getError() {
             return error;
         }
-        
+
         public void setError(String error) {
             this.error = error;
         }
