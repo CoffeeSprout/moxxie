@@ -11,6 +11,7 @@ import com.coffeesprout.api.dto.PoolResourceSummary;
 import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.api.exception.ProxmoxException;
 import com.coffeesprout.client.*;
+import com.coffeesprout.util.UnitConverter;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -191,11 +192,11 @@ public class PoolService {
             totalVcpus,
             runningVcpus,
             totalMemory,
-            formatBytes(totalMemory),
+            UnitConverter.formatBytes(totalMemory, 1),
             runningMemory,
-            formatBytes(runningMemory),
+            UnitConverter.formatBytes(runningMemory, 1),
             totalStorage,
-            formatBytes(totalStorage),
+            UnitConverter.formatBytes(totalStorage, 1),
             vmSummaries
         );
     }
@@ -297,10 +298,10 @@ public class PoolService {
             if (Character.isLetter(unit)) {
                 long value = Long.parseLong(sizeStr.substring(0, sizeStr.length() - 1));
                 switch (Character.toUpperCase(unit)) {
-                    case 'K': return value * 1024L;
-                    case 'M': return value * 1024L * 1024L;
-                    case 'G': return value * 1024L * 1024L * 1024L;
-                    case 'T': return value * 1024L * 1024L * 1024L * 1024L;
+                    case 'K': return value * UnitConverter.Bytes.BYTES_PER_KB;
+                    case 'M': return value * UnitConverter.Bytes.BYTES_PER_MB;
+                    case 'G': return value * UnitConverter.Bytes.BYTES_PER_GB;
+                    case 'T': return value * UnitConverter.Bytes.BYTES_PER_GB * UnitConverter.Bytes.BYTES_PER_KB;
                     default: return value;
                 }
             } else {
@@ -312,11 +313,4 @@ public class PoolService {
         }
     }
 
-    private String formatBytes(long bytes) {
-        if (bytes < 1024) return bytes + " B";
-        if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
-        if (bytes < 1024 * 1024 * 1024) return String.format("%.1f MB", bytes / (1024.0 * 1024));
-        if (bytes < 1024L * 1024 * 1024 * 1024) return String.format("%.1f GB", bytes / (1024.0 * 1024 * 1024));
-        return String.format("%.1f TB", bytes / (1024.0 * 1024 * 1024 * 1024));
-    }
 }

@@ -17,6 +17,7 @@ import com.coffeesprout.federation.*;
 import com.coffeesprout.federation.providers.ProxmoxResourceProvider;
 import com.coffeesprout.service.ResourceCacheService;
 import com.coffeesprout.service.ResourceCalculationService;
+import com.coffeesprout.util.UnitConverter;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
@@ -121,7 +122,7 @@ public class ResourceEndpoint {
 
                 if (minMemoryGB != null && resources.getMemory() != null) {
                     long availableGB = resources.getMemory().getAvailableBytes() /
-                        (1024L * 1024L * 1024L);
+                        UnitConverter.Bytes.BYTES_PER_GB;
                     if (availableGB < minMemoryGB) {
                         continue;
                     }
@@ -457,10 +458,10 @@ public class ResourceEndpoint {
 
     private Map<String, Object> convertMemoryResources(ClusterResources.MemoryResources memory) {
         return Map.of(
-            "totalGB", memory.getTotalBytes() / (1024.0 * 1024 * 1024),
-            "allocatedGB", memory.getAllocatedBytes() / (1024.0 * 1024 * 1024),
-            "actualUsedGB", memory.getActualUsedBytes() / (1024.0 * 1024 * 1024),
-            "availableGB", memory.getAvailableBytes() / (1024.0 * 1024 * 1024),
+            "totalGB", memory.getTotalBytes() / UnitConverter.Bytes.BYTES_PER_GB,
+            "allocatedGB", memory.getAllocatedBytes() / UnitConverter.Bytes.BYTES_PER_GB,
+            "actualUsedGB", memory.getActualUsedBytes() / UnitConverter.Bytes.BYTES_PER_GB,
+            "availableGB", memory.getAvailableBytes() / UnitConverter.Bytes.BYTES_PER_GB,
             "overcommitRatio", memory.getOvercommitRatio(),
             "maxOvercommit", memory.getMaxOvercommit()
         );
@@ -468,10 +469,10 @@ public class ResourceEndpoint {
 
     private Map<String, Object> convertStorageResources(ClusterResources.StorageResources storage) {
         Map<String, Object> result = new HashMap<>();
-        result.put("totalGB", storage.getTotalBytes() / (1024.0 * 1024 * 1024));
-        result.put("allocatedGB", storage.getAllocatedBytes() / (1024.0 * 1024 * 1024));
-        result.put("actualUsedGB", storage.getActualUsedBytes() / (1024.0 * 1024 * 1024));
-        result.put("availableGB", storage.getAvailableBytes() / (1024.0 * 1024 * 1024));
+        result.put("totalGB", storage.getTotalBytes() / UnitConverter.Bytes.BYTES_PER_GB);
+        result.put("allocatedGB", storage.getAllocatedBytes() / UnitConverter.Bytes.BYTES_PER_GB);
+        result.put("actualUsedGB", storage.getActualUsedBytes() / UnitConverter.Bytes.BYTES_PER_GB);
+        result.put("availableGB", storage.getAvailableBytes() / UnitConverter.Bytes.BYTES_PER_GB);
         result.put("thinProvisioningRatio", storage.getThinProvisioningRatio());
         result.put("totalPools", storage.getTotalPools());
         result.put("activePools", storage.getActivePools());
@@ -511,10 +512,10 @@ public class ResourceEndpoint {
         // Memory
         if (resources.getMemory() != null) {
             response.setMemory(Map.of(
-                "totalGB", resources.getMemory().getTotalBytes() / (1024.0 * 1024 * 1024),
-                "allocatedGB", resources.getMemory().getAllocatedBytes() / (1024.0 * 1024 * 1024),
-                "usedGB", resources.getMemory().getUsedBytes() / (1024.0 * 1024 * 1024),
-                "availableGB", resources.getMemory().getAvailableBytes() / (1024.0 * 1024 * 1024),
+                "totalGB", resources.getMemory().getTotalBytes() / UnitConverter.Bytes.BYTES_PER_GB,
+                "allocatedGB", resources.getMemory().getAllocatedBytes() / UnitConverter.Bytes.BYTES_PER_GB,
+                "usedGB", resources.getMemory().getUsedBytes() / UnitConverter.Bytes.BYTES_PER_GB,
+                "availableGB", resources.getMemory().getAvailableBytes() / UnitConverter.Bytes.BYTES_PER_GB,
                 "usagePercent", resources.getMemory().getUsagePercent()
             ));
         }
@@ -522,9 +523,9 @@ public class ResourceEndpoint {
         // Storage
         if (resources.getStorage() != null) {
             response.setStorage(Map.of(
-                "totalGB", resources.getStorage().getTotalBytes() / (1024.0 * 1024 * 1024),
-                "usedGB", resources.getStorage().getUsedBytes() / (1024.0 * 1024 * 1024),
-                "availableGB", resources.getStorage().getAvailableBytes() / (1024.0 * 1024 * 1024),
+                "totalGB", resources.getStorage().getTotalBytes() / UnitConverter.Bytes.BYTES_PER_GB,
+                "usedGB", resources.getStorage().getUsedBytes() / UnitConverter.Bytes.BYTES_PER_GB,
+                "availableGB", resources.getStorage().getAvailableBytes() / UnitConverter.Bytes.BYTES_PER_GB,
                 "poolCount", resources.getStorage().getPools() != null ?
                     resources.getStorage().getPools().size() : 0
             ));
@@ -539,7 +540,7 @@ public class ResourceEndpoint {
             "nodeName", node.getNodeName(),
             "status", node.getStatus(),
             "cpuCores", node.getCpuCores(),
-            "memoryGB", node.getMemoryBytes() / (1024.0 * 1024 * 1024),
+            "memoryGB", node.getMemoryBytes() / UnitConverter.Bytes.BYTES_PER_GB,
             "cpuUsagePercent", node.getCpuUsagePercent(),
             "memoryUsagePercent", node.getMemoryUsagePercent(),
             "vmCount", node.getTotalVMs()
@@ -553,8 +554,8 @@ public class ResourceEndpoint {
         summary.put("nodeName", vm.getNodeName());
         summary.put("status", vm.getStatus());
         summary.put("allocatedCpuCores", vm.getAllocatedCpuCores());
-        summary.put("allocatedMemoryGB", vm.getAllocatedMemoryBytes() / (1024.0 * 1024 * 1024));
-        summary.put("allocatedStorageGB", vm.getAllocatedStorageBytes() / (1024.0 * 1024 * 1024));
+        summary.put("allocatedMemoryGB", vm.getAllocatedMemoryBytes() / UnitConverter.Bytes.BYTES_PER_GB);
+        summary.put("allocatedStorageGB", vm.getAllocatedStorageBytes() / UnitConverter.Bytes.BYTES_PER_GB);
         summary.put("cpuUsagePercent", vm.getCpuUsagePercent());
         if (vm.getTags() != null) {
             summary.put("tags", vm.getTags());
@@ -567,8 +568,8 @@ public class ResourceEndpoint {
         response.setNodeId(capacity.getNodeId());
         response.setNodeName(capacity.getNodeName());
         response.setMaxCpuCores(capacity.getMaxCpuCores());
-        response.setMaxMemoryGB(capacity.getMaxMemoryBytes() / (1024.0 * 1024 * 1024));
-        response.setMaxStorageGB(capacity.getMaxStorageBytes() / (1024.0 * 1024 * 1024));
+        response.setMaxMemoryGB(capacity.getMaxMemoryBytes() / UnitConverter.Bytes.BYTES_PER_GB);
+        response.setMaxStorageGB(capacity.getMaxStorageBytes() / UnitConverter.Bytes.BYTES_PER_GB);
         response.setLimitingFactor(capacity.getLimitingFactor());
         response.setWithOvercommit(capacity.isWithOvercommit());
 
@@ -579,8 +580,8 @@ public class ResourceEndpoint {
                     "nodeId", alt.getNodeId(),
                     "nodeName", alt.getNodeName(),
                     "maxCpuCores", alt.getMaxCpuCores(),
-                    "maxMemoryGB", alt.getMaxMemoryBytes() / (1024.0 * 1024 * 1024),
-                    "maxStorageGB", alt.getMaxStorageBytes() / (1024.0 * 1024 * 1024),
+                    "maxMemoryGB", alt.getMaxMemoryBytes() / UnitConverter.Bytes.BYTES_PER_GB,
+                    "maxStorageGB", alt.getMaxStorageBytes() / UnitConverter.Bytes.BYTES_PER_GB,
                     "score", alt.getScore()
                 ));
             });
@@ -629,9 +630,9 @@ public class ResourceEndpoint {
         response.setPoolName(pool.getPoolName());
         response.setType(pool.getType());
         response.setStorageClass(pool.getStorageClass());
-        response.setTotalGB(pool.getTotalBytes() / (1024.0 * 1024 * 1024));
-        response.setUsedGB(pool.getUsedBytes() / (1024.0 * 1024 * 1024));
-        response.setAvailableGB(pool.getAvailableBytes() / (1024.0 * 1024 * 1024));
+        response.setTotalGB(pool.getTotalBytes() / UnitConverter.Bytes.BYTES_PER_GB);
+        response.setUsedGB(pool.getUsedBytes() / UnitConverter.Bytes.BYTES_PER_GB);
+        response.setAvailableGB(pool.getAvailableBytes() / UnitConverter.Bytes.BYTES_PER_GB);
         response.setActive(pool.isActive());
         response.setShared(pool.isShared());
         response.setAccessibleNodes(pool.getAccessibleNodes());

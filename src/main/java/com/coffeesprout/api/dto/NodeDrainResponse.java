@@ -3,6 +3,7 @@ package com.coffeesprout.api.dto;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.coffeesprout.util.UnitConverter;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 
 /**
@@ -42,7 +43,7 @@ public record NodeDrainResponse(
             return 0;
         }
         int completed = completedVMs != null ? completedVMs : 0;
-        return (completed * 100) / totalVMs;
+        return (int) ((completed * UnitConverter.Percentage.PERCENT_MULTIPLIER) / totalVMs);
     }
 
     /**

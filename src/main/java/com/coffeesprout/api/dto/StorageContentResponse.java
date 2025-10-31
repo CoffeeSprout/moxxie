@@ -2,6 +2,7 @@ package com.coffeesprout.api.dto;
 
 import java.time.Instant;
 
+import com.coffeesprout.util.UnitConverter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
@@ -41,7 +42,7 @@ public record StorageContentResponse(
             notes,
             isProtected,
             contentType,
-            StoragePoolResponse.formatBytes(size),
+            UnitConverter.formatBytes(size),
             vmid,
             verification
         );

@@ -17,6 +17,7 @@ import com.coffeesprout.service.NodeService;
 import com.coffeesprout.service.ResourceCalculationService;
 import com.coffeesprout.service.TicketManager;
 import com.coffeesprout.service.VMService;
+import com.coffeesprout.util.UnitConverter;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
@@ -237,7 +238,7 @@ public class ProxmoxResourceProvider implements ResourceProvider {
                     memory.setAllocatedBytes(allocatedMemory);
 
                     memory.setUsagePercent((double) status.getMemory().getUsed() /
-                        status.getMemory().getTotal() * 100);
+                        status.getMemory().getTotal() * UnitConverter.Percentage.PERCENT_MULTIPLIER);
 
                     resources.setMemory(memory);
                 }
@@ -507,15 +508,11 @@ public class ProxmoxResourceProvider implements ResourceProvider {
                 metrics.put("totalCpuCores", resources.getCpu().getTotalCores());
                 metrics.put("allocatedCpuCores", resources.getCpu().getAllocatedCores());
                 metrics.put("cpuOvercommitRatio", resources.getCpu().getOvercommitRatio());
-                metrics.put("totalMemoryGB", resources.getMemory().getTotalBytes() /
-                    (1024.0 * 1024 * 1024));
-                metrics.put("allocatedMemoryGB", resources.getMemory().getAllocatedBytes() /
-                    (1024.0 * 1024 * 1024));
+                metrics.put("totalMemoryGB", resources.getMemory().getTotalBytes() / UnitConverter.Bytes.BYTES_PER_GB);
+                metrics.put("allocatedMemoryGB", resources.getMemory().getAllocatedBytes() / UnitConverter.Bytes.BYTES_PER_GB);
                 metrics.put("memoryOvercommitRatio", resources.getMemory().getOvercommitRatio());
-                metrics.put("totalStorageGB", resources.getStorage().getTotalBytes() /
-                    (1024.0 * 1024 * 1024));
-                metrics.put("usedStorageGB", resources.getStorage().getActualUsedBytes() /
-                    (1024.0 * 1024 * 1024));
+                metrics.put("totalStorageGB", resources.getStorage().getTotalBytes() / UnitConverter.Bytes.BYTES_PER_GB);
+                metrics.put("usedStorageGB", resources.getStorage().getActualUsedBytes() / UnitConverter.Bytes.BYTES_PER_GB);
                 metrics.put("totalNodes", resources.getTotalNodes());
                 metrics.put("activeNodes", resources.getActiveNodes());
                 metrics.put("totalVMs", resources.getTotalVMs());
@@ -594,7 +591,7 @@ public class ProxmoxResourceProvider implements ResourceProvider {
         if (requirements.getCpuCores() != null && node.getCpu() != null) {
             int available = node.getCpu().getAvailableCores();
             if (available >= requirements.getCpuCores()) {
-                fit.setCpuFitScore(100.0 * (1 - node.getCpuPressure()));
+                fit.setCpuFitScore(UnitConverter.Percentage.PERCENT_MULTIPLIER * (1 - node.getCpuPressure()));
                 reasons.add("Sufficient CPU cores available");
             } else {
                 fit.setCpuFitScore(0.0);
@@ -607,7 +604,7 @@ public class ProxmoxResourceProvider implements ResourceProvider {
         if (requirements.getMemoryBytes() != null && node.getMemory() != null) {
             long available = node.getMemory().getAvailableBytes();
             if (available >= requirements.getMemoryBytes()) {
-                fit.setMemoryFitScore(100.0 * (1 - node.getMemoryPressure()));
+                fit.setMemoryFitScore(UnitConverter.Percentage.PERCENT_MULTIPLIER * (1 - node.getMemoryPressure()));
                 reasons.add("Sufficient memory available");
             } else {
                 fit.setMemoryFitScore(0.0);
@@ -620,7 +617,7 @@ public class ProxmoxResourceProvider implements ResourceProvider {
         if (requirements.getStorageBytes() != null && node.getStorage() != null) {
             long available = node.getStorage().getAvailableBytes();
             if (available >= requirements.getStorageBytes()) {
-                fit.setStorageFitScore(100.0 * (1 - node.getStoragePressure()));
+                fit.setStorageFitScore(UnitConverter.Percentage.PERCENT_MULTIPLIER * (1 - node.getStoragePressure()));
                 reasons.add("Sufficient storage available");
             } else {
                 fit.setStorageFitScore(0.0);

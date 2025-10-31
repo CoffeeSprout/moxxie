@@ -12,6 +12,7 @@ import com.coffeesprout.api.dto.AnsibleInventoryResponse.HostVars;
 import com.coffeesprout.api.dto.AnsibleInventoryResponse.Meta;
 import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.util.TagUtils;
+import com.coffeesprout.util.UnitConverter;
 import org.jboss.logging.Logger;
 
 /**
@@ -207,7 +208,7 @@ public class AnsibleInventoryService {
             vm.status(),
             vm.tags(),
             vm.cpus(),
-            (int)(vm.maxmem() / (1024 * 1024)), // Convert bytes to MB
+            (int)(vm.maxmem() / UnitConverter.Bytes.BYTES_PER_MB), // Convert bytes to MB
             vm.name(),
             moxxieManaged,
             Map.of() // Custom vars - can be extended later

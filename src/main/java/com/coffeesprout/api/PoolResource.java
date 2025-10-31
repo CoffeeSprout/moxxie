@@ -12,6 +12,7 @@ import com.coffeesprout.api.dto.ErrorResponse;
 import com.coffeesprout.api.dto.PoolResourceSummary;
 import com.coffeesprout.service.PoolService;
 import com.coffeesprout.service.SafeMode;
+import com.coffeesprout.util.UnitConverter;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
@@ -127,9 +128,9 @@ public class PoolResource {
                     summary.stoppedVMs(),
                     summary.totalVcpus(),
                     summary.runningVcpus(),
-                    summary.totalMemoryBytes() / (1024.0 * 1024 * 1024),
-                    summary.runningMemoryBytes() / (1024.0 * 1024 * 1024),
-                    summary.totalStorageBytes() / (1024.0 * 1024 * 1024 * 1024)
+                    summary.totalMemoryBytes() / UnitConverter.Bytes.BYTES_PER_GB,
+                    summary.runningMemoryBytes() / UnitConverter.Bytes.BYTES_PER_GB,
+                    summary.totalStorageBytes() / UnitConverter.Bytes.BYTES_PER_TB
                 ));
             }
 
@@ -143,8 +144,8 @@ public class PoolResource {
                         vm.vmid(),
                         vm.name(),
                         vm.vcpus(),
-                        vm.memoryBytes() / (1024.0 * 1024 * 1024),
-                        vm.storageBytes() / (1024.0 * 1024 * 1024),
+                        vm.memoryBytes() / UnitConverter.Bytes.BYTES_PER_GB,
+                        vm.storageBytes() / UnitConverter.Bytes.BYTES_PER_GB,
                         vm.status(),
                         vm.node()
                     ));
@@ -205,8 +206,8 @@ public class PoolResource {
                     vm.vmid(),
                     vm.name(),
                     vm.vcpus(),
-                    vm.memoryBytes() / (1024.0 * 1024 * 1024),
-                    vm.storageBytes() / (1024.0 * 1024 * 1024),
+                    vm.memoryBytes() / UnitConverter.Bytes.BYTES_PER_GB,
+                    vm.storageBytes() / UnitConverter.Bytes.BYTES_PER_GB,
                     vm.status(),
                     vm.node()
                 ));

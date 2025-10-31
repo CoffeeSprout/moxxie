@@ -5,6 +5,7 @@ import java.util.List;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 
+import com.coffeesprout.constants.VMConstants;
 import com.coffeesprout.validation.ValidImageSource;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
@@ -37,8 +38,8 @@ public record CloudInitVMRequest(
     Integer cores,
 
     @Schema(description = "Memory in MB", example = "8192", required = true)
-    @NotNull(message = "Memory is required") @Min(value = 512, message = "At least 512 MB of memory is required")
-    @Max(value = 1048576, message = "Cannot exceed 1TB of memory")
+    @NotNull(message = "Memory is required") @Min(value = VMConstants.Resources.MIN_MEMORY_MB, message = "At least 512 MB of memory is required")
+    @Max(value = VMConstants.Resources.MAX_MEMORY_MB_VALIDATION, message = "Cannot exceed 1TB of memory")
     Integer memoryMB,
 
     @Schema(description = "Cloud image source (must reference a template VM disk)", example = "local-zfs:9002/base-9002-disk-0.raw", required = true)

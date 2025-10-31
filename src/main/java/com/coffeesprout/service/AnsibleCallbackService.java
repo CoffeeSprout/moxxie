@@ -14,6 +14,7 @@ import jakarta.inject.Inject;
 import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.api.exception.ProxmoxException;
 import com.coffeesprout.config.AnsibleConfig;
+import com.coffeesprout.util.UnitConverter;
 import org.jboss.logging.Logger;
 
 /**
@@ -93,7 +94,7 @@ public class AnsibleCallbackService {
 
                 // Wait before retry with exponential backoff
                 try {
-                    long delayMs = (long) (ansibleConfig.retryDelaySeconds() * 1000 * Math.pow(2, attempt - 1));
+                    long delayMs = (long) (ansibleConfig.retryDelaySeconds() * UnitConverter.Time.MILLIS_PER_SECOND * Math.pow(2, attempt - 1));
                     LOG.debugf("Retrying in %d ms", delayMs);
                     Thread.sleep(delayMs);
                 } catch (InterruptedException ie) {
@@ -110,19 +111,12 @@ public class AnsibleCallbackService {
      * Execute callback to Ansible Tower/AWX by launching a job template.
      */
     private void executeTowerCallback(VMResponse vm, String playbook) throws IOException, InterruptedException {
-        String towerUrl = ansibleConfig.towerUrl();
-        String towerToken = ansibleConfig.towerToken();
-        String jobTemplateId = ansibleConfig.towerJobTemplateId();
-
-        if (towerUrl == null || towerUrl.isBlank()) {
-            throw new IllegalStateException("Tower URL not configured");
-        }
-        if (towerToken == null || towerToken.isBlank()) {
-            throw new IllegalStateException("Tower token not configured");
-        }
-        if (jobTemplateId == null || jobTemplateId.isBlank()) {
-            throw new IllegalStateException("Tower job template ID not configured");
-        }
+        String towerUrl = ansibleConfig.towerUrl()
+            .orElseThrow(() -> new IllegalStateException("Tower URL not configured"));
+        String towerToken = ansibleConfig.towerToken()
+            .orElseThrow(() -> new IllegalStateException("Tower token not configured"));
+        String jobTemplateId = ansibleConfig.towerJobTemplateId()
+            .orElseThrow(() -> new IllegalStateException("Tower job template ID not configured"));
 
         String endpoint = String.format("%s/api/v2/job_templates/%s/launch/",
                                        towerUrl.replaceAll("/$", ""),
@@ -167,11 +161,8 @@ public class AnsibleCallbackService {
      * Execute generic webhook callback.
      */
     private void executeWebhookCallback(VMResponse vm, String playbook) throws IOException, InterruptedException {
-        String webhookUrl = ansibleConfig.webhookUrl();
-
-        if (webhookUrl == null || webhookUrl.isBlank()) {
-            throw new IllegalStateException("Webhook URL not configured");
-        }
+        String webhookUrl = ansibleConfig.webhookUrl()
+            .orElseThrow(() -> new IllegalStateException("Webhook URL not configured"));
 
         // Build webhook payload
         String payload = String.format("""
@@ -204,9 +195,9 @@ public class AnsibleCallbackService {
             .POST(HttpRequest.BodyPublishers.ofString(payload));
 
         // Add optional authentication header
-        if (ansibleConfig.webhookToken() != null && !ansibleConfig.webhookToken().isBlank()) {
-            requestBuilder.header("Authorization", "Bearer " + ansibleConfig.webhookToken());
-        }
+        ansibleConfig.webhookToken().ifPresent(token ->
+            requestBuilder.header("Authorization", "Bearer " + token)
+        );
 
         HttpRequest request = requestBuilder.build();
 

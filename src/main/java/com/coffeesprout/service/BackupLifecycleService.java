@@ -14,6 +14,7 @@ import com.coffeesprout.api.dto.*;
 import com.coffeesprout.api.exception.ProxmoxException;
 import com.coffeesprout.client.Node;
 import com.coffeesprout.client.ProxmoxClient;
+import com.coffeesprout.util.UnitConverter;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -160,7 +161,7 @@ public class BackupLifecycleService {
                     protectedCount,
                     0, // TODO: Calculate retained backups
                     totalSizeToFree,
-                    humanReadableSize(totalSizeToFree),
+                    UnitConverter.formatBytes(totalSizeToFree),
                     candidates,
                     request.dryRun()
             );
@@ -328,18 +329,6 @@ public class BackupLifecycleService {
             "No nodes available in the cluster");
     }
 
-    /**
-     * Convert bytes to human-readable format
-     */
-    private String humanReadableSize(long bytes) {
-        if (bytes < 1024) {
-            return bytes + " B";
-        }
-
-        int exp = (int) (Math.log(bytes) / Math.log(1024));
-        String pre = "KMGTPE".charAt(exp - 1) + "iB";
-        return String.format("%.2f %s", bytes / Math.pow(1024, exp), pre);
-    }
 
     /**
      * Internal retention policy representation

@@ -15,6 +15,7 @@ import com.coffeesprout.client.Node;
 import com.coffeesprout.client.NodeStatusResponse;
 import com.coffeesprout.client.NodesResponse;
 import com.coffeesprout.client.ProxmoxClient;
+import com.coffeesprout.util.UnitConverter;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -137,7 +138,7 @@ public class NodePlacementService {
                         int sameGroupCount = groupAssignments.contains(node.name()) ?
                             Collections.frequency(new ArrayList<>(groupAssignments), node.name()) : 0;
                         // Lower score is better (fewer same-group nodes)
-                        return sameGroupCount * 1000 - node.getAvailableScore();
+                        return sameGroupCount * UnitConverter.Time.MILLIS_PER_SECOND - node.getAvailableScore();
                     }))
                     .orElse(availableNodes.get(0));
 

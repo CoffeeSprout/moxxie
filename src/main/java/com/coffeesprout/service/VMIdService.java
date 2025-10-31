@@ -9,6 +9,7 @@ import jakarta.inject.Inject;
 
 import com.coffeesprout.client.ProxmoxClient;
 import com.coffeesprout.dto.ClusterNextIdResponse;
+import com.coffeesprout.util.UnitConverter;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
 
@@ -163,7 +164,7 @@ public class VMIdService {
         int startId = baseId > 0 ? baseId : Math.max(lastAllocatedId.get() + 1, MIN_VM_ID);
 
         // Try incremental allocation first
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < UnitConverter.Time.MILLIS_PER_SECOND; i++) {
             int candidateId = startId + i;
             if (isValidVmId(candidateId) && !isRecentlyAllocated(candidateId)) {
                 lastAllocatedId.set(candidateId);

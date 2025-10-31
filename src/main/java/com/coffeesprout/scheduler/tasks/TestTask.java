@@ -7,6 +7,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import com.coffeesprout.scheduler.task.ScheduledTask;
 import com.coffeesprout.scheduler.task.TaskContext;
 import com.coffeesprout.scheduler.task.TaskResult;
+import com.coffeesprout.util.UnitConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +26,7 @@ public class TestTask implements ScheduledTask {
         try {
             // Simulate some work
             String message = context.getParameter("message", "Hello from test task!");
-            int delay = context.getIntParameter("delay", 1000);
+            int delay = context.getIntParameter("delay", (int) UnitConverter.Time.MILLIS_PER_SECOND);
 
             LOG.info("Test task message: {}", message);
 

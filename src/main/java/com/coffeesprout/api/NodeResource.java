@@ -20,6 +20,7 @@ import com.coffeesprout.client.NodeStatus;
 import com.coffeesprout.client.StoragePool;
 import com.coffeesprout.client.VM;
 import com.coffeesprout.service.NodeService;
+import com.coffeesprout.util.UnitConverter;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
@@ -193,9 +194,9 @@ public class NodeResource {
             long availStorage = storage.stream().mapToLong(StoragePool::getAvail).sum();
 
             Map<String, Object> storageInfo = new HashMap<>();
-            storageInfo.put("totalGB", totalStorage / (1024.0 * 1024 * 1024));
-            storageInfo.put("usedGB", usedStorage / (1024.0 * 1024 * 1024));
-            storageInfo.put("availableGB", availStorage / (1024.0 * 1024 * 1024));
+            storageInfo.put("totalGB", totalStorage / UnitConverter.Bytes.BYTES_PER_GB);
+            storageInfo.put("usedGB", usedStorage / UnitConverter.Bytes.BYTES_PER_GB);
+            storageInfo.put("availableGB", availStorage / UnitConverter.Bytes.BYTES_PER_GB);
             storageInfo.put("poolCount", storage.size());
             response.setStorage(storageInfo);
 

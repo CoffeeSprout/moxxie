@@ -27,6 +27,7 @@ import com.coffeesprout.client.StorageContentResponse;
 import com.coffeesprout.client.StorageResponse;
 import com.coffeesprout.client.TaskStatusResponse;
 import com.coffeesprout.scheduler.service.VMSelectorService;
+import com.coffeesprout.util.UnitConverter;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -443,7 +444,7 @@ public class BackupService {
                 false, // Proxmox doesn't provide encryption info in storage content
                 content.getVerification() != null ? content.getVerification().getState() : "none",
                 content.getStorageId(),
-                BackupResponse.formatSize(content.getSize())
+                UnitConverter.formatBytes(content.getSize(), 1)
         );
     }
 

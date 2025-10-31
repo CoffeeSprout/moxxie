@@ -13,6 +13,7 @@ import jakarta.interceptor.InvocationContext;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.SecurityContext;
 
+import com.coffeesprout.util.UnitConverter;
 import org.jboss.logging.Logger;
 
 @ApplicationScoped
@@ -58,8 +59,8 @@ public class AuditService {
 
         synchronized (auditEntries) {
             auditEntries.add(entry);
-            // Keep only last 1000 entries
-            if (auditEntries.size() > 1000) {
+            // Keep only last UnitConverter.Time.MILLIS_PER_SECOND entries
+            if (auditEntries.size() > UnitConverter.Time.MILLIS_PER_SECOND) {
                 auditEntries.remove(0);
             }
         }
@@ -86,8 +87,8 @@ public class AuditService {
 
         synchronized (auditEntries) {
             auditEntries.add(entry);
-            // Keep only last 1000 entries
-            if (auditEntries.size() > 1000) {
+            // Keep only last UnitConverter.Time.MILLIS_PER_SECOND entries
+            if (auditEntries.size() > UnitConverter.Time.MILLIS_PER_SECOND) {
                 auditEntries.remove(0);
             }
         }

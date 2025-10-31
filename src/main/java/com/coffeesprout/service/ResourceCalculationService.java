@@ -12,6 +12,7 @@ import com.coffeesprout.federation.ClusterResources;
 import com.coffeesprout.federation.NodeResources;
 import com.coffeesprout.federation.ResourceRequirements;
 import com.coffeesprout.federation.VMCapacity;
+import com.coffeesprout.util.UnitConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -230,7 +231,7 @@ public class ResourceCalculationService {
         // Calculate efficiency metrics
         cluster.setCpuEfficiency(calculateEfficiency(
             cluster.getCpu().getAllocatedCores(),
-            cluster.getCpu().getTotalCores() * cluster.getCpu().getActualUsagePercent() / 100.0,
+            cluster.getCpu().getTotalCores() * cluster.getCpu().getActualUsagePercent() / UnitConverter.Percentage.PERCENT_MULTIPLIER,
             cluster.getCpu().getTotalCores()
         ));
 
@@ -262,15 +263,15 @@ public class ResourceCalculationService {
     }
 
     private double getCpuReservePercent() {
-        return config.resources().cpu().reservePercent() / 100.0;
+        return config.resources().cpu().reservePercent() / UnitConverter.Percentage.PERCENT_MULTIPLIER;
     }
 
     private double getMemoryReservePercent() {
-        return config.resources().memory().reservePercent() / 100.0;
+        return config.resources().memory().reservePercent() / UnitConverter.Percentage.PERCENT_MULTIPLIER;
     }
 
     private double getStorageReservePercent() {
-        return config.resources().storage().reservePercent() / 100.0;
+        return config.resources().storage().reservePercent() / UnitConverter.Percentage.PERCENT_MULTIPLIER;
     }
 
     /**
@@ -416,7 +417,7 @@ public class ResourceCalculationService {
      * Calculate a score for VM capacity based on node health and resources
      */
     private double calculateCapacityScore(VMCapacity capacity, NodeResources node) {
-        double score = 100.0;
+        double score = UnitConverter.Percentage.PERCENT_MULTIPLIER;
 
         // Penalize based on resource pressure
         score -= node.getCpuPressure() * 20;

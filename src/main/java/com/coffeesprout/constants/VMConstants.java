@@ -1,5 +1,6 @@
 package com.coffeesprout.constants;
 
+
 /**
  * Constants for VM operations and status values.
  * Centralizes all VM-related constants to avoid magic strings throughout the codebase.
@@ -83,7 +84,8 @@ public final class VMConstants {
         public static final int DEFAULT_CORES = 2;
 
         public static final int MIN_MEMORY_MB = 512;
-        public static final int MAX_MEMORY_MB = 4194304; // 4TB
+        public static final int MAX_MEMORY_MB = 4194304; // 4TB - Proxmox theoretical limit
+        public static final int MAX_MEMORY_MB_VALIDATION = 1048576; // 1TB - Practical limit for validation
         public static final int DEFAULT_MEMORY_MB = 2048;
 
         public static final int MIN_VM_ID = 100;

@@ -3,6 +3,8 @@ package com.coffeesprout.federation;
 import java.util.Map;
 import java.util.Set;
 
+import com.coffeesprout.util.UnitConverter;
+
 /**
  * Represents resource requirements for VM placement or capacity calculations
  */
@@ -60,7 +62,7 @@ public class ResourceRequirements {
         }
 
         public Builder memoryGB(long memoryGB) {
-            requirements.memoryBytes = memoryGB * 1024L * 1024L * 1024L;
+            requirements.memoryBytes = memoryGB * UnitConverter.Bytes.BYTES_PER_GB;
             return this;
         }
 
@@ -70,7 +72,7 @@ public class ResourceRequirements {
         }
 
         public Builder storageGB(long storageGB) {
-            requirements.storageBytes = storageGB * 1024L * 1024L * 1024L;
+            requirements.storageBytes = storageGB * UnitConverter.Bytes.BYTES_PER_GB;
             return this;
         }
 

@@ -22,6 +22,7 @@ import com.coffeesprout.client.StorageResponse;
 import com.coffeesprout.client.TaskStatusResponse;
 import com.coffeesprout.config.MigrationConfig;
 import com.coffeesprout.model.VmMigration;
+import com.coffeesprout.util.UnitConverter;
 import io.quarkus.virtual.threads.VirtualThreads;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
@@ -180,7 +181,7 @@ public class MigrationService {
             try {
                 if (i > 0) {
                     LOG.debug("Retrying storage configuration query (attempt {}/{})", i + 1, maxRetries);
-                    Thread.sleep(1000); // Wait 1 second between retries
+                    Thread.sleep(UnitConverter.Time.MILLIS_PER_SECOND); // Wait 1 second between retries
                 }
 
                 StorageResponse response = proxmoxClient.getStorage(ticket);

@@ -8,6 +8,7 @@ import jakarta.inject.Inject;
 
 import com.coffeesprout.api.dto.ClusterDiscoveryResponse;
 import com.coffeesprout.client.*;
+import com.coffeesprout.util.UnitConverter;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,8 +35,8 @@ public class ClusterService {
 
             long totalMemBytes = status.getMemory().getTotal();
             long availableMemBytes = status.getMemory().getFree();
-            long totalMemGB = totalMemBytes / (1024L * 1024L * 1024L);
-            long availableMemGB = availableMemBytes / (1024L * 1024L * 1024L);
+            long totalMemGB = totalMemBytes / UnitConverter.Bytes.BYTES_PER_GB;
+            long availableMemGB = availableMemBytes / UnitConverter.Bytes.BYTES_PER_GB;
 
             int cpuCount = status.getCpuInfo().getCpus();
             // CPU usage is not available in NodeStatus, set to 0
@@ -64,8 +65,8 @@ public class ClusterService {
             ClusterDiscoveryResponse.StorageInfo storageInfo = new ClusterDiscoveryResponse.StorageInfo(
                 pool.getStorage(),
                 pool.getType(),
-                pool.getTotal() / (1024L * 1024L * 1024L),
-                pool.getAvail() / (1024L * 1024L * 1024L),
+                pool.getTotal() / UnitConverter.Bytes.BYTES_PER_GB,
+                pool.getAvail() / UnitConverter.Bytes.BYTES_PER_GB,
                 null  // Storage pools don't have node information in this API
             );
             storageInfos.add(storageInfo);

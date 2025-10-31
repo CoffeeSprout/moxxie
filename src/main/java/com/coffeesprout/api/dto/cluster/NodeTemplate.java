@@ -8,6 +8,7 @@ import jakarta.validation.constraints.*;
 
 import com.coffeesprout.api.dto.DiskConfig;
 import com.coffeesprout.api.dto.NetworkConfig;
+import com.coffeesprout.constants.VMConstants;
 import com.coffeesprout.validation.ValidImageSource;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
@@ -19,8 +20,8 @@ public record NodeTemplate(
     Integer cores,
 
     @Schema(description = "Memory in MB", example = "8192", required = true)
-    @NotNull(message = "Memory is required") @Min(value = 512, message = "At least 512 MB of memory is required")
-    @Max(value = 1048576, message = "Cannot exceed 1TB of memory")
+    @NotNull(message = "Memory is required") @Min(value = VMConstants.Resources.MIN_MEMORY_MB, message = "At least 512 MB of memory is required")
+    @Max(value = VMConstants.Resources.MAX_MEMORY_MB_VALIDATION, message = "Cannot exceed 1TB of memory")
     Integer memoryMB,
 
     @Schema(description = "Disk configurations", required = true)

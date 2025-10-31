@@ -13,6 +13,7 @@ import com.coffeesprout.api.exception.ProxmoxException;
 import com.coffeesprout.client.ProxmoxClient;
 import com.coffeesprout.client.TaskListData;
 import com.coffeesprout.client.TaskStatusData;
+import com.coffeesprout.util.UnitConverter;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
@@ -254,7 +255,7 @@ public class TaskService {
         LOG.info("Waiting for task {} on node {} with timeout {}s", upid, node, timeoutSeconds);
 
         long startTime = System.currentTimeMillis();
-        long timeoutMs = timeoutSeconds * 1000L;
+        long timeoutMs = timeoutSeconds * UnitConverter.Time.MILLIS_PER_SECOND;
 
         while (System.currentTimeMillis() - startTime < timeoutMs) {
             try {
@@ -363,7 +364,7 @@ public class TaskService {
         if (matcher.find()) {
             try {
                 double percent = Double.parseDouble(matcher.group(1));
-                return percent / 100.0; // Convert to 0-1 range
+                return percent / UnitConverter.Percentage.PERCENT_MULTIPLIER; // Convert to 0-1 range
             } catch (NumberFormatException e) {
                 // Ignore
             }

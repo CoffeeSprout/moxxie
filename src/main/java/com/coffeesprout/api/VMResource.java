@@ -50,6 +50,7 @@ import com.coffeesprout.service.TagService;
 import com.coffeesprout.service.TicketManager;
 import com.coffeesprout.service.VMIdService;
 import com.coffeesprout.service.VMService;
+import com.coffeesprout.util.UnitConverter;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -1060,10 +1061,10 @@ public class VMResource {
             if (Character.isLetter(unit)) {
                 long value = Long.parseLong(sizeStr.substring(0, sizeStr.length() - 1));
                 switch (Character.toUpperCase(unit)) {
-                    case 'K': return value * 1024L;
-                    case 'M': return value * 1024L * 1024L;
-                    case 'G': return value * 1024L * 1024L * 1024L;
-                    case 'T': return value * 1024L * 1024L * 1024L * 1024L;
+                    case 'K': return value * UnitConverter.Bytes.BYTES_PER_KB;
+                    case 'M': return value * UnitConverter.Bytes.BYTES_PER_MB;
+                    case 'G': return value * UnitConverter.Bytes.BYTES_PER_GB;
+                    case 'T': return value * UnitConverter.Bytes.BYTES_PER_GB * UnitConverter.Bytes.BYTES_PER_KB;
                     default: return value;
                 }
             } else {

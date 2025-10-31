@@ -3,6 +3,7 @@ package com.coffeesprout.api.dto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 
+import com.coffeesprout.constants.VMConstants;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 @Schema(description = "Request to create a new VM")
@@ -31,8 +32,8 @@ public record CreateVMRequestDTO(
     Integer cores,
 
     @Schema(description = "Memory in MB", example = "8192", required = true)
-    @NotNull(message = "Memory is required") @Min(value = 512, message = "Must have at least 512 MB of memory")
-    @Max(value = 1048576, message = "Cannot exceed 1TB of memory")
+    @NotNull(message = "Memory is required") @Min(value = VMConstants.Resources.MIN_MEMORY_MB, message = "Must have at least 512 MB of memory")
+    @Max(value = VMConstants.Resources.MAX_MEMORY_MB_VALIDATION, message = "Cannot exceed 1TB of memory")
     Integer memoryMB,
 
     @Schema(description = "Disk size in GB (deprecated, use disks instead)", example = "100")

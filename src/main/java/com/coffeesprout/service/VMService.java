@@ -17,6 +17,7 @@ import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.api.exception.ProxmoxException;
 import com.coffeesprout.client.*;
 import com.coffeesprout.util.TagUtils;
+import com.coffeesprout.util.UnitConverter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
@@ -727,7 +728,7 @@ public class VMService {
                 creationNode,
                 request.start() != null && request.start() ? "running" : "stopped",
                 request.cores(),
-                (long)request.memoryMB() * 1024 * 1024, // Convert MB to bytes
+                (long)request.memoryMB() * UnitConverter.Bytes.BYTES_PER_MB, // Convert MB to bytes
                 0L, // maxdisk - not available during creation
                 0L, // uptime - 0 for new VM
                 "qemu",

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.coffeesprout.util.UnitConverter;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 @Schema(description = "Current state of cluster provisioning operation")
@@ -156,7 +157,7 @@ public class ClusterProvisioningState {
                         n.getStatus() == NodeProvisioningState.NodeStatus.FAILED)
             .count();
 
-        progressPercentage = (int) ((completedNodes * 100) / totalNodes);
+        progressPercentage = (int) ((completedNodes * UnitConverter.Percentage.PERCENT_MULTIPLIER) / totalNodes);
     }
 
     // Getters and setters

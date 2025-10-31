@@ -22,6 +22,7 @@ import com.coffeesprout.federation.providers.ProxmoxResourceProvider;
 import com.coffeesprout.model.LocationInfo;
 import com.coffeesprout.service.LocationService;
 import com.coffeesprout.service.ResourceCacheService;
+import com.coffeesprout.util.UnitConverter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -47,8 +48,8 @@ public class FederationResource {
 
     private static final Logger LOG = LoggerFactory.getLogger(FederationResource.class);
 
-    // Byte conversion constants
-    private static final double BYTES_TO_GB = 1024.0 * 1024.0 * 1024.0;
+    // Byte conversion constants - this is already defined in UnitConverter, should use that directly
+    private static final double BYTES_TO_GB = UnitConverter.Bytes.BYTES_PER_GB;
     private static final double CPU_RESERVE_RATIO = 0.1;    // 10% reserved
     private static final double MEMORY_RESERVE_RATIO = 0.15; // 15% reserved
     private static final double STORAGE_RESERVE_RATIO = 0.1; // 10% reserved
@@ -127,8 +128,8 @@ public class FederationResource {
 
             Map<String, Object> largestPossible = new HashMap<>();
             largestPossible.put("vcpus", largestVM.getMaxCpuCores());
-            largestPossible.put("memory_gb", Math.round(largestVM.getMaxMemoryBytes() / (1024.0 * 1024 * 1024)));
-            largestPossible.put("storage_gb", Math.round(largestVM.getMaxStorageBytes() / (1024.0 * 1024 * 1024)));
+            largestPossible.put("memory_gb", Math.round(largestVM.getMaxMemoryBytes() / UnitConverter.Bytes.BYTES_PER_GB));
+            largestPossible.put("storage_gb", Math.round(largestVM.getMaxStorageBytes() / UnitConverter.Bytes.BYTES_PER_GB));
             response.put("largest_possible_vm", largestPossible);
 
             response.put("timestamp", Instant.now().toString());
@@ -180,9 +181,9 @@ public class FederationResource {
             Map<String, Object> utilization = new HashMap<>();
             utilization.put("vcpu_percent", resources.getCpu().getActualUsagePercent());
             utilization.put("memory_percent",
-                (resources.getMemory().getActualUsedBytes() / (double) resources.getMemory().getTotalBytes()) * 100);
+                (resources.getMemory().getActualUsedBytes() / (double) resources.getMemory().getTotalBytes()) * UnitConverter.Percentage.PERCENT_MULTIPLIER);
             utilization.put("storage_percent",
-                (resources.getStorage().getActualUsedBytes() / (double) resources.getStorage().getTotalBytes()) * 100);
+                (resources.getStorage().getActualUsedBytes() / (double) resources.getStorage().getTotalBytes()) * UnitConverter.Percentage.PERCENT_MULTIPLIER);
             response.put("utilization", utilization);
 
             // VM counts

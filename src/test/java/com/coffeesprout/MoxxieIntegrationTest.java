@@ -33,10 +33,14 @@ import static org.junit.jupiter.api.Assertions.*;
  * - Set MOXXIE_TEST_STORAGE for storage backend (default: local-lvm)
  * - Set MOXXIE_TEST_BRIDGE for network bridge (default: vmbr0)
  * - Set MOXXIE_TEST_ENABLED=true to enable these tests (default: false)
+ *
+ * NOTE: This test is disabled by default as it requires a running Proxmox environment.
+ * Enable it manually when you have the infrastructure set up.
  */
 @QuarkusTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Disabled("Requires external Proxmox infrastructure - enable manually for integration testing")
 public class MoxxieIntegrationTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(MoxxieIntegrationTest.class);

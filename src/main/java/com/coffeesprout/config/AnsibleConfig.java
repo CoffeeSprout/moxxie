@@ -1,5 +1,7 @@
 package com.coffeesprout.config;
 
+import java.util.Optional;
+
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import io.smallrye.config.WithName;
@@ -38,34 +40,34 @@ public interface AnsibleConfig {
      * Required if callback-type is tower or awx.
      */
     @WithName("tower.url")
-    String towerUrl();
+    Optional<String> towerUrl();
 
     /**
      * Ansible Tower/AWX API token for authentication.
      * Required if callback-type is tower or awx.
      */
     @WithName("tower.token")
-    String towerToken();
+    Optional<String> towerToken();
 
     /**
      * Ansible Tower/AWX job template ID to launch.
      * Required if callback-type is tower or awx.
      */
     @WithName("tower.job-template-id")
-    String towerJobTemplateId();
+    Optional<String> towerJobTemplateId();
 
     /**
      * Generic webhook URL for callbacks.
      * Required if callback-type is webhook.
      */
     @WithName("webhook.url")
-    String webhookUrl();
+    Optional<String> webhookUrl();
 
     /**
      * Optional bearer token for webhook authentication.
      */
     @WithName("webhook.token")
-    String webhookToken();
+    Optional<String> webhookToken();
 
     /**
      * Maximum retry attempts for failed callbacks.

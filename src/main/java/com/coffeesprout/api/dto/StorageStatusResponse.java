@@ -1,5 +1,6 @@
 package com.coffeesprout.api.dto;
 
+import com.coffeesprout.util.UnitConverter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
@@ -53,7 +54,7 @@ public record StorageStatusResponse(
     String healthStatus,
 
     @JsonProperty("formatted_total")
-    @Schema(description = "Human-readable total size", example = "100.0 GB")
+    @Schema(description = "Human-readable total size", example = "UnitConverter.Percentage.PERCENT_MULTIPLIER GB")
     String formattedTotal,
 
     @JsonProperty("formatted_used")
@@ -85,7 +86,7 @@ public record StorageStatusResponse(
                                               boolean enabled, long total, long used,
                                               long available, String[] contentTypes,
                                               boolean isShared, String[] nodes) {
-        double usedPct = total > 0 ? (used * 100.0 / total) : 0;
+        double usedPct = total > 0 ? (used * UnitConverter.Percentage.PERCENT_MULTIPLIER / total) : 0;
         String health = calculateHealthStatus(usedPct);
 
         return new StorageStatusResponse(
@@ -101,9 +102,9 @@ public record StorageStatusResponse(
             isShared,
             nodes,
             health,
-            StoragePoolResponse.formatBytes(total),
-            StoragePoolResponse.formatBytes(used),
-            StoragePoolResponse.formatBytes(available)
+            UnitConverter.formatBytes(total),
+            UnitConverter.formatBytes(used),
+            UnitConverter.formatBytes(available)
         );
     }
 }

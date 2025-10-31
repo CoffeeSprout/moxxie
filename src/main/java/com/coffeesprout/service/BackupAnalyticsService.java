@@ -10,6 +10,7 @@ import jakarta.inject.Inject;
 
 import com.coffeesprout.api.dto.*;
 import com.coffeesprout.api.exception.ProxmoxException;
+import com.coffeesprout.util.UnitConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,7 +87,7 @@ public class BackupAnalyticsService {
                         vmId,
                         vmName,
                         totalSize,
-                        humanReadableSize(totalSize),
+                        UnitConverter.formatBytes(totalSize),
                         vmBackups.size(),
                         oldest.orElse(null),
                         newest.orElse(null),
@@ -165,7 +166,7 @@ public class BackupAnalyticsService {
                 ClientStorageUsage usage = new ClientStorageUsage(
                         clientTag,
                         totalSize,
-                        humanReadableSize(totalSize),
+                        UnitConverter.formatBytes(totalSize),
                         clientVMs.size(),
                         totalBackups,
                         sizeByVm,
@@ -215,7 +216,7 @@ public class BackupAnalyticsService {
                 StorageLocationUsage usage = new StorageLocationUsage(
                         storage,
                         totalSize,
-                        humanReadableSize(totalSize),
+                        UnitConverter.formatBytes(totalSize),
                         storageBackups.size(),
                         -1L,  // Available space unknown
                         "Unknown",
@@ -457,16 +458,4 @@ public class BackupAnalyticsService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Convert bytes to human-readable format
-     */
-    private String humanReadableSize(long bytes) {
-        if (bytes < 1024) {
-            return bytes + " B";
-        }
-
-        int exp = (int) (Math.log(bytes) / Math.log(1024));
-        String pre = "KMGTPE".charAt(exp - 1) + "iB";
-        return String.format("%.2f %s", bytes / Math.pow(1024, exp), pre);
-    }
 }

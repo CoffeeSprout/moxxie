@@ -10,6 +10,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 
+import com.coffeesprout.constants.HttpStatus;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -104,7 +105,7 @@ public class GlobalExceptionMapper implements ExceptionMapper<Exception> {
             .entity(new ApiErrorResponse(
                 "VALIDATION_ERROR",
                 "Invalid request: " + e.getMessage(),
-                400,
+                HttpStatus.BAD_REQUEST,
                 Instant.now().toString(),
                 null,
                 null
@@ -134,7 +135,7 @@ public class GlobalExceptionMapper implements ExceptionMapper<Exception> {
             .entity(new ApiErrorResponse(
                 "INTERNAL_ERROR",
                 "An unexpected error occurred. Please check logs for details.",
-                500,
+                HttpStatus.INTERNAL_SERVER_ERROR,
                 Instant.now().toString(),
                 null,
                 null
@@ -169,30 +170,30 @@ public class GlobalExceptionMapper implements ExceptionMapper<Exception> {
 
     private String getErrorCodeForStatus(int status) {
         switch (status) {
-            case 400: return "BAD_REQUEST";
-            case 401: return "UNAUTHORIZED";
-            case 403: return "FORBIDDEN";
-            case 404: return "NOT_FOUND";
-            case 409: return "CONFLICT";
-            case 422: return "UNPROCESSABLE_ENTITY";
-            case 500: return "INTERNAL_ERROR";
-            case 502: return "BAD_GATEWAY";
-            case 503: return "SERVICE_UNAVAILABLE";
+            case HttpStatus.BAD_REQUEST: return "BAD_REQUEST";
+            case HttpStatus.UNAUTHORIZED: return "UNAUTHORIZED";
+            case HttpStatus.FORBIDDEN: return "FORBIDDEN";
+            case HttpStatus.NOT_FOUND: return "NOT_FOUND";
+            case HttpStatus.CONFLICT: return "CONFLICT";
+            case HttpStatus.UNPROCESSABLE_ENTITY: return "UNPROCESSABLE_ENTITY";
+            case HttpStatus.INTERNAL_SERVER_ERROR: return "INTERNAL_ERROR";
+            case HttpStatus.BAD_GATEWAY: return "BAD_GATEWAY";
+            case HttpStatus.SERVICE_UNAVAILABLE: return "SERVICE_UNAVAILABLE";
             default: return "ERROR";
         }
     }
 
     private String getDefaultMessageForStatus(int status) {
         switch (status) {
-            case 400: return "Bad request";
-            case 401: return "Authentication required";
-            case 403: return "Access denied";
-            case 404: return "Resource not found";
-            case 409: return "Resource conflict";
-            case 422: return "Unprocessable entity";
-            case 500: return "Internal server error";
-            case 502: return "Bad gateway";
-            case 503: return "Service unavailable";
+            case HttpStatus.BAD_REQUEST: return "Bad request";
+            case HttpStatus.UNAUTHORIZED: return "Authentication required";
+            case HttpStatus.FORBIDDEN: return "Access denied";
+            case HttpStatus.NOT_FOUND: return "Resource not found";
+            case HttpStatus.CONFLICT: return "Resource conflict";
+            case HttpStatus.UNPROCESSABLE_ENTITY: return "Unprocessable entity";
+            case HttpStatus.INTERNAL_SERVER_ERROR: return "Internal server error";
+            case HttpStatus.BAD_GATEWAY: return "Bad gateway";
+            case HttpStatus.SERVICE_UNAVAILABLE: return "Service unavailable";
             default: return "Error";
         }
     }

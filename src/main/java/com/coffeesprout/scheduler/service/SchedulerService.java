@@ -15,6 +15,7 @@ import com.coffeesprout.scheduler.entity.ScheduledJob;
 import com.coffeesprout.scheduler.entity.ScheduledJobBuilder;
 import com.coffeesprout.scheduler.entity.TaskType;
 import com.coffeesprout.scheduler.job.MoxxieScheduledJob;
+import com.coffeesprout.util.UnitConverter;
 import io.quarkus.runtime.Startup;
 import io.quarkus.runtime.StartupEvent;
 import io.quarkus.scheduler.Scheduled;
@@ -293,7 +294,7 @@ public class SchedulerService {
 
         try {
             // Delete executions older than 30 days
-            Instant cutoffDate = Instant.now().minusSeconds(30 * 24 * 60 * 60);
+            Instant cutoffDate = Instant.now().minusSeconds(30 * UnitConverter.Time.SECONDS_PER_DAY);
             long deleted = JobExecution.delete("completedAt < ?1", cutoffDate);
 
             LOG.info("Deleted {} old job executions", deleted);

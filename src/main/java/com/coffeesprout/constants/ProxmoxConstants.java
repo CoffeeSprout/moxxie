@@ -1,5 +1,7 @@
 package com.coffeesprout.constants;
 
+import com.coffeesprout.util.UnitConverter;
+
 /**
  * Constants specific to Proxmox API interactions.
  * These values are defined by the Proxmox VE API specification.
@@ -198,7 +200,7 @@ public final class ProxmoxConstants {
         public static final int MAX_PARALLEL_OPERATIONS = 10;
         public static final int MAX_API_VERSION = 8;
         public static final int MIN_API_VERSION = 2;
-        public static final long MAX_UPLOAD_SIZE = 128L * 1024 * 1024 * 1024; // 128GB
+        public static final long MAX_UPLOAD_SIZE = 128L * UnitConverter.Bytes.BYTES_PER_GB; // 128GB
         public static final int DEFAULT_CONSOLE_PORT = 5900; // VNC
         public static final int DEFAULT_SPICE_PORT = 3128;
         public static final int DEFAULT_API_PORT = 8006;
