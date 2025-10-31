@@ -7,12 +7,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import jakarta.enterprise.util.AnnotationLiteral;
+
 import com.coffeesprout.api.exception.ProxmoxException;
 import com.coffeesprout.client.ProxmoxClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import jakarta.enterprise.util.AnnotationLiteral;
 import io.quarkus.arc.Arc;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusMock;

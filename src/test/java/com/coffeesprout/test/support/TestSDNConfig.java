@@ -1,9 +1,10 @@
 package com.coffeesprout.test.support;
 
-import com.coffeesprout.config.SDNConfig;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Singleton;
+
+import com.coffeesprout.config.SDNConfig;
 
 @Singleton
 @Alternative

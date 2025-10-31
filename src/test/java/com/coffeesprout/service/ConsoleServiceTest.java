@@ -3,16 +3,17 @@ package com.coffeesprout.service;
 import java.util.List;
 import java.util.Optional;
 
+import jakarta.enterprise.util.AnnotationLiteral;
+
 import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.client.*;
-import jakarta.enterprise.util.AnnotationLiteral;
+import io.quarkus.arc.Arc;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.arc.Arc;
+import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.eclipse.microprofile.rest.client.inject.RestClient;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;

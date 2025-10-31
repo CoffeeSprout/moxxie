@@ -1,9 +1,10 @@
 package com.coffeesprout.test.support;
 
-import com.coffeesprout.service.SafetyConfig;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Singleton;
+
+import com.coffeesprout.service.SafetyConfig;
 
 /**
  * Test-friendly SafetyConfig implementation that can be mutated at runtime.
