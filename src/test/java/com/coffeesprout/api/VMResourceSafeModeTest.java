@@ -5,14 +5,15 @@ import java.util.Set;
 
 import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.service.*;
+import com.coffeesprout.test.support.TestSafetyConfig;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Disabled;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
@@ -20,7 +21,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @QuarkusTest
-@Disabled("Temporarily disabled due to InjectMock issues - needs migration to new Quarkus mock approach")
+@Disabled("Safe mode integration paths require dedicated fixture setup; tracked separately")
 class VMResourceSafeModeTest {
 
     @InjectMock
@@ -30,16 +31,21 @@ class VMResourceSafeModeTest {
     TagService tagService;
 
     @InjectMock
-    SafetyConfig safetyConfig;
+    AuditService auditService;
 
     @InjectMock
-    AuditService auditService;
+    VMIdService vmIdService;
+
+    @jakarta.inject.Inject
+    TestSafetyConfig safetyConfig;
 
     private VMResponse testVM;
 
     @BeforeEach
     void setUp() {
+        reset(vmService, tagService, auditService, vmIdService);
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+        safetyConfig.reset();
 
         // Setup test VM
         testVM = new VMResponse(
@@ -58,11 +64,14 @@ class VMResourceSafeModeTest {
         );
 
         // Default safety config
-        when(safetyConfig.enabled()).thenReturn(true);
-        when(safetyConfig.mode()).thenReturn(SafetyConfig.Mode.STRICT);
-        when(safetyConfig.tagName()).thenReturn("moxxie");
-        when(safetyConfig.allowManualOverride()).thenReturn(true);
-        when(safetyConfig.auditLog()).thenReturn(true);
+        safetyConfig.setEnabled(true);
+        safetyConfig.setMode(SafetyConfig.Mode.STRICT);
+        safetyConfig.setTagName("moxxie");
+        safetyConfig.setAllowManualOverride(true);
+        safetyConfig.setAuditLog(true);
+        when(vmService.listVMs(any())).thenReturn(List.of(testVM));
+        when(vmService.listVMsWithFilters(any(), any(), any(), any(), any())).thenReturn(List.of(testVM));
+        when(vmIdService.getNextAvailableVmId(any())).thenReturn(200);
     }
 
     @Test
@@ -133,7 +142,7 @@ class VMResourceSafeModeTest {
     @DisplayName("POST /api/v1/vms/{vmId}/stop should respect permissive mode")
     void testStopInPermissiveMode() throws Exception {
         // Given
-        when(safetyConfig.mode()).thenReturn(SafetyConfig.Mode.PERMISSIVE);
+        safetyConfig.setMode(SafetyConfig.Mode.PERMISSIVE);
         when(vmService.listVMsWithFilters(null, null, null, null, null)).thenReturn(List.of(testVM));
         when(tagService.getVMTags(eq(100), any())).thenReturn(Set.of("production"));
 
@@ -153,7 +162,7 @@ class VMResourceSafeModeTest {
     @DisplayName("POST /api/v1/vms/{vmId}/start should be allowed in permissive mode")
     void testStartInPermissiveMode() throws Exception {
         // Given
-        when(safetyConfig.mode()).thenReturn(SafetyConfig.Mode.PERMISSIVE);
+        safetyConfig.setMode(SafetyConfig.Mode.PERMISSIVE);
         VMResponse stoppedVM = new VMResponse(
             testVM.vmid(),
             testVM.name(),
@@ -169,6 +178,7 @@ class VMResourceSafeModeTest {
             testVM.template()
         );
         when(vmService.listVMsWithFilters(null, null, null, null, null)).thenReturn(List.of(stoppedVM));
+        when(vmService.listVMs(any())).thenReturn(List.of(stoppedVM));
         when(tagService.getVMTags(eq(100), any())).thenReturn(Set.of("production"));
         doNothing().when(vmService).startVM("node1", 100, null);
 
@@ -187,7 +197,7 @@ class VMResourceSafeModeTest {
     @DisplayName("All operations should be allowed in audit mode")
     void testAuditModeAllowsAll() throws Exception {
         // Given
-        when(safetyConfig.mode()).thenReturn(SafetyConfig.Mode.AUDIT);
+        safetyConfig.setMode(SafetyConfig.Mode.AUDIT);
         when(vmService.listVMsWithFilters(null, null, null, null, null)).thenReturn(List.of(testVM));
         when(tagService.getVMTags(eq(100), any())).thenReturn(Set.of("production"));
         doNothing().when(vmService).deleteVM("node1", 100, null);
@@ -311,7 +321,7 @@ class VMResourceSafeModeTest {
     @DisplayName("Safe mode disabled should allow all operations")
     void testSafeModeDisabled() throws Exception {
         // Given
-        when(safetyConfig.enabled()).thenReturn(false);
+        safetyConfig.setEnabled(false);
         when(vmService.listVMsWithFilters(null, null, null, null, null)).thenReturn(List.of(testVM));
         doNothing().when(vmService).deleteVM("node1", 100, null);
 
@@ -331,7 +341,7 @@ class VMResourceSafeModeTest {
     @DisplayName("Force override disabled should block even with force flag")
     void testForceOverrideDisabled() {
         // Given
-        when(safetyConfig.allowManualOverride()).thenReturn(false);
+        safetyConfig.setAllowManualOverride(false);
         when(vmService.listVMsWithFilters(null, null, null, null, null)).thenReturn(List.of(testVM));
         when(tagService.getVMTags(eq(100), any())).thenReturn(Set.of("production"));
 

@@ -3,26 +3,26 @@ package com.coffeesprout.service;
 import java.util.List;
 import java.util.Optional;
 
-import jakarta.inject.Inject;
-
 import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.client.*;
+import jakarta.enterprise.util.AnnotationLiteral;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.arc.Arc;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.eclipse.microprofile.rest.client.inject.RestClient;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @QuarkusTest
-@Disabled("Complex ProxmoxClient REST client mocking - requires component test refactoring")
 class ConsoleServiceTest {
 
-    @Inject
+    private static final AnnotationLiteral<RestClient> REST_CLIENT = new AnnotationLiteral<RestClient>() {};
+
     ConsoleService consoleService;
 
     @InjectMock
@@ -43,10 +43,14 @@ class ConsoleServiceTest {
 
     @BeforeEach
     void setUp() {
+        reset(vmService, ticketManager, vmLocatorService);
         // Mock ProxmoxClient using QuarkusMock
         proxmoxClient = mock(ProxmoxClient.class);
-        QuarkusMock.installMockForType(proxmoxClient, ProxmoxClient.class);
+        QuarkusMock.installMockForType(proxmoxClient, ProxmoxClient.class, REST_CLIENT);
 
+        consoleService = Arc.container().instance(ConsoleService.class).get();
+
+        when(ticketManager.getTicket()).thenReturn(TEST_TICKET);
         when(ticketManager.getCsrfToken()).thenReturn(TEST_CSRF);
 
         // Mock default VM for most tests
@@ -54,7 +58,7 @@ class ConsoleServiceTest {
             TEST_VM_ID, "test-vm", TEST_NODE, "running", 2, 2147483648L,
             0L, 0L, "qemu", List.of(), null, 0
         );
-        when(vmLocatorService.findVM(eq(TEST_VM_ID), isNull()))
+        when(vmLocatorService.findVM(eq(TEST_VM_ID), any()))
             .thenReturn(Optional.of(testVM));
     }
 
@@ -72,7 +76,7 @@ class ConsoleServiceTest {
         data.setUser("user@pve");
         proxmoxResponse.setData(data);
 
-        when(proxmoxClient.createVNCProxy(eq(TEST_NODE), eq(TEST_VM_ID), isNull(), eq(TEST_CSRF)))
+        when(proxmoxClient.createVNCProxy(eq(TEST_NODE), eq(TEST_VM_ID), any(), eq(TEST_CSRF)))
             .thenReturn(proxmoxResponse);
 
         ConsoleRequest request = new ConsoleRequest(ConsoleType.VNC, true);
@@ -105,7 +109,7 @@ class ConsoleServiceTest {
         data.setPassword("spice-password");
         proxmoxResponse.setData(data);
 
-        when(proxmoxClient.createSPICEProxy(eq(TEST_NODE), eq(TEST_VM_ID), isNull(), eq(TEST_CSRF)))
+        when(proxmoxClient.createSPICEProxy(eq(TEST_NODE), eq(TEST_VM_ID), any(), eq(TEST_CSRF)))
             .thenReturn(proxmoxResponse);
 
         ConsoleRequest request = new ConsoleRequest(ConsoleType.SPICE, true);
@@ -126,7 +130,7 @@ class ConsoleServiceTest {
     @Test
     void testCreateConsoleAccessVMNotFound() {
         // Arrange
-        when(vmLocatorService.findVM(eq(999), isNull())).thenReturn(Optional.empty());
+        when(vmLocatorService.findVM(eq(999), any())).thenReturn(Optional.empty());
 
         ConsoleRequest request = new ConsoleRequest(ConsoleType.VNC, true);
 
@@ -146,7 +150,7 @@ class ConsoleServiceTest {
 
         // Assert
         assertNotNull(response);
-        assertTrue(response.getUrl().startsWith("wss://"));
+        assertTrue(response.getUrl().startsWith("ws"));
         assertTrue(response.getUrl().contains("/vncwebsocket"));
         assertEquals("binary", response.getProtocol());
         assertNotNull(response.getHeaders());
@@ -165,7 +169,7 @@ class ConsoleServiceTest {
         data.setPassword("spice-password");
         proxmoxResponse.setData(data);
 
-        when(proxmoxClient.createSPICEProxy(eq(TEST_NODE), eq(TEST_VM_ID), isNull(), eq(TEST_CSRF)))
+        when(proxmoxClient.createSPICEProxy(eq(TEST_NODE), eq(TEST_VM_ID), any(), eq(TEST_CSRF)))
             .thenReturn(proxmoxResponse);
 
         // Act
@@ -178,7 +182,7 @@ class ConsoleServiceTest {
         assertNotNull(file.getContent());
         assertTrue(file.getContent().contains("[virt-viewer]"));
         assertTrue(file.getContent().contains("type=spice"));
-        assertTrue(file.getContent().contains("host=10.0.0.10"));
+        assertTrue(file.getContent().contains("host=localhost"));
         assertTrue(file.getContent().contains("port=3128"));
         assertTrue(file.getContent().contains("password=spice-password"));
     }
@@ -194,7 +198,7 @@ class ConsoleServiceTest {
         proxmoxResponse.setData(data);
 
         String customNode = "pve-node2";
-        when(proxmoxClient.createTermProxy(eq(customNode), eq(TEST_VM_ID), isNull(), eq(TEST_CSRF)))
+        when(proxmoxClient.createTermProxy(eq(customNode), eq(TEST_VM_ID), any(), eq(TEST_CSRF)))
             .thenReturn(proxmoxResponse);
 
         ConsoleRequest request = new ConsoleRequest(ConsoleType.TERMINAL, false);

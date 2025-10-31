@@ -13,7 +13,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -68,7 +67,6 @@ class SDNResourceTest {
     }
 
     @Test
-    @Disabled("Test fails after scheduler implementation changes")
     void testListVNets() {
         // Setup mock data
         VNetsResponse response = new VNetsResponse();
@@ -86,7 +84,7 @@ class SDNResourceTest {
 
         response.setData(Arrays.asList(vnet1, vnet2));
 
-        when(sdnService.listVNets(anyString(), any())).thenReturn(response);
+        when(sdnService.listVNets(nullable(String.class), any())).thenReturn(response);
 
         // Test endpoint without filters
         given()
@@ -199,10 +197,10 @@ class SDNResourceTest {
     }
 
     @Test
-    @Disabled("Test fails after scheduler implementation changes")
     void testApplyConfiguration() {
         // Test endpoint
         given()
+            .contentType(ContentType.JSON)
             .when()
             .post("/apply")
             .then()

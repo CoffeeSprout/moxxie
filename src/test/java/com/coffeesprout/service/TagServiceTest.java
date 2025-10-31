@@ -1,20 +1,24 @@
 package com.coffeesprout.service;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
-import jakarta.inject.Inject;
-
+import com.coffeesprout.api.exception.ProxmoxException;
 import com.coffeesprout.client.ProxmoxClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.enterprise.util.AnnotationLiteral;
+import io.quarkus.arc.Arc;
 import io.quarkus.test.InjectMock;
+import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -23,32 +27,38 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @QuarkusTest
-@Disabled("TestInstantiation errors - needs investigation")
 class TagServiceTest {
 
-    @Inject
+    private static final AnnotationLiteral<RestClient> REST_CLIENT = new AnnotationLiteral<RestClient>() {};
+
     TagService tagService;
 
-    @InjectMock
-    @RestClient
     ProxmoxClient proxmoxClient;
 
     @InjectMock
     TicketManager ticketManager;
 
+    @InjectMock
+    VMLocatorService vmLocatorService;
+
     private ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
     void setUp() {
+        proxmoxClient = mock(ProxmoxClient.class);
+        QuarkusMock.installMockForType(proxmoxClient, ProxmoxClient.class, REST_CLIENT);
+        reset(ticketManager, vmLocatorService);
         when(ticketManager.getTicket()).thenReturn("test-ticket");
         when(ticketManager.getCsrfToken()).thenReturn("test-csrf");
+        when(vmLocatorService.findNodeForVM(anyInt(), any())).thenReturn(Optional.of("pve1"));
+        tagService = Arc.container().instance(TagService.class).get();
     }
 
     @Test
     void testGetVMTags() {
         // Create mock VM config response with tags
         ObjectNode configData = objectMapper.createObjectNode();
-        configData.put("tags", "moxxie,client:nixz,env:prod");
+        configData.put("tags", "moxxie;client-nixz;env-prod");
 
         ObjectNode configResponse = objectMapper.createObjectNode();
         configResponse.set("data", configData);
@@ -80,15 +90,14 @@ class TagServiceTest {
 
     @Test
     void testGetVMTagsNotFound() {
-        // Mock empty cluster response
-        ObjectNode clusterResponse = objectMapper.createObjectNode();
-        clusterResponse.set("data", objectMapper.createArrayNode());
+        when(vmLocatorService.findNodeForVM(eq(999), any())).thenReturn(Optional.empty());
 
-        when(proxmoxClient.getClusterResources(anyString(), anyString(), eq("vm")))
-            .thenReturn(clusterResponse);
+        ProxmoxException exception = assertThrows(
+            ProxmoxException.class,
+            () -> tagService.getVMTags(999, null)
+        );
 
-        Set<String> tags = tagService.getVMTags(999, null);
-        assertTrue(tags.isEmpty());
+        assertEquals("RESOURCE_NOT_FOUND", exception.getErrorCode());
     }
 
     @Test
@@ -125,16 +134,17 @@ class TagServiceTest {
             formDataCaptor.capture());
 
         String formData = formDataCaptor.getValue();
-        assertTrue(formData.contains("tags="));
-        assertTrue(formData.contains("moxxie"));
-        assertTrue(formData.contains("env-prod"));
+        assertTrue(formData.startsWith("tags="));
+        String decoded = URLDecoder.decode(formData.substring(5), StandardCharsets.UTF_8);
+        Set<String> tagSet = Set.of(decoded.split(";"));
+        assertEquals(Set.of("moxxie", "env-prod"), tagSet);
     }
 
     @Test
     void testRemoveTag() {
         // Setup existing tags
         ObjectNode configData = objectMapper.createObjectNode();
-        configData.put("tags", "moxxie,client:nixz,env:prod");
+        configData.put("tags", "moxxie;client-nixz;env-prod");
 
         ObjectNode configResponse = objectMapper.createObjectNode();
         configResponse.set("data", configData);
@@ -164,10 +174,10 @@ class TagServiceTest {
             formDataCaptor.capture());
 
         String formData = formDataCaptor.getValue();
-        assertTrue(formData.contains("tags="));
-        assertTrue(formData.contains("moxxie"));
-        assertTrue(formData.contains("client-nixz"));
-        assertFalse(formData.contains("env-prod"));
+        assertTrue(formData.startsWith("tags="));
+        String decoded = URLDecoder.decode(formData.substring(5), StandardCharsets.UTF_8);
+        Set<String> remaining = Set.of(decoded.split(";"));
+        assertEquals(Set.of("moxxie", "client-nixz"), remaining);
     }
 
     @Test
@@ -175,15 +185,15 @@ class TagServiceTest {
         // Create VMs with various tags
         ObjectNode vm1 = objectMapper.createObjectNode();
         vm1.put("vmid", 101);
-        vm1.put("tags", "moxxie,client:nixz");
+        vm1.put("tags", "moxxie;client-nixz");
 
         ObjectNode vm2 = objectMapper.createObjectNode();
         vm2.put("vmid", 102);
-        vm2.put("tags", "moxxie,client:acme,env:prod");
+        vm2.put("tags", "moxxie;client-acme;env-prod");
 
         ObjectNode vm3 = objectMapper.createObjectNode();
         vm3.put("vmid", 103);
-        vm3.put("tags", "moxxie,client:nixz,env:dev");
+        vm3.put("tags", "moxxie;client-nixz;env-dev");
 
         ArrayNode vmsArray = objectMapper.createArrayNode();
         vmsArray.add(vm1).add(vm2).add(vm3);
@@ -209,15 +219,15 @@ class TagServiceTest {
         // Create VMs with various tags
         ObjectNode vm1 = objectMapper.createObjectNode();
         vm1.put("vmid", 101);
-        vm1.put("tags", "moxxie,client:nixz");
+        vm1.put("tags", "moxxie;client-nixz");
 
         ObjectNode vm2 = objectMapper.createObjectNode();
         vm2.put("vmid", 102);
-        vm2.put("tags", "moxxie,client:acme,env:prod");
+        vm2.put("tags", "moxxie;client-acme;env-prod");
 
         ObjectNode vm3 = objectMapper.createObjectNode();
         vm3.put("vmid", 103);
-        vm3.put("tags", "moxxie,client:nixz,env:dev");
+        vm3.put("tags", "moxxie;client-nixz;env-dev");
 
         ArrayNode vmsArray = objectMapper.createArrayNode();
         vmsArray.add(vm1).add(vm2).add(vm3);
@@ -248,12 +258,15 @@ class TagServiceTest {
         // Test bulk add
         List<Integer> vmIds = List.of(101, 102, 999); // 999 doesn't exist
         Set<String> tagsToAdd = Set.of("env-test", "bulk-tag");
+        when(vmLocatorService.findNodeForVM(eq(101), any())).thenReturn(Optional.of("pve1"));
+        when(vmLocatorService.findNodeForVM(eq(102), any())).thenReturn(Optional.of("pve1"));
+        when(vmLocatorService.findNodeForVM(eq(999), any())).thenReturn(Optional.empty());
 
         Map<Integer, String> results = tagService.bulkAddTags(vmIds, tagsToAdd, null);
 
         assertEquals("success", results.get(101));
         assertEquals("success", results.get(102));
-        assertEquals("error: VM not found", results.get(999));
+        assertEquals("error: VM with identifier '999' not found. VM may not exist or is not accessible", results.get(999));
 
         // Verify updates were called
         verify(proxmoxClient, times(2)).updateVMConfig(anyString(), anyInt(),
@@ -268,6 +281,8 @@ class TagServiceTest {
         // Test bulk remove
         List<Integer> vmIds = List.of(101, 102);
         Set<String> tagsToRemove = Set.of("moxxie");
+        when(vmLocatorService.findNodeForVM(eq(101), any())).thenReturn(Optional.of("pve1"));
+        when(vmLocatorService.findNodeForVM(eq(102), any())).thenReturn(Optional.of("pve1"));
 
         Map<Integer, String> results = tagService.bulkRemoveTags(vmIds, tagsToRemove, null);
 
@@ -333,7 +348,7 @@ class TagServiceTest {
         vm2.put("node", "pve1");
 
         ObjectNode vm2Config = objectMapper.createObjectNode();
-        vm2Config.put("tags", "moxxie,client:acme");
+        vm2Config.put("tags", "moxxie;client-acme");
         ObjectNode vm2ConfigResponse = objectMapper.createObjectNode();
         vm2ConfigResponse.set("data", vm2Config);
 
@@ -350,5 +365,7 @@ class TagServiceTest {
             .thenReturn(vm1ConfigResponse);
         when(proxmoxClient.getVMConfig(eq("pve1"), eq(102), anyString(), anyString()))
             .thenReturn(vm2ConfigResponse);
+        when(vmLocatorService.findNodeForVM(eq(101), any())).thenReturn(Optional.of("pve1"));
+        when(vmLocatorService.findNodeForVM(eq(102), any())).thenReturn(Optional.of("pve1"));
     }
 }

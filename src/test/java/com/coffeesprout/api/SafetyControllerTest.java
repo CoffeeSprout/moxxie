@@ -5,12 +5,12 @@ import java.util.List;
 
 import com.coffeesprout.service.AuditService;
 import com.coffeesprout.service.SafetyConfig;
+import com.coffeesprout.test.support.TestSafetyConfig;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -20,26 +20,27 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @QuarkusTest
-@Disabled("TestInstantiation errors - needs investigation")
 class SafetyControllerTest {
 
-    @InjectMock
-    SafetyConfig safetyConfig;
+    @jakarta.inject.Inject
+    TestSafetyConfig safetyConfig;
 
     @InjectMock
     AuditService auditService;
 
     @BeforeEach
     void setUp() {
+        reset(auditService);
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+        safetyConfig.reset();
     }
 
     @Test
     @DisplayName("GET /api/v1/safety/status should return current safety status")
     void testGetSafetyStatus() {
         // Given
-        when(safetyConfig.enabled()).thenReturn(true);
-        when(safetyConfig.mode()).thenReturn(SafetyConfig.Mode.STRICT);
+        safetyConfig.setEnabled(true);
+        safetyConfig.setMode(SafetyConfig.Mode.STRICT);
 
         AuditService.SafetyStatistics stats = new AuditService.SafetyStatistics(
             1500L, 42L, 10L, Instant.parse("2024-01-15T10:30:00Z")
@@ -65,12 +66,12 @@ class SafetyControllerTest {
     @DisplayName("GET /api/v1/safety/config should return current configuration")
     void testGetSafetyConfig() {
         // Given
-        when(safetyConfig.enabled()).thenReturn(true);
-        when(safetyConfig.mode()).thenReturn(SafetyConfig.Mode.PERMISSIVE);
-        when(safetyConfig.tagName()).thenReturn("moxxie");
-        when(safetyConfig.allowUntaggedRead()).thenReturn(true);
-        when(safetyConfig.allowManualOverride()).thenReturn(true);
-        when(safetyConfig.auditLog()).thenReturn(true);
+        safetyConfig.setEnabled(true);
+        safetyConfig.setMode(SafetyConfig.Mode.PERMISSIVE);
+        safetyConfig.setTagName("moxxie");
+        safetyConfig.setAllowUntaggedRead(true);
+        safetyConfig.setAllowManualOverride(true);
+        safetyConfig.setAuditLog(true);
 
         // When & Then
         given()
@@ -204,8 +205,8 @@ class SafetyControllerTest {
     @DisplayName("GET /api/v1/safety/status when safe mode is disabled")
     void testGetSafetyStatusWhenDisabled() {
         // Given
-        when(safetyConfig.enabled()).thenReturn(false);
-        when(safetyConfig.mode()).thenReturn(SafetyConfig.Mode.AUDIT);
+        safetyConfig.setEnabled(false);
+        safetyConfig.setMode(SafetyConfig.Mode.AUDIT);
 
         AuditService.SafetyStatistics stats = new AuditService.SafetyStatistics(
             0L, 0L, 0L, null

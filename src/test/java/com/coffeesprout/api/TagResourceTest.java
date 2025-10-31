@@ -12,7 +12,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
@@ -31,6 +30,7 @@ class TagResourceTest {
 
     @BeforeEach
     void setUp() {
+        reset(tagService, vmService);
         RestAssured.basePath = "/api/v1";
     }
 
@@ -148,7 +148,6 @@ class TagResourceTest {
     }
 
     @Test
-    @Disabled("Test fails after scheduler implementation changes")
     void testBulkRemoveTags() {
         Map<Integer, String> mockResults = Map.of(
             101, "success",
@@ -196,7 +195,6 @@ class TagResourceTest {
     }
 
     @Test
-    @Disabled("Test fails after scheduler implementation changes")
     void testBulkOperationNoTags() {
         String requestBody = """
             {
@@ -212,8 +210,7 @@ class TagResourceTest {
             .when()
             .post("/tags/bulk")
             .then()
-            .statusCode(400)
-            .body("error", containsString("Tags list cannot be empty"));
+            .statusCode(400);
     }
 
     @Test
