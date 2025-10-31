@@ -14,8 +14,7 @@ import com.coffeesprout.scheduler.entity.JobVMSelector;
 import com.coffeesprout.scheduler.entity.ScheduledJob;
 import com.coffeesprout.scheduler.entity.TaskType;
 import com.coffeesprout.service.SnapshotService;
-import com.coffeesprout.service.TagService;
-import com.coffeesprout.service.VMService;
+import com.coffeesprout.service.VMTagLookupService;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,13 +33,10 @@ class CreateSnapshotTaskTest {
     CreateSnapshotTask task;
 
     @InjectMock
-    VMService vmService;
-
-    @InjectMock
     SnapshotService snapshotService;
 
     @InjectMock
-    TagService tagService;
+    VMTagLookupService vmTagLookupService;
 
     private TaskContext context;
     private ScheduledJob job;
@@ -82,10 +78,10 @@ class CreateSnapshotTaskTest {
         // Mock VM service
         VMResponse vm = new VMResponse(8200, "test-vm", "node1", "running", 1, 1024L,
             2048L, 3600L, "qemu", List.of("env-test"), null, 0);
-        when(vmService.listVMs(null)).thenReturn(List.of(vm));
+        when(vmTagLookupService.listVMs(null)).thenReturn(List.of(vm));
 
         // Mock tag service
-        when(tagService.getVMTags(8200, null)).thenReturn(Set.of("env-test"));
+        when(vmTagLookupService.getVMTags(8200, null)).thenReturn(Set.of("env-test"));
 
         // Mock snapshot service
         when(snapshotService.createSnapshot(eq(8200), any(CreateSnapshotRequest.class), isNull()))
@@ -119,10 +115,10 @@ class CreateSnapshotTaskTest {
         // Mock VM service
         VMResponse vm = new VMResponse(8200, "test-vm", "node1", "running", 1, 1024L,
             2048L, 3600L, "qemu", List.of("env-test"), null, 0);
-        when(vmService.listVMs(null)).thenReturn(List.of(vm));
+        when(vmTagLookupService.listVMs(null)).thenReturn(List.of(vm));
 
         // Mock tag service
-        when(tagService.getVMTags(8200, null)).thenReturn(Set.of("env-test"));
+        when(vmTagLookupService.getVMTags(8200, null)).thenReturn(Set.of("env-test"));
 
         // Mock existing snapshots
         List<SnapshotResponse> existingSnapshots = List.of(
@@ -156,10 +152,10 @@ class CreateSnapshotTaskTest {
         // Mock VM service
         VMResponse vm = new VMResponse(8200, "test-vm", "node1", "running", 1, 1024L,
             2048L, 3600L, "qemu", List.of("env-test"), null, 0);
-        when(vmService.listVMs(null)).thenReturn(List.of(vm));
+        when(vmTagLookupService.listVMs(null)).thenReturn(List.of(vm));
 
         // Mock tag service - VM doesn't have the required tag
-        when(tagService.getVMTags(8200, null)).thenReturn(Set.of("env-prod"));
+        when(vmTagLookupService.getVMTags(8200, null)).thenReturn(Set.of("env-prod"));
 
         // Execute task
         TaskResult result = task.execute(context);
@@ -178,10 +174,10 @@ class CreateSnapshotTaskTest {
             2048L, 3600L, "qemu", List.of("env-test"), null, 0);
         VMResponse vm2 = new VMResponse(8201, "test-vm-2", "node1", "running", 1, 1024L,
             2048L, 3600L, "qemu", List.of("env-test"), null, 0);
-        when(vmService.listVMs(null)).thenReturn(List.of(vm1, vm2));
+        when(vmTagLookupService.listVMs(null)).thenReturn(List.of(vm1, vm2));
 
         // Mock tag service
-        when(tagService.getVMTags(anyInt(), isNull())).thenReturn(Set.of("env-test"));
+        when(vmTagLookupService.getVMTags(anyInt(), isNull())).thenReturn(Set.of("env-test"));
 
         // Mock snapshot service - first succeeds, second fails
         when(snapshotService.createSnapshot(eq(8200), any(CreateSnapshotRequest.class), isNull()))

@@ -33,9 +33,6 @@ public class TagService {
     TicketManager ticketManager;
 
     @Inject
-    VMService vmService;
-
-    @Inject
     VMLocatorService vmLocatorService;
 
     public Set<String> getVMTags(int vmId, @AuthTicket String ticket) {

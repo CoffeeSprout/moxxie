@@ -30,7 +30,7 @@ public class VMLocatorService {
     TicketManager ticketManager;
 
     @Inject
-    VMService vmService;
+    VMInventoryService vmInventoryService;
 
     /**
      * Find which node a VM is running on.
@@ -65,7 +65,7 @@ public class VMLocatorService {
 
         // Fallback: try using VM service (less efficient but more reliable)
         try {
-            return vmService.listVMs(ticket).stream()
+            return vmInventoryService.listAll(ticket).stream()
                 .filter(vm -> vm.vmid() == vmId)
                 .map(VMResponse::node)
                 .findFirst();
@@ -84,7 +84,7 @@ public class VMLocatorService {
      */
     public Optional<VMResponse> findVM(int vmId, @AuthTicket String ticket) {
         try {
-            return vmService.listVMs(ticket).stream()
+            return vmInventoryService.listAll(ticket).stream()
                 .filter(vm -> vm.vmid() == vmId)
                 .findFirst();
         } catch (Exception e) {

@@ -12,8 +12,7 @@ import com.coffeesprout.scheduler.entity.JobVMExecution;
 import com.coffeesprout.scheduler.entity.JobVMSelector;
 import com.coffeesprout.scheduler.tag.TagExpression;
 import com.coffeesprout.scheduler.tag.TagExpressionParser;
-import com.coffeesprout.service.TagService;
-import com.coffeesprout.service.VMService;
+import com.coffeesprout.service.VMTagLookupService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,10 +24,7 @@ public abstract class AbstractVMTask implements ScheduledTask {
     private static final Logger LOG = LoggerFactory.getLogger(AbstractVMTask.class);
 
     @Inject
-    protected VMService vmService;
-
-    @Inject
-    protected TagService tagService;
+    protected VMTagLookupService vmTagLookupService;
 
     @Override
     public TaskResult execute(TaskContext context) {
@@ -110,7 +106,7 @@ public abstract class AbstractVMTask implements ScheduledTask {
      * Select VMs based on job configuration
      */
     protected List<VMResponse> selectVMs(TaskContext context) {
-        List<VMResponse> allVMs = vmService.listVMs(null);
+        List<VMResponse> allVMs = vmTagLookupService.listVMs(null);
 
         if (context.getJob().vmSelectors.isEmpty()) {
             LOG.warn("No VM selectors configured, processing all VMs");
@@ -179,12 +175,12 @@ public abstract class AbstractVMTask implements ScheduledTask {
             LOG.debug("Evaluating tag expression: {}", expression);
 
             // Get all VMs and evaluate expression against their tags
-            List<VMResponse> allVMs = vmService.listVMs(null);
+            List<VMResponse> allVMs = vmTagLookupService.listVMs(null);
             Set<Integer> matchingVMs = new HashSet<>();
 
             for (VMResponse vm : allVMs) {
                 // Get tags for this VM
-                Set<String> vmTags = tagService.getVMTags(vm.vmid(), null);
+                Set<String> vmTags = vmTagLookupService.getVMTags(vm.vmid(), null);
 
                 // Evaluate expression
                 if (tagExpr.evaluate(vmTags)) {
@@ -200,7 +196,7 @@ public abstract class AbstractVMTask implements ScheduledTask {
             LOG.error("Failed to evaluate tag expression '{}': {}", expression, e.getMessage());
             // Fall back to simple tag matching for backward compatibility
             try {
-                List<Integer> vmIds = tagService.getVMsByTag(expression.trim(), null);
+                List<Integer> vmIds = vmTagLookupService.getVMsByTag(expression.trim(), null);
                 LOG.warn("Fell back to simple tag matching for '{}', found {} VMs", expression, vmIds.size());
                 return new HashSet<>(vmIds);
             } catch (Exception ex) {

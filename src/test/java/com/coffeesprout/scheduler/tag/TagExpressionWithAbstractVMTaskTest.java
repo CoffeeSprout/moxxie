@@ -2,13 +2,12 @@ package com.coffeesprout.scheduler.tag;
 
 import java.util.*;
 
-import jakarta.enterprise.context.ApplicationScoped;
-
 import com.coffeesprout.api.dto.VMResponse;
 import com.coffeesprout.scheduler.entity.JobVMSelector;
 import com.coffeesprout.scheduler.entity.ScheduledJob;
 import com.coffeesprout.scheduler.task.AbstractVMTask;
 import com.coffeesprout.scheduler.task.TaskContext;
+import com.coffeesprout.service.VMTagLookupService;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -24,24 +23,24 @@ class TagExpressionWithAbstractVMTaskTest {
         TestVMTask task = new TestVMTask();
 
         // Test simple expression
-        Set<Integer> result = task.evaluateTagExpression("env-prod");
+        Set<Integer> result = task.callEvaluateTagExpression("env-prod");
         assertNotNull(result);
 
         // Test complex expression
-        result = task.evaluateTagExpression("(env-prod OR env-staging) AND NOT always-on");
+        result = task.callEvaluateTagExpression("(env-prod OR env-staging) AND NOT always-on");
         assertNotNull(result);
 
         // Test wildcard expression
-        result = task.evaluateTagExpression("client-* AND env-prod");
+        result = task.callEvaluateTagExpression("client-* AND env-prod");
         assertNotNull(result);
 
         // Test empty expression
-        result = task.evaluateTagExpression("");
+        result = task.callEvaluateTagExpression("");
         assertNotNull(result);
         assertTrue(result.isEmpty());
 
         // Test null expression
-        result = task.evaluateTagExpression(null);
+        result = task.callEvaluateTagExpression(null);
         assertNotNull(result);
         assertTrue(result.isEmpty());
     }
@@ -65,45 +64,28 @@ class TagExpressionWithAbstractVMTaskTest {
         TaskContext context = new TaskContext();
         context.setJob(job);
 
-        // Test VM selection (will use mock data)
-        List<VMResponse> selectedVMs = task.selectVMs(context);
+        List<VMResponse> selectedVMs = task.callSelectVMs(context);
         assertNotNull(selectedVMs);
+        assertEquals(2, selectedVMs.size());
     }
 
     /**
      * Test implementation of AbstractVMTask for unit testing
      */
-    @ApplicationScoped
     static class TestVMTask extends AbstractVMTask {
 
-        // Override to provide test data
-        @Override
-        protected Set<Integer> evaluateTagExpression(String expression) {
-            // Call parent implementation to test the actual logic
-            try {
-                return super.evaluateTagExpression(expression);
-            } catch (NullPointerException e) {
-                // Expected when services aren't injected
-                // Return test data
-                if ("env-prod".equals(expression)) {
-                    return Set.of(101, 103);
-                } else if ("(env-prod OR env-staging) AND NOT always-on".equals(expression)) {
-                    return Set.of(101, 102);
-                } else if ("client-* AND env-prod".equals(expression)) {
-                    return Set.of(101, 103);
-                }
-                return new HashSet<>();
-            }
+        private final FakeVMTagLookupService fakeLookup = new FakeVMTagLookupService();
+
+        TestVMTask() {
+            this.vmTagLookupService = fakeLookup;
         }
 
-        @Override
-        protected List<VMResponse> selectVMs(TaskContext context) {
-            // Override to provide test data since services aren't injected
-            return List.of(
-                new VMResponse(101, "vm1", "node1", "running", 2, 1024L, 10240L, 3600L, "qemu", List.of("env-prod"), null, 0),
-                new VMResponse(102, "vm2", "node1", "running", 2, 1024L, 10240L, 3600L, "qemu", List.of("env-staging"), null, 0),
-                new VMResponse(103, "vm3", "node1", "running", 2, 1024L, 10240L, 3600L, "qemu", List.of("env-prod"), null, 0)
-            );
+        Set<Integer> callEvaluateTagExpression(String expression) {
+            return super.evaluateTagExpression(expression);
+        }
+
+        List<VMResponse> callSelectVMs(TaskContext context) {
+            return super.selectVMs(context);
         }
 
         @Override
@@ -120,6 +102,36 @@ class TagExpressionWithAbstractVMTaskTest {
         @Override
         public String getTaskType() {
             return "test-vm-task";
+        }
+    }
+
+    static class FakeVMTagLookupService extends VMTagLookupService {
+        private final List<VMResponse> vms = List.of(
+            new VMResponse(101, "vm1", "node1", "running", 2, 1024L, 10240L, 3600L, "qemu", List.of("env-prod", "client-alpha"), null, 0),
+            new VMResponse(102, "vm2", "node1", "running", 2, 1024L, 10240L, 3600L, "qemu", List.of("env-staging"), null, 0),
+            new VMResponse(103, "vm3", "node1", "running", 2, 1024L, 10240L, 3600L, "qemu", List.of("env-prod", "client-beta"), null, 0)
+        );
+
+        @Override
+        public List<VMResponse> listVMs(String ticket) {
+            return vms;
+        }
+
+        @Override
+        public Set<String> getVMTags(int vmId, String ticket) {
+            return vms.stream()
+                .filter(vm -> vm.vmid() == vmId)
+                .findFirst()
+                .map(vm -> new HashSet<>(vm.tags()))
+                .orElseGet(HashSet::new);
+        }
+
+        @Override
+        public List<Integer> getVMsByTag(String tag, String ticket) {
+            return vms.stream()
+                .filter(vm -> vm.tags() != null && vm.tags().contains(tag))
+                .map(VMResponse::vmid)
+                .toList();
         }
     }
 }

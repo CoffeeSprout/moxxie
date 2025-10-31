@@ -5,11 +5,13 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
 
 import com.coffeesprout.api.dto.ErrorResponse;
-import com.coffeesprout.config.MoxxieConfig;
+import java.util.Optional;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,8 +44,6 @@ import org.slf4j.LoggerFactory;
  *   <li>OpenAPI spec: /q/openapi</li>
  *   <li>Swagger UI: /q/swagger-ui/*</li>
  * </ul>
- *
- * @see MoxxieConfig.ApiConfig
  */
 @Provider
 @Priority(Priorities.AUTHENTICATION)
@@ -53,7 +53,12 @@ public class ApiKeyAuthenticationFilter implements ContainerRequestFilter {
     private static final String API_KEY_HEADER = "X-API-Key";
 
     @Inject
-    MoxxieConfig config;
+    @ConfigProperty(name = "moxxie.api.auth-enabled", defaultValue = "false")
+    boolean authEnabled;
+
+    @Inject
+    @ConfigProperty(name = "moxxie.api.key")
+    Optional<String> apiKey;
 
     @Override
     public void filter(ContainerRequestContext requestContext) {
@@ -66,14 +71,14 @@ public class ApiKeyAuthenticationFilter implements ContainerRequestFilter {
         }
 
         // Check if authentication is enabled
-        if (!config.api().authEnabled()) {
+        if (!authEnabled) {
             LOG.trace("API authentication is disabled, allowing request");
             return;
         }
 
         // Validate API key
         String providedKey = requestContext.getHeaderString(API_KEY_HEADER);
-        String configuredKey = config.api().key().orElse("");
+        String configuredKey = apiKey.orElse("");
 
         if (providedKey == null || providedKey.isEmpty()) {
             LOG.warn("Request to {} rejected: Missing API key", path);
@@ -110,6 +115,7 @@ public class ApiKeyAuthenticationFilter implements ContainerRequestFilter {
         requestContext.abortWith(
             Response.status(Response.Status.UNAUTHORIZED)
                 .entity(error)
+                .type(MediaType.APPLICATION_JSON)
                 .build()
         );
     }

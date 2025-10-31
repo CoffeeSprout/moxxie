@@ -13,8 +13,7 @@ import com.coffeesprout.scheduler.tag.TagExpression;
 import com.coffeesprout.scheduler.tag.TagExpressionParser;
 import com.coffeesprout.service.AuthTicket;
 import com.coffeesprout.service.AutoAuthenticate;
-import com.coffeesprout.service.TagService;
-import com.coffeesprout.service.VMService;
+import com.coffeesprout.service.VMTagLookupService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,10 +24,7 @@ public class VMSelectorService {
     private static final Logger LOG = LoggerFactory.getLogger(VMSelectorService.class);
 
     @Inject
-    VMService vmService;
-
-    @Inject
-    TagService tagService;
+    VMTagLookupService vmTagLookupService;
 
     /**
      * Select VMs based on the given selector
@@ -37,7 +33,7 @@ public class VMSelectorService {
         LOG.debug("Selecting VMs with selector type: {}, value: {}", selector.type(), selector.value());
 
         // Get all VMs first
-        List<VMResponse> allVMs = vmService.listVMs(ticket);
+        List<VMResponse> allVMs = vmTagLookupService.listVMs(ticket);
 
         Set<Integer> selectedVMIds = new HashSet<>();
 
@@ -146,7 +142,7 @@ public class VMSelectorService {
 
             for (VMResponse vm : allVMs) {
                 // Get tags for this VM
-                Set<String> vmTags = tagService.getVMTags(vm.vmid(), ticket);
+                Set<String> vmTags = vmTagLookupService.getVMTags(vm.vmid(), ticket);
 
                 // Evaluate expression
                 if (tagExpr.evaluate(vmTags)) {
@@ -162,7 +158,7 @@ public class VMSelectorService {
             LOG.error("Failed to evaluate tag expression '{}': {}", expression, e.getMessage());
             // Fall back to simple tag matching
             try {
-                List<Integer> vmIds = tagService.getVMsByTag(expression.trim(), ticket);
+                List<Integer> vmIds = vmTagLookupService.getVMsByTag(expression.trim(), ticket);
                 LOG.warn("Fell back to simple tag matching for '{}', found {} VMs", expression, vmIds.size());
                 return new HashSet<>(vmIds);
             } catch (Exception ex) {
