@@ -11,6 +11,7 @@ import jakarta.ws.rs.core.Response;
 
 import com.coffeesprout.api.dto.ErrorResponse;
 import com.coffeesprout.client.ProxmoxClient;
+import com.coffeesprout.constants.ProxmoxConstants;
 import com.coffeesprout.service.SafeMode;
 import com.coffeesprout.service.TicketManager;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -75,22 +76,28 @@ public class AdminResource {
             }
 
             // Build the tag-style configuration string for Proxmox
-            StringBuilder tagStyle = new StringBuilder(256);
+            StringBuilder tagStyle = new StringBuilder(ProxmoxConstants.TagStyle.CONFIG_BUFFER_SIZE);
 
             // Add case sensitivity setting
-            tagStyle.append("case-sensitive=").append(config.tagStyle().caseSensitive() ? "1" : "0").append(';')
-                    .append("ordering=").append(config.tagStyle().ordering()).append(';')
-                    .append("shape=").append(config.tagStyle().shape()).append(';');
+            String caseSensitiveFlag = config.tagStyle().caseSensitive()
+                    ? ProxmoxConstants.TagStyle.FLAG_ENABLED
+                    : ProxmoxConstants.TagStyle.FLAG_DISABLED;
+            appendKeyValue(tagStyle, "case-sensitive", caseSensitiveFlag);
+            appendKeyValue(tagStyle, "ordering", config.tagStyle().ordering());
+            appendKeyValue(tagStyle, "shape", config.tagStyle().shape());
 
             // Add color mappings
             if (config.tagStyle().colorMap() != null && !config.tagStyle().colorMap().isEmpty()) {
-                tagStyle.append("color-map=");
+                tagStyle.append("color-map")
+                        .append(ProxmoxConstants.TagStyle.KEY_VALUE_SEPARATOR);
                 boolean first = true;
                 for (Map.Entry<String, String> entry : config.tagStyle().colorMap().entrySet()) {
                     if (!first) {
-                        tagStyle.append(',');
+                        tagStyle.append(ProxmoxConstants.TagStyle.MAP_DELIMITER);
                     }
-                    tagStyle.append(entry.getKey()).append(':').append(entry.getValue());
+                    tagStyle.append(entry.getKey())
+                            .append(ProxmoxConstants.TagStyle.COLOR_PAIR_SEPARATOR)
+                            .append(entry.getValue());
                     first = false;
                 }
             }
@@ -110,6 +117,13 @@ public class AdminResource {
                     .entity(new ErrorResponse("Failed to configure tag style: " + e.getMessage()))
                     .build();
         }
+    }
+
+    private static void appendKeyValue(StringBuilder builder, String key, Object value) {
+        builder.append(key)
+                .append(ProxmoxConstants.TagStyle.KEY_VALUE_SEPARATOR)
+                .append(value)
+                .append(ProxmoxConstants.TagStyle.ENTRY_DELIMITER);
     }
 
     @POST

@@ -23,7 +23,7 @@ public class WebSocketConfig {
     public static final int MAX_SESSIONS_PER_USER = 5;
 
     // Buffer size for binary messages
-    public static final int BINARY_BUFFER_SIZE = 65536;
+    public static final int BINARY_BUFFER_SIZE = (int) (64 * UnitConverter.Bytes.BYTES_PER_KB);
 
     /**
      * Configure WebSocket endpoint settings.

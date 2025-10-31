@@ -154,6 +154,21 @@ public final class ProxmoxConstants {
     }
 
     /**
+     * Tag style configuration values for Proxmox datacenter settings
+     */
+    public static final class TagStyle {
+        public static final int CONFIG_BUFFER_SIZE = 256;
+        public static final char KEY_VALUE_SEPARATOR = '=';
+        public static final char ENTRY_DELIMITER = ';';
+        public static final char MAP_DELIMITER = ',';
+        public static final char COLOR_PAIR_SEPARATOR = ':';
+        public static final String FLAG_ENABLED = "1";
+        public static final String FLAG_DISABLED = "0";
+
+        private TagStyle() {}
+    }
+
+    /**
      * Network types
      */
     public static final class NetworkTypes {

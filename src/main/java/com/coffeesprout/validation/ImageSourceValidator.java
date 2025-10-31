@@ -1,5 +1,7 @@
 package com.coffeesprout.validation;
 
+import java.util.Locale;
+
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
@@ -16,18 +18,19 @@ public class ImageSourceValidator implements ConstraintValidator<ValidImageSourc
 
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
-        if (value == null || value.trim().isEmpty()) {
+        if (value == null || value.isBlank()) {
             return true; // Let @NotBlank handle empty values
         }
 
         // Check if it looks like an ISO path
-        String lowerValue = value.toLowerCase();
-        if (lowerValue.contains(".iso") || lowerValue.contains("/iso/") || lowerValue.contains("iso:") || lowerValue.startsWith("iso-")) {
+        String lowerValue = value.toLowerCase(Locale.ROOT);
+        if (lowerValue.contains(".iso") || lowerValue.contains("/iso/") || lowerValue.contains("iso:")
+                || lowerValue.startsWith("iso-")) {
             context.disableDefaultConstraintViolation();
             context.buildConstraintViolationWithTemplate(
-                "Invalid imageSource format. For cloud-init VMs, use the format 'storage:vmid/base-vmid-disk-N' " +
-                "(e.g., 'local-zfs:9002/base-9002-disk-0.raw'). Do not use ISO file paths."
-            ).addConstraintViolation();
+                    "Invalid imageSource format. For cloud-init VMs, use the format 'storage:vmid/base-vmid-disk-N' "
+                            + "(e.g., 'local-zfs:9002/base-9002-disk-0.raw'). Do not use ISO file paths.")
+                    .addConstraintViolation();
             return false;
         }
 
@@ -35,9 +38,9 @@ public class ImageSourceValidator implements ConstraintValidator<ValidImageSourc
         if (!value.matches("^[a-zA-Z0-9-]+:\\d+/base-\\d+-disk-\\d+(\\.\\w+)?$")) {
             context.disableDefaultConstraintViolation();
             context.buildConstraintViolationWithTemplate(
-                "Invalid imageSource format. Expected format: 'storage:vmid/base-vmid-disk-N' " +
-                "(e.g., 'local-zfs:9002/base-9002-disk-0.raw'). This should reference a template VM's disk."
-            ).addConstraintViolation();
+                    "Invalid imageSource format. Expected format: 'storage:vmid/base-vmid-disk-N' "
+                            + "(e.g., 'local-zfs:9002/base-9002-disk-0.raw'). This should reference a template VM's disk.")
+                    .addConstraintViolation();
             return false;
         }
 

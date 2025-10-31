@@ -134,6 +134,10 @@ public final class VMConstants {
         public static final int MAX_NAME_LENGTH = 40;
         public static final int MAX_DESCRIPTION_LENGTH = 255;
         public static final String DEFAULT_PREFIX = "snap";
+        public static final int BULK_VM_PLACEHOLDER_LENGTH = 20;
+        public static final int BULK_DATE_PLACEHOLDER_LENGTH = 8;
+        public static final int BULK_TIME_PLACEHOLDER_LENGTH = 6;
+        public static final int PROXMOX_MAX_NAME_LENGTH = 60;
 
         private Snapshot() {}
     }

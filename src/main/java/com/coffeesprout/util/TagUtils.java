@@ -1,6 +1,7 @@
 package com.coffeesprout.util;
 
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -8,7 +9,7 @@ import java.util.regex.Pattern;
  * Utility class for consistent tag handling across the application.
  * Provides methods for creating structured tags and parsing tag strings.
  */
-public class TagUtils {
+public final class TagUtils {
 
     // Core tags
     public static final String MOXXIE_MANAGED = "moxxie";
@@ -25,6 +26,10 @@ public class TagUtils {
 
     // Validation pattern - alphanumeric, underscore, dash, and dot (no colons allowed by Proxmox)
     private static final Pattern TAG_PATTERN = Pattern.compile("^[a-zA-Z0-9_.-]+$");
+
+    private TagUtils() {
+        throw new AssertionError("TagUtils is a utility class and should not be instantiated");
+    }
 
     /**
      * Create a client tag
@@ -66,7 +71,7 @@ public class TagUtils {
      */
     public static Set<String> parseVMTags(String tagString) {
         Set<String> tags = new HashSet<>();
-        if (tagString == null || tagString.trim().isEmpty()) {
+        if (tagString == null || tagString.isBlank()) {
             return tags;
         }
 
@@ -94,19 +99,19 @@ public class TagUtils {
      * Validate tag value and convert to lowercase
      */
     private static String validateTagValue(String value) {
-        if (value == null || value.trim().isEmpty()) {
+        if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("Tag value cannot be null or empty");
         }
 
-        // Just trim the value
-        String cleaned = value.trim();
+        // Normalize case and spacing
+        String cleaned = value.strip();
 
-        if (!cleaned.matches("^[a-zA-Z0-9_.-]+$")) {
+        if (!TAG_PATTERN.matcher(cleaned).matches()) {
             throw new IllegalArgumentException("Invalid tag value: " + value +
                 ". Only alphanumeric characters, underscores, dashes, and dots are allowed.");
         }
 
-        return cleaned.toLowerCase();
+        return cleaned.toLowerCase(Locale.ROOT);
     }
 
     /**
@@ -144,7 +149,7 @@ public class TagUtils {
             return null;
         }
 
-        String lower = vmName.toLowerCase();
+        String lower = vmName.toLowerCase(Locale.ROOT);
 
         // Check for common environment patterns
         if (lower.contains("-prod") || lower.contains("prod-") || lower.endsWith("-prod")) {
@@ -168,7 +173,7 @@ public class TagUtils {
             return null;
         }
 
-        String lower = vmName.toLowerCase();
+        String lower = vmName.toLowerCase(Locale.ROOT);
 
         if (lower.contains("-cp-") || lower.contains("controlplane") || lower.contains("master")) {
             return "controlplane";
